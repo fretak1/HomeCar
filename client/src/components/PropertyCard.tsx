@@ -1,0 +1,115 @@
+import Link from 'next/link';
+import { MapPin, Bed, Bath, Square, Star, Pencil, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { formatLocation, getListingMainImage } from '@/lib/utils';
+import { Property } from '@/store/usePropertyStore';
+
+interface PropertyCardProps {
+  property: Property;
+  onEdit?: (property: Property) => void;
+  onDelete?: (property: Property) => void;
+}
+
+export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) {
+
+  return (
+    <Link href={`/property/${property.id}`}>
+      <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-border group">
+        <div className="relative overflow-hidden">
+          <img
+            src={getListingMainImage(property)}
+            alt={property.title}
+            className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-300"
+          />
+
+
+          <div className="absolute top-4 left-4 flex flex-wrap gap-1">
+            {property.listingType?.map((type) => (
+              <Badge
+                key={type}
+                className="bg-white/90 text-[#005a41] border-none text-[10px] font-bold uppercase tracking-wider px-2"
+              >
+                {type.replace('_', ' ')}
+              </Badge>
+            ))}
+          </div>
+
+        </div>
+
+        <CardContent className="p-5">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="text-lg text-foreground line-clamp-1">{property.title}</h3>
+            <div className="flex items-center space-x-1">
+              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+              <span className="text-sm text-foreground">{property.rating}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center text-muted-foreground mb-3">
+            <MapPin className="h-4 w-4 mr-1" />
+            <span className="text-sm">{formatLocation(property.location)}</span>
+          </div>
+
+          <div className="flex items-center space-x-4 mb-4 text-muted-foreground">
+            <div className="flex items-center space-x-1">
+              <Bed className="h-4 w-4" />
+              <span className="text-sm">{property.bedrooms}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Bath className="h-4 w-4" />
+              <span className="text-sm">{property.bathrooms}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Square className="h-4 w-4" />
+              <span className="text-sm">{property.area} sq ft</span>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center mt-auto pt-2">
+            <div className="flex flex-col items-start leading-tight">
+              <div className="flex items-baseline gap-1 text-primary whitespace-nowrap">
+                <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">ETB</span>
+                <span className="text-xl font-bold">{property.price.toLocaleString()}</span>
+                {property.listingType.includes('For rent') && (
+                  <span className="text-xs text-muted-foreground">/mo</span>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-1.5">
+              {onEdit && (
+                <Button
+                  variant="outline"
+                  className="h-8 text-xs text-[#005a41] border-[#005a41]/20 hover:bg-[#005a41] hover:text-white transition-all duration-200 px-2.5"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onEdit(property);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  Edit
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  variant="outline"
+                  className="h-8 text-xs text-rose-500 border-rose-200 hover:bg-rose-500 hover:text-white transition-all duration-200 px-2.5"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onDelete(property);
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  Delete
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}

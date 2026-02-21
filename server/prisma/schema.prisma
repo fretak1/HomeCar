@@ -1,0 +1,254 @@
+// --- HomeCar Advanced Prisma Schema ---
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- ENUMS ---
+
+enum Role {
+  CUSTOMER
+  OWNER
+  AGENT
+  ADMIN
+}
+
+enum AssetType {
+  HOME
+  CAR
+}
+
+enum PropertyStatus {
+  AVAILABLE
+  BOOKED
+  SOLD
+  RENTED
+  UNAVAILABLE
+}
+
+enum ListingType {
+  RENT
+  LEASE
+  BUY
+  FOR_SALE
+}
+
+enum LeaseStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  TERMINATED
+}
+
+enum MaintenanceCategory {
+  PLUMBING
+  ELECTRICAL
+  INTERNET
+  DAMAGE
+  CLEANING
+  ENGINE
+  BATTERY
+  TIRE
+  OTHER
+}
+
+// --- MODELS ---
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(CUSTOMER)
+  verified     Boolean  @default(false)
+  phoneNumber      String?
+  profileImage     String?
+  marriageStatus   String?
+  kids             String?
+  gender           String?
+  employmentStatus String?
+  verificationPhoto String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relationships
+  ownedProperties  Property[]           @relation("PropertyOwner")
+  listings         Property[]           @relation("ListedBy")
+  leasesAsCustomer Lease[]              @relation("CustomerLeases")
+  leasesAsOwner    Lease[]              @relation("OwnerLeases")
+  sentMessages     Chat[]               @relation("SentMessages")
+  receivedMessages Chat[]               @relation("ReceivedMessages")
+  documents        Document[]
+  requests         MaintenanceRequest[]
+  applications     Application[]
+  reviews          Review[]
+
+  // Favorites
+  favorites Favorite[]
+}
+
+model Property {
+  id               String         @id @default(cuid())
+  title            String
+  description      String         @db.Text
+  assetType        AssetType
+  listingType      ListingType[]
+  price            Float
+  aiPredictedPrice Float?
+  isVerified       Boolean        @default(false)
+  status           PropertyStatus @default(AVAILABLE)
+
+  // Home Specifics
+  propertyType String?
+  bedrooms     Int?
+  bathrooms    Int?
+  area         Float?
+  amenities    String[]
+
+  // Car Specifics
+  brand        String?
+  model        String?
+  year         Int?
+  fuelType     String?
+  transmission String?
+  mileage      Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  ownerId             String
+  owner               User                 @relation("PropertyOwner", fields: [ownerId], references: [id])
+  listedById          String
+  listedBy            User                 @relation("ListedBy", fields: [listedById], references: [id])
+  locationId          String?
+  location            Location?            @relation(fields: [locationId], references: [id])
+  images              PropertyImage[]
+  leases              Lease[]
+  applications        Application[]
+  reviews             Review[]
+  favoredBy           Favorite[]
+  maintenanceRequests MaintenanceRequest[]
+  ownershipDocuments  Document[]           @relation("PropertyDocuments")
+}
+
+model Location {
+  id        String     @id @default(cuid())
+  subcity   String?
+  city      String?
+  region    String?
+  village   String?
+  lat       Float?
+  lng       Float?
+  properties Property[]
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, propertyId])
+}
+
+model PropertyImage {
+  id         String   @id @default(cuid())
+  url        String
+  isMain     Boolean  @default(false)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model Lease {
+  id               String      @id @default(cuid())
+  leaseType        String
+  startDate        DateTime
+  endDate          DateTime
+  totalPrice       Float
+  recurringAmount  Float?
+  terms            String      @db.Text
+  status           LeaseStatus @default(PENDING)
+  ownerAccepted    Boolean     @default(false)
+  customerAccepted Boolean     @default(false)
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+  customerId String
+  customer   User     @relation("CustomerLeases", fields: [customerId], references: [id])
+  ownerId    String
+  owner      User     @relation("OwnerLeases", fields: [ownerId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Chat {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  senderId   String
+  sender     User   @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId String
+  receiver   User   @relation("ReceivedMessages", fields: [receiverId], references: [id])
+}
+
+model Application {
+  id         String    @id @default(cuid())
+  status     String    @default("pending")
+  fee        Float     @default(0)
+  moveInDate DateTime?
+  leaseTerm  String?
+  message    String?   @db.Text
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+  customerId String
+  customer   User     @relation(fields: [customerId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model MaintenanceRequest {
+  id          String              @id @default(cuid())
+  category    MaintenanceCategory
+  description String              @db.Text
+  status      String              @default("pending")
+  imageUrl    String?
+
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+  customerId String
+  customer   User     @relation(fields: [customerId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Review {
+  id      String  @id @default(cuid())
+  rating  Int
+  comment String? @db.Text
+
+  reviewerId String
+  reviewer   User     @relation(fields: [reviewerId], references: [id])
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  type       String
+  url        String
+  verified   Boolean  @default(false)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  propertyId String?
+  property   Property? @relation("PropertyDocuments", fields: [propertyId], references: [id])
+  uploadedAt DateTime @default(now())
+}
