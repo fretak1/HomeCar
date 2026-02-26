@@ -18,8 +18,10 @@ import {
     CheckCircle,
     Clock,
     Calendar,
+    Check,
+    X,
+    User2,
     Eye,
-    Camera,
     AlertCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,8 +47,6 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
     Select,
     SelectContent,
@@ -58,42 +58,40 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { formatLocation, getListingMainImage } from '@/lib/utils';
 import Link from 'next/link';
+import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth } from 'date-fns';
 
 import DashboardTabs from '@/components/DashboardTabs';
 import { PropertyCard } from '@/components/PropertyCard';
-import { mockProperties, MaintenanceCategory, mockTransactions } from '@/data/mockData';
+import { mockTransactions } from '@/data/mockData';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useApplicationStore } from '@/store/useApplicationStore';
 import { useMaintenanceStore } from '@/store/useMaintenanceStore';
+import { useUserStore } from '@/store/useUserStore';
 import { useLeaseStore } from '@/store/useLeaseStore';
 
 export default function OwnerDashboardPage() {
     const router = useRouter();
+    const { currentUser } = useUserStore();
     const [activeTab, setActiveTab] = useState('properties');
     const [itemToDelete, setItemToDelete] = useState<any>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
-    const [newRequest, setNewRequest] = useState({
-        propertyId: '',
-        category: '' as MaintenanceCategory | '',
-        description: '',
-        image: null as string | null,
-    });
     const [expandedSchedules, setExpandedSchedules] = useState<string[]>([]);
     const [transactionSearch, setTransactionSearch] = useState('');
     const [transactionStatus, setTransactionStatus] = useState('all');
 
-    const { properties, fetchProperties, isLoading: isPropLoading, deleteProperty } = usePropertyStore();
-    const { applications, fetchApplications, isLoading: isAppLoading } = useApplicationStore();
+    const { properties, fetchPropertiesByOwnerId, isLoading: isPropLoading, error: propError, deleteProperty } = usePropertyStore();
+    const { applications, fetchApplications, updateApplicationStatus, isLoading: isAppLoading } = useApplicationStore();
     const { requests: maintenanceRequests, fetchRequests: fetchMaintenanceRequests, updateRequestStatus, isLoading: isMaintenanceLoading } = useMaintenanceStore();
-    const { leases, fetchLeases, isLoading: isLeaseLoading } = useLeaseStore();
+    const { leases, fetchLeases, acceptLease, isLoading: isLeaseLoading } = useLeaseStore();
 
     useEffect(() => {
-        fetchProperties();
-        fetchApplications();
-        fetchMaintenanceRequests();
-        fetchLeases();
-    }, [fetchProperties, fetchApplications, fetchMaintenanceRequests, fetchLeases]);
+        if (currentUser?.id) {
+            fetchPropertiesByOwnerId(currentUser.id);
+            fetchApplications({ managerId: currentUser.id });
+            fetchMaintenanceRequests(currentUser.id);
+            fetchLeases(currentUser.id);
+        }
+    }, [fetchPropertiesByOwnerId, fetchApplications, fetchMaintenanceRequests, fetchLeases, currentUser]);
 
     const toggleSchedule = (id: string) => {
         setExpandedSchedules(prev =>
@@ -162,7 +160,20 @@ export default function OwnerDashboardPage() {
                     {/* My Properties Tab */}
                     <TabsContent value="properties">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {isPropLoading ? (
+                            {propError ? (
+                                <div className="col-span-full py-10 px-4 bg-rose-50 border border-rose-100 rounded-2xl text-center">
+                                    <AlertCircle className="h-8 w-8 text-rose-500 mx-auto mb-2" />
+                                    <p className="text-rose-600 font-medium font-bold">Error loading properties</p>
+                                    <p className="text-rose-500 text-sm">{propError}</p>
+                                    <Button
+                                        variant="outline"
+                                        className="mt-4 border-rose-200 text-rose-600 hover:bg-rose-50"
+                                        onClick={() => currentUser?.id && fetchPropertiesByOwnerId(currentUser.id)}
+                                    >
+                                        Try Again
+                                    </Button>
+                                </div>
+                            ) : isPropLoading ? (
                                 <div className="col-span-full py-20 text-center text-muted-foreground">Loading properties...</div>
                             ) : properties.length > 0 ? (
                                 properties.map((property) => (
@@ -208,14 +219,13 @@ export default function OwnerDashboardPage() {
                                     {isLeaseLoading ? (
                                         <div className="py-20 text-center text-muted-foreground">Loading leases...</div>
                                     ) : leases.length > 0 ? (
-                                        leases.map((lease, idx) => {
-                                            const property = properties.find(p => p.id === lease.propertyId);
+                                        leases.map((lease: any) => {
+                                            const property = lease.property || properties.find((p: any) => p.id === lease.propertyId);
                                             if (!property) return null;
-                                            const tenants = ["Abebe Kebede", "Sara Tadesse", "Dawit Yohannes"];
-                                            const tenantName = tenants[idx % tenants.length];
+                                            const tenantName = lease.customer?.name || "Unknown Tenant";
 
                                             return (
-                                                <Card key={lease.leaseId} className="border-border">
+                                                <Card key={lease.id} className="border-border">
                                                     <CardContent className="p-6">
                                                         <div className="flex items-start justify-between">
                                                             <div className="flex space-x-4">
@@ -227,42 +237,52 @@ export default function OwnerDashboardPage() {
                                                                 <div>
                                                                     <h3 className="mb-1 text-foreground font-bold">{property.title}</h3>
                                                                     <p className="text-sm text-muted-foreground mb-1">
-                                                                        {formatLocation(property.location)}
+                                                                        {formatLocation(property)}
                                                                     </p>
                                                                     <p className="text-xs font-semibold text-[#005a41] mb-2 flex items-center">
-                                                                        <Users className="h-3 w-3 mr-1" />
+                                                                        <User2 className="h-3 w-3 mr-1" />
                                                                         Tenant: {tenantName}
                                                                     </p>
                                                                     <div className="flex items-center space-x-4 text-sm">
                                                                         <div className="flex items-center text-muted-foreground">
                                                                             <Calendar className="h-4 w-4 mr-1" />
-                                                                            <span>Started: {lease.startDate}</span>
+                                                                            <span>Started: {new Date(lease.startDate).toLocaleDateString()}</span>
                                                                         </div>
                                                                         <Badge className={cn(
                                                                             "border-none",
-                                                                            lease.status === 'Active' ? "bg-green-100 text-green-700" :
-                                                                                lease.status === 'Pending' ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"
+                                                                            lease.status === 'ACTIVE' ? "bg-green-100 text-green-700" :
+                                                                                lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"
                                                                         )}>
                                                                             {lease.status}
                                                                         </Badge>
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            <div className="text-right">
-                                                                <p className="text-2xl font-bold text-[#005a41]">
-                                                                    ETB {property.price.toLocaleString()}
-                                                                </p>
-                                                                <p className="text-sm text-muted-foreground">/month</p>
-                                                                <Link href={`/dashboard/owner/lease/${lease.leaseId}`}>
-                                                                    <Button variant="outline" size="sm" className="mt-2 text-[#005a41] border-[#005a41] hover:bg-[#005a41] hover:text-white transition-all duration-300 shadow-sm hover:shadow-md active:scale-95 font-semibold">
-                                                                        View Details
-                                                                    </Button>
-                                                                </Link>
+                                                            <div className="flex items-center justify-between mt-4 md:mt-0 p-4 bg-muted/5 border border-border/10 rounded-xl md:bg-transparent md:border-none md:p-0">
+                                                                <div className="text-left md:text-right w-full">
+                                                                    <p className="text-sm text-muted-foreground mb-1">{lease.recurringAmount ? 'Monthly Payment' : 'Total Payment'}</p>
+                                                                    <p className="text-2xl font-black text-[#005a41] mb-2">ETB {(lease.recurringAmount || lease.totalPrice || property.price).toLocaleString()}</p>
+                                                                    <div className="flex flex-wrap md:justify-end gap-2">
+                                                                        <Link href={`/dashboard/owner/lease/${lease.id}`}>
+                                                                            <Button variant="outline" size="sm" className="h-9 px-4 rounded-xl border-border bg-white hover:bg-muted/10">
+                                                                                <FileText className="h-4 w-4 mr-2 text-[#005a41]" />
+                                                                                View Detail
+                                                                            </Button>
+                                                                        </Link>
+                                                                        {lease.status === 'PENDING' && !lease.ownerAccepted && (
+                                                                            <Button size="sm" onClick={() => acceptLease(lease.id, 'owner')} className="h-9 px-4 rounded-xl bg-[#005a41] hover:bg-[#004a35] text-white">
+                                                                                <CheckCircle className="h-4 w-4 mr-2" />
+                                                                                Accept Lease
+                                                                            </Button>
+                                                                        )}
+
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         <div className="mt-6 pt-6 border-t border-border">
                                                             <button
-                                                                onClick={() => toggleSchedule(lease.leaseId)}
+                                                                onClick={() => toggleSchedule(lease.id)}
                                                                 className="flex justify-between items-center w-full mb-4 hover:bg-muted/50 p-2 rounded-lg transition-all group"
                                                             >
                                                                 <h4 className="text-sm font-semibold text-foreground flex items-center">
@@ -270,8 +290,8 @@ export default function OwnerDashboardPage() {
                                                                     Payment Collection Schedule
                                                                 </h4>
                                                                 <div className="flex items-center space-x-2">
-                                                                    <Badge variant="outline" className="text-[10px] uppercase">{lease.paymentModel}</Badge>
-                                                                    {expandedSchedules.includes(lease.leaseId) ? (
+                                                                    <Badge variant="outline" className="text-[10px] uppercase">{(lease as any).paymentModel || 'Standard'}</Badge>
+                                                                    {expandedSchedules.includes(lease.id) ? (
                                                                         <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-[#005a41] transition-colors" />
                                                                     ) : (
                                                                         <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-[#005a41] transition-colors" />
@@ -279,91 +299,112 @@ export default function OwnerDashboardPage() {
                                                                 </div>
                                                             </button>
 
-                                                            {expandedSchedules.includes(lease.leaseId) && (
+                                                            {expandedSchedules.includes(lease.id) && (
                                                                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                                    {Array.from({ length: 6 }).map((_, i) => {
-                                                                        const isReceived = i < 2;
-                                                                        const isPending = i === 2;
-                                                                        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+                                                                    {(() => {
+                                                                        const startDate = new Date(lease.startDate);
+                                                                        const endDate = new Date(lease.endDate);
+                                                                        const totalMonths = Math.max(1, differenceInMonths(endDate, startDate));
+                                                                        const now = new Date();
 
-                                                                        const daysFilled = isReceived ? 30 : (isPending ? 12 : 0);
+                                                                        return Array.from({ length: totalMonths }).map((_, i) => {
+                                                                            const monthDate = addMonths(startDate, i);
+                                                                            const isMonthPast = isBefore(endOfMonth(monthDate), now);
+                                                                            const isCurrentMonth = isSameMonth(monthDate, now);
 
-                                                                        return (
-                                                                            <div
-                                                                                key={i}
-                                                                                className={`p-5 rounded-2xl border transition-all ${isReceived
-                                                                                    ? 'bg-green-50/20 border-green-100'
-                                                                                    : isPending
-                                                                                        ? 'bg-white border-[#005a41] shadow-lg ring-1 ring-[#005a41]/10'
-                                                                                        : 'bg-muted/5 border-border opacity-70'
-                                                                                    }`}
-                                                                            >
-                                                                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                                                                    <div className="min-w-[140px]">
-                                                                                        <div className="flex items-center space-x-2 mb-1">
-                                                                                            <h5 className={`font-bold text-sm ${isPending ? 'text-[#005a41]' : 'text-foreground'}`}>
-                                                                                                {monthNames[i]} 2026
-                                                                                            </h5>
-                                                                                            {isPending && (
-                                                                                                <Badge className="bg-[#005a41] text-white text-[8px] h-4 px-1 border-none shadow-sm">PROCESSING</Badge>
+                                                                            const daysInThisMonth = differenceInDays(endOfMonth(monthDate), startOfMonth(monthDate)) + 1;
+                                                                            const daysPassedThisMonth = isMonthPast ? daysInThisMonth : isCurrentMonth ? differenceInDays(now, startOfMonth(monthDate)) : 0;
+                                                                            const daysFilled = Math.min(daysInThisMonth, Math.max(0, daysPassedThisMonth));
+
+                                                                            return (
+                                                                                <div
+                                                                                    key={i}
+                                                                                    className={`p-5 rounded-2xl border transition-all ${isMonthPast
+                                                                                        ? 'bg-green-50/20 border-green-100'
+                                                                                        : isCurrentMonth
+                                                                                            ? 'bg-white border-[#005a41] shadow-lg ring-1 ring-[#005a41]/10'
+                                                                                            : 'bg-muted/5 border-border opacity-70'
+                                                                                        }`}
+                                                                                >
+                                                                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                                                                        <div className="min-w-[140px]">
+                                                                                            <div className="flex items-center space-x-2 mb-1">
+                                                                                                <h5 className={`font-bold text-sm ${isCurrentMonth ? 'text-[#005a41]' : 'text-foreground'}`}>
+                                                                                                    {format(monthDate, 'MMM yyyy')}
+                                                                                                </h5>
+                                                                                                {isCurrentMonth && (
+                                                                                                    <Badge className="bg-[#005a41] text-white text-[8px] h-4 px-1 border-none shadow-sm">PROCESSING</Badge>
+                                                                                                )}
+                                                                                            </div>
+                                                                                            <p className="text-2xl font-black text-foreground">
+                                                                                                ETB {(lease.recurringAmount || property.price).toLocaleString()}
+                                                                                            </p>
+                                                                                        </div>
+
+                                                                                        <div className="flex-1 space-y-2">
+                                                                                            <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
+                                                                                                <span>Payment progress </span>
+                                                                                                <span className={isMonthPast ? 'text-green-600' : isCurrentMonth ? 'text-[#005a41]' : ''}>
+                                                                                                    {daysFilled}/{daysInThisMonth} Days
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <div className="flex gap-0.5 h-3">
+                                                                                                {Array.from({ length: daysInThisMonth }).map((_, d) => (
+                                                                                                    <div
+                                                                                                        key={d}
+                                                                                                        className={`h-full w-full rounded-[1px] transition-all duration-700 ${d < daysFilled
+                                                                                                            ? (isMonthPast ? 'bg-green-500 shadow-[0_0_2px_rgba(34,197,94,0.3)]' : 'bg-[#005a41] shadow-[0_0_3px_rgba(0,90,65,0.2)] animate-pulse')
+                                                                                                            : 'bg-muted-foreground/20'
+                                                                                                            }`}
+                                                                                                    />
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        </div>
+
+                                                                                        <div className="md:w-56 flex justify-end">
+                                                                                            {isMonthPast ? (
+                                                                                                <div className="flex items-center text-green-600 font-bold text-xs bg-green-50 py-2.5 rounded-xl border border-green-100 w-full md:w-auto justify-center px-4">
+                                                                                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                                                                                    Received
+                                                                                                </div>
+                                                                                            ) : isCurrentMonth ? (
+                                                                                                <div className="flex items-center text-[#005a41] font-bold text-xs bg-[#005a41]/5 py-2.5 rounded-xl border border-[#005a41]/20 w-full md:w-auto justify-center px-4">
+                                                                                                    <Clock className="h-4 w-4 mr-2" />
+                                                                                                    Expected soon
+                                                                                                </div>
+                                                                                            ) : (
+                                                                                                <div className="flex items-center text-muted-foreground font-bold text-xs bg-muted/30 py-2.5 rounded-xl border border-border/10 w-full md:w-auto justify-center px-4">
+                                                                                                    <Clock className="h-4 w-4 mr-2" />
+                                                                                                    Upcoming
+                                                                                                </div>
                                                                                             )}
                                                                                         </div>
-                                                                                        <p className="text-2xl font-black text-foreground">
-                                                                                            ETB {property.price.toLocaleString()}
-                                                                                        </p>
-                                                                                    </div>
-
-                                                                                    <div className="flex-1 space-y-2">
-                                                                                        <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
-                                                                                            <span>Payment progress </span>
-                                                                                            <span className={isReceived ? 'text-green-600' : isPending ? 'text-[#005a41]' : ''}>
-                                                                                                {daysFilled}/30 Days
-                                                                                            </span>
-                                                                                        </div>
-                                                                                        <div className="flex gap-0.5 h-3">
-                                                                                            {Array.from({ length: 30 }).map((_, d) => (
-                                                                                                <div
-                                                                                                    key={d}
-                                                                                                    className={`h-full w-full rounded-[1px] transition-all duration-700 ${d < daysFilled
-                                                                                                        ? (isReceived ? 'bg-green-500 shadow-[0_0_2px_rgba(34,197,94,0.3)]' : 'bg-[#005a41] shadow-[0_0_3px_rgba(0,90,65,0.2)] animate-pulse')
-                                                                                                        : 'bg-muted-foreground/20'
-                                                                                                        }`}
-                                                                                                />
-                                                                                            ))}
-                                                                                        </div>
-                                                                                    </div>
-
-                                                                                    <div className="md:w-56 flex justify-end">
-                                                                                        {isReceived ? (
-                                                                                            <div className="flex items-center text-green-600 font-bold text-xs bg-green-50 py-2.5 rounded-xl border border-green-100 w-full md:w-auto justify-center px-4">
-                                                                                                <CheckCircle className="h-4 w-4 mr-2" />
-                                                                                                Received
-                                                                                            </div>
-                                                                                        ) : isPending ? (
-                                                                                            <div className="flex items-center text-[#005a41] font-bold text-xs bg-[#005a41]/5 py-2.5 rounded-xl border border-[#005a41]/20 w-full md:w-auto justify-center px-4">
-                                                                                                <Clock className="h-4 w-4 mr-2" />
-                                                                                                Expected soon
-                                                                                            </div>
-                                                                                        ) : (
-                                                                                            <div className="flex items-center text-muted-foreground font-bold text-xs bg-muted/30 py-2.5 rounded-xl border border-border/10 w-full md:w-auto justify-center px-4">
-                                                                                                <Clock className="h-4 w-4 mr-2" />
-                                                                                                Upcoming
-                                                                                            </div>
-                                                                                        )}
                                                                                     </div>
                                                                                 </div>
-                                                                            </div>
-                                                                        );
-                                                                    })}
+                                                                            );
+                                                                        });
+                                                                    })()}
                                                                 </div>
                                                             )}
                                                         </div>
                                                         <div className="mt-4 pt-4 border-t border-border">
-                                                            <div className="flex justify-between items-center mb-2">
-                                                                <span className="text-sm text-muted-foreground">Lease Completion</span>
-                                                                <span className="text-sm text-foreground font-bold">2 of 12 months</span>
-                                                            </div>
-                                                            <Progress value={16.6} className="h-2" />
+                                                            {(() => {
+                                                                const startDate = new Date(lease.startDate);
+                                                                const endDate = new Date(lease.endDate);
+                                                                const totalMonths = Math.max(1, differenceInMonths(endDate, startDate));
+                                                                const currentMonthIndex = differenceInMonths(new Date(), startDate);
+                                                                const leaseProgressValue = Math.min(100, Math.max(0, (currentMonthIndex / totalMonths) * 100));
+
+                                                                return (
+                                                                    <>
+                                                                        <div className="flex justify-between items-center mb-2">
+                                                                            <span className="text-sm text-muted-foreground">Lease Completion</span>
+                                                                            <span className="text-sm text-foreground font-bold">{Math.max(0, Math.min(currentMonthIndex + 1, totalMonths))} of {totalMonths} months</span>
+                                                                        </div>
+                                                                        <Progress value={leaseProgressValue} className="h-2" />
+                                                                    </>
+                                                                );
+                                                            })()}
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -385,43 +426,90 @@ export default function OwnerDashboardPage() {
                     <TabsContent value="applications">
                         <Card className="border-border">
                             <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/5">
-                                <CardTitle className="text-lg">Property Applications</CardTitle>
+                                <CardTitle className="text-lg font-bold">Property Applications</CardTitle>
+                                <Badge className="bg-[#005a41]">{applications.length} Total</Badge>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <div className="divide-y divide-border">
                                     {isAppLoading ? (
                                         <div className="p-10 text-center text-muted-foreground">Loading applications...</div>
                                     ) : applications.length > 0 ? (
-                                        applications.map((app, i) => (
-                                            <div key={i} className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="p-3 bg-[#005a41]/10 rounded-xl text-[#005a41]">
-                                                        <ClipboardList className="h-6 w-6" />
+                                        applications.map((app) => (
+                                            <div key={app.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-muted/10 transition-colors gap-4">
+                                                <div className="flex items-center gap-6">
+                                                    <div className="relative">
+                                                        <div className="w-16 h-16 rounded-xl overflow-hidden border border-border shadow-sm">
+                                                            <img
+                                                                src={app.propertyImage}
+                                                                alt={app.propertyTitle}
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => {
+                                                                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300';
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 border shadow-sm">
+                                                            {app.listingType === 'buy' ? <Building2 className="h-3 w-3 text-[#005a41]" /> : <FileText className="h-3 w-3 text-[#005a41]" />}
+                                                        </div>
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold">Applicant {i + 1}</p>
-                                                        <p className="text-xs text-muted-foreground font-medium">Applied for: {app.propertyTitle} • {app.date}</p>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h4 className="font-bold text-base">{app.propertyTitle}</h4>
+                                                            <Badge variant="outline" className="text-[10px] uppercase">{app.listingType}</Badge>
+                                                        </div>
+                                                        <p className="text-sm text-muted-foreground flex items-center mb-1">
+                                                            <User2 className="h-3 w-3 mr-1" />
+                                                            {app.customer?.name || 'Unknown Applicant'}
+                                                        </p>
+                                                        <p className="text-[10px] text-muted-foreground font-medium flex items-center">
+                                                            <Calendar className="h-3 w-3 mr-1" />
+                                                            {app.date}
+                                                        </p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-6">
-                                                    <div className="text-right">
-                                                        <p className="text-sm font-bold">ETB {app.price.toLocaleString()}</p>
-                                                        <p className={cn(
-                                                            "text-[10px] font-bold uppercase",
-                                                            app.status === 'accepted' ? "text-green-600" : "text-amber-600"
-                                                        )}>{app.status}</p>
+
+                                                <div className="flex flex-row items-center justify-between md:justify-end gap-6 w-full md:w-auto">
+                                                    <div className="text-left md:text-right">
+                                                        <p className="text-base font-black text-[#005a41]">ETB {app.price?.toLocaleString()}</p>
+                                                        <Badge className={cn(
+                                                            "text-[10px] font-bold uppercase border-none shadow-sm",
+                                                            app.status === 'accepted' ? "bg-green-100 text-green-700" :
+                                                                app.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
+                                                        )}>{app.status}</Badge>
                                                     </div>
+
                                                     {app.status === 'pending' && (
                                                         <div className="flex gap-2">
-                                                            <Button size="sm" className="bg-[#005a41] h-8 text-xs">Accept</Button>
-                                                            <Button size="sm" variant="outline" className="h-8 text-xs">Reject</Button>
+                                                            <Button
+                                                                size="sm"
+                                                                className="bg-[#005a41] hover:bg-[#004a35] h-9 px-4 text-xs font-bold rounded-xl"
+                                                                onClick={() => updateApplicationStatus(app.id, 'accepted')}
+                                                            >
+                                                                <Check className="h-4 w-4 mr-1" /> Accept
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="h-9 px-4 text-xs font-bold rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50"
+                                                                onClick={() => updateApplicationStatus(app.id, 'rejected')}
+                                                            >
+                                                                <X className="h-4 w-4 mr-1" /> Reject
+                                                            </Button>
                                                         </div>
-                                                    )}
+                                                    ) }
                                                 </div>
                                             </div>
                                         ))
                                     ) : (
-                                        <div className="py-20 text-center text-muted-foreground">No applications found</div>
+                                        <div className="py-24 text-center">
+                                            <div className="inline-flex p-4 rounded-full bg-muted/20 mb-4">
+                                                <ClipboardList className="h-10 w-10 text-muted-foreground/30" />
+                                            </div>
+                                            <h3 className="text-xl font-bold text-muted-foreground">No applications found</h3>
+                                            <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-2">
+                                                When potential customers apply for your properties, they will appear here.
+                                            </p>
+                                        </div>
                                     )}
                                 </div>
                             </CardContent>
@@ -442,10 +530,10 @@ export default function OwnerDashboardPage() {
                                 {isMaintenanceLoading ? (
                                     <div className="text-center py-20 text-muted-foreground">Loading requests...</div>
                                 ) : maintenanceRequests.length > 0 ? (
-                                    maintenanceRequests.map((request, index) => {
-                                        const handleStartProgress = (id: string) => {
-                                            updateRequestStatus(id, 'inProgress');
-                                            toast.info("Status updated to In Progress");
+                                    maintenanceRequests.map((request) => {
+                                        const handleUpdateStatus = (id: string, status: 'inProgress' | 'completed') => {
+                                            updateRequestStatus(id, status);
+                                            toast.info(`Status updated to ${status === 'inProgress' ? 'In Progress' : 'Completed'}`);
                                         };
 
                                         return (
@@ -461,9 +549,9 @@ export default function OwnerDashboardPage() {
 
                                                         <div className="flex-1 p-6">
                                                             <div className="flex flex-col lg:flex-row gap-6">
-                                                                {request.image && (
+                                                                 {request.images && request.images.length > 0 && (
                                                                     <div className="w-full lg:w-48 h-32 rounded-xl overflow-hidden shadow-inner flex-shrink-0 border border-border">
-                                                                        <img src={request.image} alt={request.category} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                                        <img src={request.images[0]} alt={request.category} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                                                     </div>
                                                                 )}
                                                                 <div className="flex-1 space-y-3">
@@ -475,39 +563,39 @@ export default function OwnerDashboardPage() {
                                                                         )}>
                                                                             {request.status.replace(/([A-Z])/g, ' $1').trim()}
                                                                         </Badge>
-
                                                                         <span className="text-xs text-muted-foreground flex items-center font-medium">
                                                                             <Calendar className="h-3 w-3 mr-1" />
                                                                             {request.date}
                                                                         </span>
-                                                                    </div>
 
-                                                                    <div>
-                                                                        <h3 className="text-lg font-bold text-foreground group-hover:text-[#005a41] transition-colors">
-                                                                            {request.category}
-                                                                        </h3>
-                                                                        <p className="text-sm font-medium text-muted-foreground">
-                                                                            {request.propertyTitle}
+                                                                        <div>
+                                                                            <h3 className="text-lg font-bold text-foreground group-hover:text-[#005a41] transition-colors">
+                                                                                {request.category}
+                                                                            </h3>
+                                                                            <p className="text-sm font-medium text-muted-foreground">
+                                                                                {request.propertyTitle}
+                                                                            </p>
+                                                                        </div>
+
+                                                                        <p className="text-sm text-foreground/80 line-clamp-2 max-w-2xl leading-relaxed">
+                                                                            {request.description}
                                                                         </p>
                                                                     </div>
-
-                                                                    <p className="text-sm text-foreground/80 line-clamp-2 max-w-2xl leading-relaxed">
-                                                                        {request.description}
-                                                                    </p>
                                                                 </div>
 
                                                                 <div className="flex flex-col justify-between items-start lg:items-end gap-4 min-w-[200px]">
                                                                     <div className="flex flex-wrap gap-2 w-full lg:w-auto mt-auto justify-end">
                                                                         {request.status === 'pending' && (
                                                                             <Button
-                                                                                onClick={() => handleStartProgress(request.id)}
+                                                                                onClick={() => handleUpdateStatus(request.id, 'inProgress')}
                                                                                 size="sm"
-                                                                                className="bg-[#005a41] hover:bg-[#004a35] text-white rounded-lg text-xs font-bold"
+                                                                                className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold"
                                                                             >
                                                                                 <Clock className="h-3.5 w-3.5 mr-1.5" />
                                                                                 Start Progress
                                                                             </Button>
                                                                         )}
+                                                                      
                                                                         <Dialog>
                                                                             <DialogTrigger asChild>
                                                                                 <Button variant="outline" size="sm" className="rounded-lg text-xs font-bold border-border hover:bg-muted/50">
@@ -525,10 +613,14 @@ export default function OwnerDashboardPage() {
                                                                                         Reference ID: {request.id}
                                                                                     </DialogDescription>
                                                                                 </DialogHeader>
-                                                                                <div className="space-y-4 pt-2">
-                                                                                    {request.image && (
-                                                                                        <div className="h-40 w-full rounded-xl overflow-hidden border border-border shadow-inner">
-                                                                                            <img src={request.image} alt={request.category} className="w-full h-full object-cover" />
+                                                                                 <div className="space-y-4 pt-2">
+                                                                                    {request.images && request.images.length > 0 && (
+                                                                                        <div className="grid grid-cols-2 gap-2">
+                                                                                            {request.images.map((img, idx) => (
+                                                                                                <div key={idx} className="h-40 rounded-xl overflow-hidden border border-border shadow-inner">
+                                                                                                    <img src={img} alt={`${request.category} ${idx + 1}`} className="w-full h-full object-cover cursor-pointer hover:scale-110 transition-transform" />
+                                                                                                </div>
+                                                                                            ))}
                                                                                         </div>
                                                                                     )}
                                                                                     <div className="grid grid-cols-2 gap-4">

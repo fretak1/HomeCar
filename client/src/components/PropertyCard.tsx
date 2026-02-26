@@ -1,27 +1,57 @@
 import Link from 'next/link';
-import { MapPin, Bed, Bath, Square, Star, Pencil, Trash2 } from 'lucide-react';
+import { MapPin, Bed, Bath, Square, Star, Pencil, Trash2, Heart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { formatLocation, getListingMainImage } from '@/lib/utils';
 import { Property } from '@/store/usePropertyStore';
+import { useFavoriteStore } from '@/store/useFavoriteStore';
+import { useUserStore } from '@/store/useUserStore';
+import { cn } from '@/lib/utils';
 
 interface PropertyCardProps {
   property: Property;
   onEdit?: (property: Property) => void;
   onDelete?: (property: Property) => void;
+  disabled?: boolean;
 }
 
-export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) {
+export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyCardProps) {
+  const { currentUser } = useUserStore();
+  const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
+  const favorite = isFavorite(property.id);
+
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!currentUser || disabled) return; // Prevent action if not logged in or disabled
+
+    if (favorite) {
+      await removeFavorite(property.id);
+    } else {
+      await addFavorite(property.id);
+    }
+  };
 
   return (
-    <Link href={`/property/${property.id}`}>
-      <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-border group">
+    <Link
+      href={disabled ? '#' : `/property/${property.id}`}
+      className={cn(disabled && "cursor-not-allowed")}
+      onClick={(e) => disabled && e.preventDefault()}
+    >
+      <Card className={cn(
+        "overflow-hidden transition-all duration-300 border-border group",
+        !disabled && "hover:shadow-xl",
+        disabled && "opacity-80 grayscale-[0.5]"
+      )}>
         <div className="relative overflow-hidden">
           <img
             src={getListingMainImage(property)}
             alt={property.title}
-            className="w-full h-56 object-cover group-hover:scale-110 transition-transform duration-300"
+            className={cn(
+              "w-full h-56 object-cover transition-transform duration-300",
+              !disabled && "group-hover:scale-110"
+            )}
           />
 
 
@@ -34,6 +64,25 @@ export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) 
                 {type.replace('_', ' ')}
               </Badge>
             ))}
+            {!property.isVerified && (
+              <Badge
+                className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] font-bold uppercase tracking-wider px-2"
+              >
+                Pending Verification
+              </Badge>
+            )}
+          </div>
+
+          <div className="absolute top-4 right-4 z-10">
+            <Button
+              variant="secondary"
+              size="icon"
+              disabled={disabled}
+              className={`h-8 w-8 rounded-full bg-white/90 shadow-sm hover:bg-white transition-all duration-200 ${!disabled && 'hover:scale-110'} ${favorite ? 'text-rose-500' : 'text-gray-500'}`}
+              onClick={handleFavoriteClick}
+            >
+              <Heart className={`h-4 w-4 ${favorite ? 'fill-current' : ''}`} />
+            </Button>
           </div>
 
         </div>
@@ -53,18 +102,34 @@ export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) 
           </div>
 
           <div className="flex items-center space-x-4 mb-4 text-muted-foreground">
-            <div className="flex items-center space-x-1">
-              <Bed className="h-4 w-4" />
-              <span className="text-sm">{property.bedrooms}</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <Bath className="h-4 w-4" />
-              <span className="text-sm">{property.bathrooms}</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <Square className="h-4 w-4" />
-              <span className="text-sm">{property.area} sq ft</span>
-            </div>
+            {property.assetType === 'HOME' ? (
+              <>
+                <div className="flex items-center space-x-1">
+                  <Bed className="h-4 w-4" />
+                  <span className="text-sm">{property.bedrooms}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Bath className="h-4 w-4" />
+                  <span className="text-sm">{property.bathrooms}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Square className="h-4 w-4" />
+                  <span className="text-sm">{property.area} sq ft</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center space-x-1">
+                  <Badge variant="outline" className="text-[10px] uppercase">{property.brand}</Badge>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <span className="text-xs">{property.transmission}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <span className="text-xs">{property.mileage?.toLocaleString()} km</span>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex justify-between items-center mt-auto pt-2">
@@ -81,11 +146,12 @@ export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) 
               {onEdit && (
                 <Button
                   variant="outline"
+                  disabled={disabled}
                   className="h-8 text-xs text-[#005a41] border-[#005a41]/20 hover:bg-[#005a41] hover:text-white transition-all duration-200 px-2.5"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    onEdit(property);
+                    if (!disabled) onEdit(property);
                   }}
                 >
                   <Pencil className="h-3.5 w-3.5 mr-1" />
@@ -95,11 +161,12 @@ export function PropertyCard({ property, onEdit, onDelete }: PropertyCardProps) 
               {onDelete && (
                 <Button
                   variant="outline"
+                  disabled={disabled}
                   className="h-8 text-xs text-rose-500 border-rose-200 hover:bg-rose-500 hover:text-white transition-all duration-200 px-2.5"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    onDelete(property);
+                    if (!disabled) onDelete(property);
                   }}
                 >
                   <Trash2 className="h-3.5 w-3.5 mr-1" />

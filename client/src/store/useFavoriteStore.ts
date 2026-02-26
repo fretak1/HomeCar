@@ -16,9 +16,9 @@ interface FavoriteState {
     favorites: Favorite[];
     isLoading: boolean;
     error: string | null;
-    fetchFavorites: (userId: string) => Promise<void>;
-    addFavorite: (userId: string, propertyId: string) => Promise<void>;
-    removeFavorite: (userId: string, propertyId: string) => Promise<void>;
+    fetchFavorites: () => Promise<void>;
+    addFavorite: (propertyId: string) => Promise<void>;
+    removeFavorite: (propertyId: string) => Promise<void>;
     isFavorite: (propertyId: string) => boolean;
 }
 
@@ -26,10 +26,10 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
     favorites: [],
     isLoading: false,
     error: null,
-    fetchFavorites: async (userId) => {
+    fetchFavorites: async () => {
         set({ isLoading: true, error: null });
         try {
-            const response = await api.get(API_ROUTES.FAVORITES, { params: { userId } });
+            const response = await api.get(API_ROUTES.FAVORITES);
             set({ favorites: response.data, isLoading: false });
         } catch (error) {
             set({ error: 'Failed to fetch favorites', isLoading: false });
@@ -37,13 +37,13 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
     },
 
 
-    addFavorite: async (userId, propertyId) => {
+    addFavorite: async (propertyId) => {
         const { favorites } = get();
         if (favorites.some(f => f.propertyId === propertyId)) return; // Already exists
 
         set({ isLoading: true });
         try {
-            const response = await api.post(API_ROUTES.FAVORITES, { userId, propertyId });
+            const response = await api.post(API_ROUTES.FAVORITES, { propertyId });
             set((state) => ({ favorites: [...state.favorites, response.data], isLoading: false }));
         } catch (error) {
             set({ error: 'Failed to add favorite', isLoading: false });
@@ -51,10 +51,10 @@ export const useFavoriteStore = create<FavoriteState>((set, get) => ({
     },
 
 
-    removeFavorite: async (userId, propertyId) => {
+    removeFavorite: async (propertyId) => {
         set({ isLoading: true });
         try {
-            await api.delete(API_ROUTES.FAVORITES, { params: { userId, propertyId } });
+            await api.delete(`${API_ROUTES.FAVORITES}/${propertyId}`);
             set((state) => ({
                 favorites: state.favorites.filter(f => f.propertyId !== propertyId),
                 isLoading: false

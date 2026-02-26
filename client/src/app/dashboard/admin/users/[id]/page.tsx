@@ -23,6 +23,10 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useUserStore } from '@/store/useUserStore';
+import { createApi, API_ROUTES } from '@/lib/api';
+
+const api = createApi();
 import { mockCustomers } from '@/data/mockData';
 
 // Reusing the mock data logic from the previous implementation
@@ -67,14 +71,39 @@ export default function UserProfilePage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (params.id) {
-            // Simulate API delay
-            setTimeout(() => {
-                const userData = getMockUserProfile(params.id as string);
-                setUser(userData);
+        const fetchUserData = async () => {
+            if (!params.id) return;
+            setLoading(true);
+            try {
+                // Try to fetch from API
+                const response = await api.get(`${API_ROUTES.USER}/${params.id}`);
+                const userData = response.data;
+
+                // Enhance with default fields for UI consistency
+                setUser({
+                    ...userData,
+                    phone: userData.phoneNumber || '+251 911 234 567',
+                    location: userData.location || 'Addis Ababa',
+                    bio: userData.bio || `${userData.role} active on HomeCar since ${new Date(userData.createdAt).getFullYear()}.`,
+                    status: userData.status || 'Active',
+                    joinDate: userData.createdAt,
+                    stats: {
+                        listings: 0,
+                        rents: 0,
+                        earned: '$0'
+                    },
+                    recentActivity: [
+                        { action: 'Profile viewed', date: 'Just now', icon: User },
+                    ]
+                });
+            } catch (error) {
+                console.error('Failed to fetch user:', error);
+            } finally {
                 setLoading(false);
-            }, 500);
-        }
+            }
+        };
+
+        fetchUserData();
     }, [params.id]);
 
     if (loading) {

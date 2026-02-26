@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { usePropertyStore } from '@/store/usePropertyStore';
+import { useUserStore } from '@/store/useUserStore';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -87,6 +88,7 @@ const VEHICLE_AMENITIES = [
 
 export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFormProps) {
     // Map backend assetType ('HOME'/'CAR') to form state ('Home'/'Car')
+
     const getInitialType = (): 'Home' | 'Car' => {
         const assetType = initialData?.assetType;
         if (assetType === 'HOME' || assetType === 'Home') return 'Home';
@@ -119,7 +121,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
     });
     // Show existing ownership document from backend
     const [ownershipDoc, setOwnershipDoc] = useState<string | null>(
-        initialData?.ownershipDocument || null
+        initialData?.ownershipDocuments?.[0]?.url || initialData?.ownershipDocument || null
     );
     const [ownershipFile, setOwnershipFile] = useState<File | null>(null);
     const [ownerPhoto, setOwnerPhoto] = useState<string | null>(initialData?.ownerPhoto || null);
@@ -128,6 +130,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
         return new Array(Math.max(4, initialData?.images?.length || 0)).fill(null);
     });
     const { addProperty, updateProperty, isLoading: isSubmitting } = usePropertyStore();
+    const { currentUser } = useUserStore();
     const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const docInputRef = useRef<HTMLInputElement>(null);
     const isEditMode = !!(initialData as any)?.id;
@@ -163,10 +166,9 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
 
     const watchedFields = useWatch({ control: form.control });
 
-    // When initialData arrives asynchronously (after fetchPropertyById resolves),
-    // sync all state that was initialized before data was available.
+    // 1. Effect for Edit Mode syncing - Handles async data loading for existing listings
     useEffect(() => {
-        if (!initialData) return;
+        if (!initialData || Object.keys(initialData).length === 0) return;
 
         // Sync asset type tab
         const assetType = initialData.assetType;
@@ -186,8 +188,15 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
         }
 
         // Sync ownership document
-        if ((initialData as any).ownershipDocument) {
+        if (initialData.ownershipDocuments && initialData.ownershipDocuments.length > 0) {
+            setOwnershipDoc(initialData.ownershipDocuments[0].url);
+        } else if ((initialData as any).ownershipDocument) {
             setOwnershipDoc((initialData as any).ownershipDocument);
+        }
+
+        // Sync owner/identification photo for existing listings
+        if (initialData.owner?.verificationPhoto) {
+            setOwnerPhoto(initialData.owner.verificationPhoto);
         }
 
         // Reset form values from initialData
@@ -216,6 +225,13 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialData]);
+
+    // 2. Effect for New Listing pre-population - Handles fetching user profile photo
+    useEffect(() => {
+        if (!isEditMode && currentUser?.verificationPhoto && !ownerPhoto) {
+            setOwnerPhoto(currentUser.verificationPhoto);
+        }
+    }, [currentUser, isEditMode, ownerPhoto]);
 
 
 
@@ -261,11 +277,17 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
 
     const removeImage = (index: number) => {
         const newImages = [...images];
-        newImages[index] = null;
-        setImages(newImages);
-
         const newFiles = [...imageFiles];
-        newFiles[index] = null;
+
+        if (newImages.length > 4) {
+            newImages.splice(index, 1);
+            newFiles.splice(index, 1);
+        } else {
+            newImages[index] = null;
+            newFiles[index] = null;
+        }
+
+        setImages(newImages);
         setImageFiles(newFiles);
     };
 
@@ -302,6 +324,15 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                 }
             });
 
+            // Handle Image Reconciliation
+            if (isEditMode) {
+                // Determine which existing images we are keeping
+                // images state contains both URLs (existing) and data: (previews of new uploads)
+                const keepImages = images.filter(img => img && img.startsWith('http'));
+                formData.append('keepImages', JSON.stringify(keepImages));
+                console.log("Image reconciliation - keeping:", keepImages);
+            }
+
             // Handle location separately as JSON string for easy parsing or individual fields
             formData.append('location', JSON.stringify({
                 city: data.city,
@@ -334,12 +365,16 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
             formData.append('assetType', activeType);
             formData.append('amenities', JSON.stringify(selectedAmenities));
 
+            for (let [key, value] of formData.entries()) {
+                console.log(key, value);
+            }
+
             if (isEditMode) {
                 await updateProperty((initialData as any).id, formData);
                 toast.success('Property updated successfully!');
             } else {
                 await addProperty(formData);
-                toast.success('Property listed successfully!');
+                toast.success('Listing created successfully! Our team will verify it shortly.');
             }
             onSuccess(data);
         } catch (error: any) {
@@ -350,7 +385,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Tabs defaultValue="Home" onValueChange={(v) => setActiveType(v as any)} className="w-full">
+            <Tabs value={activeType} onValueChange={(v) => setActiveType(v as any)} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/20 border border-border/50 rounded-xl">
                     <TabsTrigger value="Home" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
                         <Home className="h-4 w-4 mr-2" />
@@ -455,76 +490,84 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                 )}
                             />
 
-                            <FormField
-                                control={form.control}
-                                name="city"
-                                rules={{ required: 'City is required' }}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>City</FormLabel>
-                                        <FormControl>
-                                            <div className="relative group">
-                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Addis Ababa" {...field} />
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                            {activeType === 'Home' && (
+                                <FormField
+                                    control={form.control}
+                                    name="city"
+                                    rules={{ required: activeType === 'Home' ? 'City is required' : false }}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>City</FormLabel>
+                                            <FormControl>
+                                                <div className="relative group">
+                                                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                    <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Addis Ababa" {...field} />
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
 
-                            <FormField
-                                control={form.control}
-                                name="subCity"
-                                rules={{ required: 'Sub-city is required' }}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Sub City</FormLabel>
-                                        <FormControl>
-                                            <div className="relative group">
-                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Bole" {...field} />
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                            {activeType === 'Home' && (
+                                <FormField
+                                    control={form.control}
+                                    name="subCity"
+                                    rules={{ required: activeType === 'Home' ? 'Sub-city is required' : false }}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Sub City</FormLabel>
+                                            <FormControl>
+                                                <div className="relative group">
+                                                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                    <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Bole" {...field} />
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
 
-                            <FormField
-                                control={form.control}
-                                name="region"
-                                rules={{ required: 'Region is required' }}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Region</FormLabel>
-                                        <FormControl>
-                                            <div className="relative group">
-                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Addis Ababa" {...field} />
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                            {activeType === 'Home' && (
+                                <FormField
+                                    control={form.control}
+                                    name="region"
+                                    rules={{ required: activeType === 'Home' ? 'Region is required' : false }}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Region</FormLabel>
+                                            <FormControl>
+                                                <div className="relative group">
+                                                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                    <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Addis Ababa" {...field} />
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
 
-                            <FormField
-                                control={form.control}
-                                name="village"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Village / Specific Area</FormLabel>
-                                        <FormControl>
-                                            <div className="relative group">
-                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Hayat / CMC" {...field} />
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                            {activeType === 'Home' && (
+                                <FormField
+                                    control={form.control}
+                                    name="village"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Village / Specific Area</FormLabel>
+                                            <FormControl>
+                                                <div className="relative group">
+                                                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                    <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Hayat / CMC" {...field} />
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
 
                             <FormField
                                 control={form.control}
@@ -577,25 +620,27 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                         </div>
 
                         {/* Map Picker Integration */}
-                        <div className="mt-8 space-y-4">
-                            <FormLabel className="flex items-center space-x-2 text-primary">
-                                <Navigation className="h-4 w-4" />
-                                <span className="font-bold">Pin Precise Location</span>
-                            </FormLabel>
-                            <MapPicker
-                                onLocationSelect={(coords) => {
-                                    form.setValue('lat', coords.lat);
-                                    form.setValue('lng', coords.lng);
-                                }}
-                                initialLocation={{
-                                    lat: parseFloat(watchedFields.lat as any) || 9.03,
-                                    lng: parseFloat(watchedFields.lng as any) || 38.74
-                                }}
-                            />
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest text-center italic">
-                                Precisely pinning your location increases buyer/renter trust by 40%
-                            </p>
-                        </div>
+                        {activeType === 'Home' && (
+                            <div className="mt-8 space-y-4">
+                                <FormLabel className="flex items-center space-x-2 text-primary">
+                                    <Navigation className="h-4 w-4" />
+                                    <span className="font-bold">Pin Precise Location</span>
+                                </FormLabel>
+                                <MapPicker
+                                    onLocationSelect={(coords) => {
+                                        form.setValue('lat', coords.lat);
+                                        form.setValue('lng', coords.lng);
+                                    }}
+                                    initialLocation={{
+                                        lat: parseFloat(watchedFields.lat as any) || 9.03,
+                                        lng: parseFloat(watchedFields.lng as any) || 38.74
+                                    }}
+                                />
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest text-center italic">
+                                    Precisely pinning your location increases buyer/renter trust by 40%
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* 3. Specifications Section */}
@@ -711,12 +756,50 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent className="rounded-xl">
-                                                    <SelectItem value="petrol">Petrol</SelectItem>
-                                                    <SelectItem value="diesel">Diesel</SelectItem>
-                                                    <SelectItem value="electric">Electric</SelectItem>
-                                                    <SelectItem value="hybrid">Hybrid</SelectItem>
+                                                    <SelectItem value="Petrol">Petrol</SelectItem>
+                                                    <SelectItem value="Diesel">Diesel</SelectItem>
+                                                    <SelectItem value="Electric">Electric</SelectItem>
+                                                    <SelectItem value="Hybrid">Hybrid</SelectItem>
                                                 </SelectContent>
                                             </Select>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="transmission"
+                                    rules={{ required: 'Transmission is required' }}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Transmission</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
+                                                        <SelectValue placeholder="Select transmission" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="Automatic">Automatic</SelectItem>
+                                                    <SelectItem value="Manual">Manual</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="mileage"
+                                    rules={{ required: 'Mileage is required' }}
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Mileage (km)</FormLabel>
+                                            <FormControl>
+                                                <div className="relative group">
+                                                    <Navigation className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                    <Input type="number" className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl" placeholder="50000" {...field} />
+                                                    <div className="absolute right-3 top-3 text-xs font-medium text-muted-foreground">km</div>
+                                                </div>
+                                            </FormControl>
                                         </FormItem>
                                     )}
                                 />
@@ -780,163 +863,193 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                         />
                     </div>
 
-                    {/* 6. Ownership Verification Section */}
-                    <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center space-x-2 text-primary">
-                                <Shield className="h-5 w-5" />
-                                <h3 className="text-lg font-bold">Ownership Verification</h3>
+                    {/* 6. Ownership Verification Section - Hidden for Agents */}
+                    {currentUser?.role !== 'AGENT' && (
+                        <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center space-x-2 text-primary">
+                                    <Shield className="h-5 w-5" />
+                                    <h3 className="text-lg font-bold">Ownership Verification</h3>
+                                </div>
+                                <Badge variant="outline" className="text-[10px] uppercase border-primary/20 text-primary">Required for Verification</Badge>
                             </div>
-                            <Badge variant="outline" className="text-[10px] uppercase border-primary/20 text-primary">Required for Verification</Badge>
-                        </div>
 
-                        <div
-                            className={cn(
-                                "border-2 border-dashed rounded-2xl p-8 transition-all relative group",
-                                ownershipDoc
-                                    ? "border-green-500/30 bg-green-50/10"
-                                    : "border-border/60 hover:border-primary/40 hover:bg-primary/5"
-                            )}
-                        >
-                            {ownershipDoc ? (
-                                <div className="flex items-center space-x-4">
-                                    <div className="h-16 w-16 bg-green-100 rounded-xl flex items-center justify-center">
-                                        <FileText className="h-8 w-8 text-green-600" />
+                            <div
+                                className={cn(
+                                    "border-2 border-dashed rounded-2xl p-8 transition-all relative group",
+                                    ownershipDoc
+                                        ? "border-green-500/30 bg-green-50/10"
+                                        : "border-border/60 hover:border-primary/40 hover:bg-primary/5"
+                                )}
+                            >
+                                {ownershipDoc ? (
+                                    <div className="flex items-center space-x-4">
+                                        <div className="h-16 w-16 bg-green-100 rounded-xl flex items-center justify-center">
+                                            <FileText className="h-8 w-8 text-green-600" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="font-bold text-foreground">
+                                                {ownershipDoc.startsWith('http')
+                                                    ? ownershipDoc.split('/').pop()?.split('?')[0] || 'ownership_document'
+                                                    : ownershipDoc}
+                                            </h4>
+                                            <p className="text-xs text-muted-foreground">
+                                                {ownershipDoc.startsWith('http') ? 'Previously uploaded document' : 'Successfully uploaded for review'}
+                                            </p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {ownershipDoc && (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        let finalUrl = ownershipDoc;
+                                                        if (!finalUrl.startsWith('http')) {
+                                                            // Fallback for old local paths
+                                                            finalUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/${finalUrl}`;
+                                                        }
+                                                        console.log("Opening document:", finalUrl);
+                                                        window.open(finalUrl, '_blank');
+                                                    }}
+                                                    className="font-bold border-green-200 text-green-700 hover:bg-green-50 rounded-xl"
+                                                >
+                                                    View
+                                                </Button>
+                                            )}
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setOwnershipDoc(null)}
+                                                className="text-destructive hover:bg-destructive/10"
+                                            >
+                                                <X className="h-4 w-4 mr-2" />
+                                                Remove
+                                            </Button>
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <h4 className="font-bold text-foreground">
-                                            {ownershipDoc.startsWith('http')
-                                                ? ownershipDoc.split('/').pop()?.split('?')[0] || 'ownership_document'
-                                                : ownershipDoc}
-                                        </h4>
-                                        <p className="text-xs text-muted-foreground">
-                                            {ownershipDoc.startsWith('http') ? 'Previously uploaded document' : 'Successfully uploaded for review'}
-                                        </p>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        {ownershipDoc.startsWith('http') && (
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => docInputRef.current?.click()}
+                                        className="w-full flex flex-col items-center justify-center space-y-4"
+                                    >
+                                        <div className="h-14 w-14 bg-muted/10 rounded-full flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                                            <UploadCloud className="h-7 w-7 text-muted-foreground group-hover:text-primary transition-colors" />
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="font-bold text-foreground">Upload Ownership Document</p>
+                                            <p className="text-sm text-muted-foreground mt-1 text-center">
+                                                Please upload legal document proving ownership.<br />
+                                                (PDF, JPG, PNG up to 10MB)
+                                            </p>
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                ref={docInputRef}
+                                                onChange={(e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) handleDocUpload(file);
+                                                }}
+                                            />
+                                        </div>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 7. Owner Identification Photo (Selfie) - Hidden for Agents */}
+                    {currentUser?.role !== 'AGENT' && (
+                        <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center space-x-2 text-[#005a41]">
+                                    <Camera className="h-5 w-5" />
+                                    <h3 className="text-lg font-bold">Owner Identification Photo</h3>
+                                </div>
+                                <Badge variant="outline" className="text-[10px] uppercase border-[#005a41]/20 text-[#005a41]">Security Verification</Badge>
+                            </div>
+
+                            <div
+                                className={cn(
+                                    "border-2 border-dashed rounded-2xl p-8 transition-all relative group overflow-hidden",
+                                    ownerPhoto
+                                        ? "border-green-500/30 bg-green-50/10"
+                                        : "border-border/60 hover:border-[#005a41]/40 hover:bg-[#005a41]/5"
+                                )}
+                            >
+                                {ownerPhoto ? (
+                                    <div className="flex items-center justify-between gap-6">
+                                        <div className="flex items-center space-x-4">
+                                            <div className="h-20 w-20 overflow-hidden rounded-xl border-2 border-green-500/20 shadow-sm">
+                                                <img src={ownerPhoto} alt="Owner Identification" className="w-full h-full object-cover" />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-foreground">Identification Selfie</h4>
+                                                <p className="text-xs text-muted-foreground">Captured successfully</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
                                             <Button
                                                 type="button"
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => window.open(ownershipDoc, '_blank')}
-                                                className="font-bold border-green-200 text-green-700 hover:bg-green-50 rounded-xl"
+                                                onClick={() => {
+                                                    if (ownerPhoto) {
+                                                        // Handle both base64 and URLs
+                                                        const win = window.open();
+                                                        if (win) {
+                                                            win.document.write(`<img src="${ownerPhoto}" style="max-width:100%; height:auto;" />`);
+                                                            win.document.title = "Identification Preview";
+                                                        }
+                                                    }
+                                                }}
+                                                className="font-bold border-[#005a41]/20 text-[#005a41] hover:bg-[#005a41]/5 rounded-xl"
                                             >
                                                 View
                                             </Button>
-                                        )}
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setOwnershipDoc(null)}
-                                            className="text-destructive hover:bg-destructive/10"
-                                        >
-                                            <X className="h-4 w-4 mr-2" />
-                                            Remove
-                                        </Button>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={openCamera}
+                                                className="font-bold border-[#005a41]/20 text-[#005a41] hover:bg-[#005a41]/5 rounded-xl"
+                                            >
+                                                Retake
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setOwnerPhoto(null)}
+                                                className="text-destructive hover:bg-destructive/10 rounded-xl"
+                                            >
+                                                <X className="h-4 w-4 mr-2" />
+                                                Remove
+                                            </Button>
+                                        </div>
                                     </div>
-                                </div>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => docInputRef.current?.click()}
-                                    className="w-full flex flex-col items-center justify-center space-y-4"
-                                >
-                                    <div className="h-14 w-14 bg-muted/10 rounded-full flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                                        <UploadCloud className="h-7 w-7 text-muted-foreground group-hover:text-primary transition-colors" />
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="font-bold text-foreground">Upload Ownership Document</p>
-                                        <p className="text-sm text-muted-foreground mt-1 text-center">
-                                            Please upload legal document proving ownership.<br />
-                                            (PDF, JPG, PNG up to 10MB)
-                                        </p>
-                                        <input
-                                            type="file"
-                                            className="hidden"
-                                            ref={docInputRef}
-                                            onChange={(e) => {
-                                                const file = e.target.files?.[0];
-                                                if (file) handleDocUpload(file);
-                                            }}
-                                        />
-                                    </div>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 7. Owner Identification Photo (Selfie) */}
-                    <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center space-x-2 text-[#005a41]">
-                                <Camera className="h-5 w-5" />
-                                <h3 className="text-lg font-bold">Owner Identification Photo</h3>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={openCamera}
+                                        className="w-full flex flex-col items-center justify-center space-y-4 py-4"
+                                    >
+                                        <div className="h-16 w-16 bg-[#005a41]/10 rounded-full flex items-center justify-center group-hover:bg-[#005a41]/20 transition-colors">
+                                            <Camera className="h-8 w-8 text-[#005a41]" />
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="font-bold text-foreground">Take Identification Photo</p>
+                                            <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+                                                Please take a clear photo of yourself for our secure owner verification process.
+                                            </p>
+                                        </div>
+                                    </button>
+                                )}
                             </div>
-                            <Badge variant="outline" className="text-[10px] uppercase border-[#005a41]/20 text-[#005a41]">Security Verification</Badge>
                         </div>
-
-                        <div
-                            className={cn(
-                                "border-2 border-dashed rounded-2xl p-8 transition-all relative group overflow-hidden",
-                                ownerPhoto
-                                    ? "border-green-500/30 bg-green-50/10"
-                                    : "border-border/60 hover:border-[#005a41]/40 hover:bg-[#005a41]/5"
-                            )}
-                        >
-                            {ownerPhoto ? (
-                                <div className="flex items-center justify-between gap-6">
-                                    <div className="flex items-center space-x-4">
-                                        <div className="h-20 w-20 overflow-hidden rounded-xl border-2 border-green-500/20 shadow-sm">
-                                            <img src={ownerPhoto} alt="Owner Identification" className="w-full h-full object-cover" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-bold text-foreground">Identification Selfie</h4>
-                                            <p className="text-xs text-muted-foreground">Captured successfully</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={openCamera}
-                                            className="font-bold border-[#005a41]/20 text-[#005a41] hover:bg-[#005a41]/5 rounded-xl"
-                                        >
-                                            Retake
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setOwnerPhoto(null)}
-                                            className="text-destructive hover:bg-destructive/10 rounded-xl"
-                                        >
-                                            <X className="h-4 w-4 mr-2" />
-                                            Remove
-                                        </Button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={openCamera}
-                                    className="w-full flex flex-col items-center justify-center space-y-4 py-4"
-                                >
-                                    <div className="h-16 w-16 bg-[#005a41]/10 rounded-full flex items-center justify-center group-hover:bg-[#005a41]/20 transition-colors">
-                                        <Camera className="h-8 w-8 text-[#005a41]" />
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="font-bold text-foreground">Take Identification Photo</p>
-                                        <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                                            Please take a clear photo of yourself for our secure owner verification process.
-                                        </p>
-                                    </div>
-                                </button>
-                            )}
-                        </div>
-                    </div>
+                    )}
 
                     {/* 7. Pricing Section - AT THE VERY END for better User Experience & AI Guidance */}
                     <div className="bg-white rounded-2xl border border-primary/20 p-8 shadow-xl relative overflow-hidden group">
@@ -1002,12 +1115,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                             disabled={isSubmitting}
                             className="bg-primary text-white rounded-xl shadow-lg hover:bg-primary/90 transition-all font-bold h-11 px-8"
                         >
-                            {isSubmitting ? (
-                                <Zap className="h-4 w-4 animate-pulse mr-2" />
-                            ) : (
-                                <Check className="mr-2 h-4 w-4" />
-                            )}
-                            {isSubmitting ? 'Processing...' : (initialData ? 'Update Listing' : 'Add Property')}
+                            {isEditMode ? isSubmitting ? 'Updating Property...' : 'Update Property' : isSubmitting ? 'Adding New Property...' : 'Add Property'}
                         </Button>
                     </div>
                 </form>

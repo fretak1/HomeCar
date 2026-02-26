@@ -6,6 +6,8 @@ import { usePropertyStore } from '@/store/usePropertyStore';
 import { useApplicationStore } from '@/store/useApplicationStore';
 import { useMaintenanceStore } from '@/store/useMaintenanceStore';
 import { useLeaseStore } from '@/store/useLeaseStore';
+import { useUserStore } from '@/store/useUserStore';
+import { useTransactionStore } from '@/store/useTransactionStore';
 import {
     Users,
     Building2,
@@ -47,51 +49,25 @@ import {
     Area
 } from 'recharts';
 
-// Mock Data for Admin Leases with remainingMonths for filtering
-const mockAdminLeases = [
-    { id: 'p1', tenant: 'Selam T.', owner: 'Frezer Takele', term: '12 Months', status: 'Active', remainingMonths: 10 },
-    { id: 'p2', tenant: 'Dawit M.', owner: 'Fikadu Kebede', term: '6 Months', status: 'Active', remainingMonths: 2 },
-    { id: 'p3', tenant: 'Sara K.', owner: 'Tadesse Kebede', term: '12 Months', status: 'Pending', remainingMonths: 12 },
-    { id: 'p4', tenant: 'Kebede A.', owner: 'Almaz B.', term: '12 Months', status: 'Completed', remainingMonths: 0 },
-    { id: 'p5', tenant: 'Marta Y.', owner: 'Girma T.', term: '12 Months', status: 'Terminated', remainingMonths: 0 },
-    { id: 'p6', tenant: 'Abebe B.', owner: 'Chala L.', term: '24 Months', status: 'Active', remainingMonths: 20 },
-    { id: 'p7', tenant: 'Zewdu M.', owner: 'Tigist H.', term: '6 Months', status: 'Active', remainingMonths: 5 },
-];
 
-// Mock Data for Pending Verifications
-const mockPendingProperties = [
-    { id: 'pp1', title: 'Luxury Villa in Bole', owner: 'Abebe Kebede', type: 'House', location: 'Bole, Addis Ababa', price: 'ETB 150,000/mo', submittedDate: '2026-02-14', documentUrl: '#' },
-    { id: 'pp2', title: 'Toyota Land Cruiser V8', owner: 'Sara Tadesse', type: 'Car', location: 'Gerji, Addis Ababa', price: 'ETB 8,000/day', submittedDate: '2026-02-15', documentUrl: '#' },
-    { id: 'pp3', title: 'Modern Apartment Complex', owner: 'Zewdu Hailu', type: 'House', location: 'Kazanchis, Addis Ababa', price: 'ETB 45,000/mo', submittedDate: '2026-02-16', documentUrl: '#' },
-];
 
-const mockPendingAgents = [
-    { id: 'pa1', name: 'Bethelhem Alemu', email: 'betty.a@example.com', licenseNumber: 'AGT-2026-001', submittedDate: '2026-02-10', licenseUrl: '#' },
-    { id: 'pa2', name: 'Dawit Solomon', email: 'dawit.s@example.com', licenseNumber: 'AGT-2026-045', submittedDate: '2026-02-12', licenseUrl: '#' },
-];
-
-const mockVerificationHistory = [
-    { id: 'vh1', title: 'Modern Apartment in Haya Hulet', owner: 'Mulugeta S.', type: 'House', location: 'Addis Ababa', status: 'Approved', date: '2026-02-10' },
-    { id: 'vh2', title: 'Kia Sportage 2023', owner: 'Dawit L.', type: 'Car', location: 'Addis Ababa', status: 'Rejected', date: '2026-02-09', reason: 'Invalid insurance document' },
-    { id: 'vh3', name: 'Almaz Belay', email: 'almaz@example.com', type: 'Agent', licenseNumber: 'AGT-2026-112', status: 'Approved', date: '2026-02-08' },
-];
 
 export default function AdminDashboardPage() {
-    const { properties: allAssets, fetchProperties, isLoading: isPropLoading } = usePropertyStore();
-    const isVehLoading = isPropLoading; // Shared loading state
-    const { applications, fetchApplications, isLoading: isAppLoading } = useApplicationStore();
-    const { requests: maintenanceRequests, fetchRequests: fetchMaintenanceRequests, isLoading: isMaintenanceLoading } = useMaintenanceStore();
-    const { leases, fetchLeases, isLoading: isLeaseLoading } = useLeaseStore();
-
-    const properties = allAssets.filter(p => p.assetType === 'Home');
-    const vehicles = allAssets.filter(p => p.assetType === 'Car');
+    const { properties: allAssets, fetchProperties } = usePropertyStore();
+    const { fetchApplications } = useApplicationStore();
+    const { fetchRequests: fetchMaintenanceRequests } = useMaintenanceStore();
+    const { leases, fetchLeases } = useLeaseStore();
+    const { users, fetchUsers } = useUserStore();
+    const { transactions, fetchTransactions } = useTransactionStore();
 
     useEffect(() => {
         fetchProperties();
-        fetchApplications();
+        fetchApplications({ managerId: undefined, customerId: undefined });
         fetchMaintenanceRequests();
         fetchLeases();
-    }, [fetchProperties, fetchApplications, fetchMaintenanceRequests, fetchLeases]);
+        fetchUsers();
+        fetchTransactions();
+    }, [fetchProperties, fetchApplications, fetchMaintenanceRequests, fetchLeases, fetchUsers, fetchTransactions]);
 
     const [activeTab, setActiveTab] = useState('overview');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -100,24 +76,20 @@ export default function AdminDashboardPage() {
     const [leaseTermFilter, setLeaseTermFilter] = useState('all');
     const [verificationHistoryFilter, setVerificationHistoryFilter] = useState('all');
 
+    // Property Tab Filter States
+    const [propSearch, setPropSearch] = useState('');
+    const [propTypeFilter, setPropTypeFilter] = useState('all');
+    const [propStatusFilter, setPropStatusFilter] = useState('all');
+    const [propLocationFilter, setPropLocationFilter] = useState('all');
 
 
 
 
-    // Enhanced Mock Data for Transactions
-    const transactions = [
-        { id: '1', user: 'Alice Cooper', type: 'Rent', amount: 4500, status: 'Success', date: '2024-02-15', method: 'TeleBirr' },
-        { id: '2', user: 'Bob Taylor', type: 'Deposit', amount: 12000, status: 'Pending', date: '2024-02-14', method: 'CBE' },
-        { id: '3', user: 'Carol White', type: 'Service Fee', amount: 350, status: 'Failed', date: '2024-02-10', method: 'Boa' },
-        { id: '4', user: 'David Green', type: 'Rent', amount: 5500, status: 'Success', date: '2024-02-01', method: 'TeleBirr' },
-        { id: '5', user: 'Eva Black', type: 'Rent', amount: 4800, status: 'Success', date: '2024-01-28', method: 'CBE' },
-        { id: '6', user: 'Frank Blue', type: 'Deposit', amount: 15000, status: 'Pending', date: '2024-02-16', method: 'TeleBirr' },
-    ];
+
 
     // Filtering Logic
     const filteredTransactions = transactions.filter(t => {
         const matchesStatus = statusFilter === 'all' || t.status.toLowerCase() === statusFilter.toLowerCase();
-        // removed matchesType
 
         let matchesDate = true;
         if (dateFilter !== 'all') {
@@ -126,7 +98,6 @@ export default function AdminDashboardPage() {
             const currentYear = today.getFullYear();
             const txYear = txDate.getFullYear();
 
-            // diffDays logic for 'week' and 'month' kept if needed, or simplified
             const diffTime = Math.abs(today.getTime() - txDate.getTime());
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -141,12 +112,14 @@ export default function AdminDashboardPage() {
     });
 
     // Lease Filtering Logic
-    const filteredLeases = mockAdminLeases.filter(l => {
+    const filteredLeases = leases.filter(l => {
         const matchesStatus = leaseStatusFilter === 'all' || l.status.toLowerCase() === leaseStatusFilter.toLowerCase();
 
         let matchesTerm = true;
         if (leaseTermFilter !== 'all') {
-            const rm = l.remainingMonths;
+            const endDate = new Date(l.endDate);
+            const today = new Date();
+            const rm = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30));
             if (leaseTermFilter === 'less1') matchesTerm = rm < 1;
             if (leaseTermFilter === '1to3') matchesTerm = rm >= 1 && rm <= 3;
             if (leaseTermFilter === '3to6') matchesTerm = rm > 3 && rm <= 6;
@@ -164,60 +137,154 @@ export default function AdminDashboardPage() {
         { value: 'verifications', label: 'Verifications' },
     ];
 
+    const properties = allAssets.filter(p => p.assetType === 'HOME');
+    const vehicles = allAssets.filter(p => p.assetType === 'CAR');
+
+    // Listing Filtering Logic for Properties Tab
+    const filteredAllAssets = allAssets.filter(p => {
+        const matchesSearch = propSearch === '' ||
+            p.title.toLowerCase().includes(propSearch.toLowerCase()) ||
+            (p.location?.city?.toLowerCase().includes(propSearch.toLowerCase())) ||
+            (p.location?.subcity?.toLowerCase().includes(propSearch.toLowerCase()));
+
+        const matchesType = propTypeFilter === 'all' || p.assetType === propTypeFilter;
+        const matchesStatus = propStatusFilter === 'all' || p.status === propStatusFilter;
+
+        let matchesLocation = true;
+        if (propLocationFilter !== 'all') {
+            matchesLocation = p.location?.city === propLocationFilter;
+        }
+
+        return matchesSearch && matchesType && matchesStatus && matchesLocation;
+    });
+
+    const uniqueCities = Array.from(new Set(allAssets.map(p => p.location?.city).filter(Boolean)));
+
     const stats = [
-        { label: 'Total Users', value: '1,284', trend: '+18.2%', isUp: true, icon: Users, color: 'bg-blue-50 text-blue-600' },
+        { label: 'Total Users', value: users.length.toString(), trend: '+18.2%', isUp: true, icon: Users, color: 'bg-blue-50 text-blue-600' },
         { label: 'Total Homes', value: properties.length.toString(), trend: '+12.5%', isUp: true, icon: Building2, color: 'bg-indigo-50 text-indigo-600' },
         { label: 'Total Cars', value: vehicles.length.toString(), trend: '+8.4%', isUp: true, icon: Car, color: 'bg-teal-50 text-teal-600' },
-        { label: 'Monthly Transactions', value: 'ETB 67K', trend: '+21.6%', isUp: true, icon: DollarSign, color: 'bg-green-50 text-green-600' },
+        { label: 'Monthly Transactions', value: `ETB ${(transactions.reduce((sum, t) => sum + t.amount, 0) / 1000).toFixed(1)}K`, trend: '+21.6%', isUp: true, icon: DollarSign, color: 'bg-green-50 text-green-600' },
     ];
 
-    const transactionData = [
-        { name: 'Jan', Amount: 45000 },
-        { name: 'Feb', Amount: 52000 },
-        { name: 'Mar', Amount: 48000 },
-        { name: 'Apr', Amount: 61000 },
-        { name: 'May', Amount: 55000 },
-        { name: 'Jun', Amount: 67000 },
-    ];
+    // Real Data for Charts
+    const transactionData = transactions.slice(-6).map(t => ({
+        name: new Date(t.date).toLocaleDateString(undefined, { month: 'short' }),
+        Amount: t.amount
+    }));
 
     const propertyDistributionData = [
-        { name: 'Compound', value: 40, color: '#004a35' },
-        { name: 'Apartments', value: 30, color: '#1e40af' },
-        { name: 'Condominium', value: 20, color: '#0d9488' },
-        { name: 'Villas', value: 10, color: '#15803d' },
-    ];
+        { name: 'Compounds', value: properties.filter(p => p.propertyType === 'Compound').length, color: '#004a35' },
+        { name: 'Apartments', value: properties.filter(p => p.propertyType === 'Apartment').length, color: '#1e40af' },
+        { name: 'Condos', value: properties.filter(p => p.propertyType === 'Condominium').length, color: '#0d9488' },
+        { name: 'Villas', value: properties.filter(p => p.propertyType === 'Villa').length, color: '#15803d' },
+    ].filter(d => d.value > 0);
 
     const carDistributionData = [
-        { name: 'Toyota', value: 45, color: '#0891b2' },
-        { name: 'Mercedes', value: 25, color: '#4f46e5' },
-        { name: 'Tesla', value: 20, color: '#ca8a04' },
-        { name: 'Suzuki', value: 10, color: '#16a34a' },
-    ];
+        { name: 'Toyota', value: vehicles.filter(v => v.brand === 'Toyota').length, color: '#0891b2' },
+        { name: 'Mercedes', value: vehicles.filter(v => v.brand === 'Mercedes').length, color: '#4f46e5' },
+        { name: 'Tesla', value: vehicles.filter(v => v.brand === 'Tesla').length, color: '#ca8a04' },
+        { name: 'Suzuki', value: vehicles.filter(v => v.brand === 'Suzuki').length, color: '#16a34a' },
+    ].filter(d => d.value > 0);
 
-    const weeklyActivityData = [
-        { name: 'Mon', listings: 12, rents: 8 },
-        { name: 'Tue', listings: 15, rents: 10 },
-        { name: 'Wed', listings: 10, rents: 7 },
-        { name: 'Thu', listings: 18, rents: 12 },
-        { name: 'Fri', listings: 14, rents: 9 },
-        { name: 'Sat', listings: 20, rents: 15 },
-        { name: 'Sun', listings: 16, rents: 11 },
-    ];
+    const recentUsers = users.slice(0, 5).map(u => ({
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        avatar: u.profileImage || ''
+    }));
 
-    const userGrowthData = [
-        { name: 'Jan', Customers: 120, Owners: 10, Agents: 5 },
-        { name: 'Feb', Customers: 145, Owners: 15, Agents: 7 },
-        { name: 'Mar', Customers: 180, Owners: 22, Agents: 10 },
-        { name: 'Apr', Customers: 220, Owners: 30, Agents: 15 },
-        { name: 'May', Customers: 270, Owners: 45, Agents: 22 },
-        { name: 'Jun', Customers: 350, Owners: 60, Agents: 30 },
-    ];
+    const pendingProperties = allAssets.filter(p => !p.isVerified).map(p => ({
+        id: p.id,
+        title: p.title,
+        owner: p.ownerName || 'Unknown Owner',
+        type: p.assetType,
+        location: p.location ? `${p.location.subcity}, ${p.location.city}` : 'Unknown Location',
+        price: `ETB ${p.price.toLocaleString()}/mo`,
+        submittedDate: new Date(p.createdAt).toLocaleDateString(),
+        documentUrl: '#'
+    }));
 
-    const recentUsers = [
-        { name: 'Alice Cooper', email: 'alice@example.com', role: 'Customer', avatar: '' },
-        { name: 'Bob Taylor', email: 'bob@example.com', role: 'Agent', avatar: '' },
-        { name: 'Carol White', email: 'carol@example.com', role: 'Owner', avatar: '' },
-    ];
+    const pendingAgents = users.filter(u => u.role === 'AGENT' && !u.verified).map(u => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        licenseNumber: 'TBD',
+        submittedDate: new Date(u.createdAt).toLocaleDateString(),
+        licenseUrl: '#'
+    }));
+
+    // Calculate Weekly Activity Data
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date();
+    const weeklyActivityData = Array.from({ length: 7 }).map((_, i) => {
+        const date = new Date();
+        date.setDate(today.getDate() - (6 - i));
+        const dayName = days[date.getDay()];
+        const dayStart = new Date(date.setHours(0, 0, 0, 0));
+        const dayEnd = new Date(date.setHours(23, 59, 59, 999));
+
+        return {
+            name: dayName,
+            allListings: allAssets.filter(p => {
+                const createdAt = new Date(p.createdAt);
+                return createdAt >= dayStart && createdAt <= dayEnd;
+            }).length,
+            house: allAssets.filter(p => {
+                const createdAt = new Date(p.createdAt);
+                return p.assetType === 'HOME' && createdAt >= dayStart && createdAt <= dayEnd;
+            }).length,
+            car: allAssets.filter(p => {
+                const createdAt = new Date(p.createdAt);
+                return p.assetType === 'CAR' && createdAt >= dayStart && createdAt <= dayEnd;
+            }).length,
+            rent: leases.filter(l => {
+                const createdAt = new Date(l.createdAt);
+                return createdAt >= dayStart && createdAt <= dayEnd;
+            }).length,
+            buy: transactions.filter(t => {
+                const createdAt = new Date(t.date);
+                return t.status === 'completed' && createdAt >= dayStart && createdAt <= dayEnd;
+            }).length
+        };
+    });
+
+    // Calculate User Growth Data
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const userGrowthData = Array.from({ length: 6 }).map((_, i) => {
+        const date = new Date();
+        date.setMonth(today.getMonth() - (5 - i));
+        const monthName = months[date.getMonth()];
+        const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+        const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        return {
+            name: monthName,
+            Customers: users.filter(u => u.role === 'CUSTOMER' && new Date(u.createdAt) >= monthStart && new Date(u.createdAt) <= monthEnd).length,
+            Owners: users.filter(u => u.role === 'OWNER' && new Date(u.createdAt) >= monthStart && new Date(u.createdAt) <= monthEnd).length,
+            Agents: users.filter(u => u.role === 'AGENT' && new Date(u.createdAt) >= monthStart && new Date(u.createdAt) <= monthEnd).length
+        };
+    });
+
+    // Calculate Verification History
+    const verificationHistory = [
+        ...allAssets.filter(p => p.isVerified).map(p => ({
+            id: p.id,
+            title: p.title,
+            type: 'Property',
+            owner: p.ownerName || 'Unknown',
+            date: new Date(p.updatedAt).toLocaleDateString(),
+            status: 'Approved'
+        })),
+        ...users.filter(u => u.verified).map(u => ({
+            id: u.id,
+            name: u.name,
+            type: 'Agent',
+            email: u.email,
+            date: new Date(u.updatedAt).toLocaleDateString(),
+            status: 'Approved'
+        }))
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     return (
         <div className="min-h-screen bg-background">
@@ -370,7 +437,7 @@ export default function AdminDashboardPage() {
                                 </CardHeader>
                                 <CardContent className="h-[350px] pt-4">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={weeklyActivityData} barGap={8}>
+                                        <BarChart data={weeklyActivityData} barGap={4}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                                             <XAxis
                                                 dataKey="name"
@@ -388,8 +455,11 @@ export default function AdminDashboardPage() {
                                                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                                             />
                                             <Legend verticalAlign="top" align="center" iconType="square" wrapperStyle={{ paddingBottom: '20px' }} />
-                                            <Bar dataKey="listings" fill="#005a41" radius={[4, 4, 0, 0]} barSize={20} name="Listings" />
-                                            <Bar dataKey="rents" fill="#0d9488" radius={[4, 4, 0, 0]} barSize={20} name="Rents" />
+                                            <Bar dataKey="allListings" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={12} name="All Listings" />
+                                            <Bar dataKey="house" fill="#005a41" radius={[4, 4, 0, 0]} barSize={12} name="House" />
+                                            <Bar dataKey="car" fill="#0d9488" radius={[4, 4, 0, 0]} barSize={12} name="Car" />
+                                            <Bar dataKey="rent" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={12} name="Rent" />
+                                            <Bar dataKey="buy" fill="#10b981" radius={[4, 4, 0, 0]} barSize={12} name="Buy" />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </CardContent>
@@ -470,7 +540,7 @@ export default function AdminDashboardPage() {
                                                         user.role === 'Agent' ? 'bg-indigo-600 text-white' :
                                                             'bg-green-600 text-white'
                                                 )}>
-                                                    {user.role}
+                                                    {user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()}
                                                 </Badge>
                                             </div>
                                         ))}
@@ -494,24 +564,61 @@ export default function AdminDashboardPage() {
                                 <CardTitle>Property Management</CardTitle>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <div className="p-4 border-b bg-muted/5 flex gap-4">
-                                    <div className="relative flex-1">
+                                <div className="p-4 border-b bg-muted/5 flex flex-wrap gap-4">
+                                    <div className="relative flex-1 min-w-[200px]">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <input
-                                            placeholder="Search by Address"
-                                            className="w-full pl-10 pr-4 py-2 bg-white border border-border rounded-lg text-sm"
+                                            placeholder="Search by Title or Address"
+                                            value={propSearch}
+                                            onChange={(e) => setPropSearch(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2 bg-white border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                                         />
                                     </div>
-                                    <select className="px-3 py-2 bg-white border border-border rounded-lg text-sm">
-                                        <option>All Types</option>
-                                        <option>House</option>
-                                        <option>Car</option>
+                                    <select
+                                        value={propTypeFilter}
+                                        onChange={(e) => setPropTypeFilter(e.target.value)}
+                                        className="px-3 py-2 bg-white border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
+                                        <option value="all">All Types</option>
+                                        <option value="HOME">House</option>
+                                        <option value="CAR">Car</option>
                                     </select>
-                                    <select className="px-3 py-2 bg-white border border-border rounded-lg text-sm">
-                                        <option>All Status</option>
-                                        <option>Available</option>
-                                        <option>Unavailable</option>
+                                    <select
+                                        value={propStatusFilter}
+                                        onChange={(e) => setPropStatusFilter(e.target.value)}
+                                        className="px-3 py-2 bg-white border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
+                                        <option value="all">All Status</option>
+                                        <option value="AVAILABLE">Available</option>
+                                        <option value="RENTED">Rented</option>
+                                        <option value="SOLD">Sold</option>
+                                        <option value="UNAVAILABLE">Unavailable</option>
                                     </select>
+                                    <select
+                                        value={propLocationFilter}
+                                        onChange={(e) => setPropLocationFilter(e.target.value)}
+                                        className="px-3 py-2 bg-white border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                                    >
+                                        <option value="all">All Locations</option>
+                                        {uniqueCities.map(city => (
+                                            <option key={city} value={city}>{city}</option>
+                                        ))}
+                                    </select>
+                                    {(propSearch || propTypeFilter !== 'all' || propStatusFilter !== 'all' || propLocationFilter !== 'all') && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setPropSearch('');
+                                                setPropTypeFilter('all');
+                                                setPropStatusFilter('all');
+                                                setPropLocationFilter('all');
+                                            }}
+                                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                        >
+                                            Reset
+                                        </Button>
+                                    )}
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-sm">
@@ -524,32 +631,43 @@ export default function AdminDashboardPage() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {[1, 2, 3, 4, 5].map((i) => (
-                                                <tr key={i} className="border-b last:border-0 hover:bg-muted/10">
-                                                    <td className="p-4">
-                                                        <div className="font-bold">Bole Summit Apt {i}</div>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">FT</div>
-                                                            <span>Frezer Takele</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <Badge className={cn(
-                                                            "border-none",
-                                                            i % 2 === 0 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"
-                                                        )}>
-                                                            {i % 2 === 0 ? 'Available' : 'Unavailable'}
-                                                        </Badge>
-                                                    </td>
-                                                    <td className="p-4">
-                                                        <Link href={`/property/${i}`}>
-                                                            <Button variant="ghost" size="sm" className="text-primary hover:text-white">See Detail</Button>
-                                                        </Link>
+                                            {filteredAllAssets.length > 0 ? (
+                                                filteredAllAssets.map((property) => (
+                                                    <tr key={property.id} className="border-b last:border-0 hover:bg-muted/10">
+                                                        <td className="p-4">
+                                                            <div className="font-bold">{property.title}</div>
+                                                            <div className="text-[10px] text-muted-foreground uppercase">{property.assetType}</div>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
+                                                                    {property.ownerName?.split(' ').map(n => n[0]).join('') || '??'}
+                                                                </div>
+                                                                <span>{property.ownerName || 'Unknown'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <Badge className={cn(
+                                                                "border-none",
+                                                                property.status === 'AVAILABLE' ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"
+                                                            )}>
+                                                                {property.status}
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="p-4">
+                                                            <Link href={`/property/${property.id}`}>
+                                                                <Button variant="ghost" size="sm" className="text-primary hover:text-white">See Detail</Button>
+                                                            </Link>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={4} className="p-8 text-center text-muted-foreground">
+                                                        No properties found matching the selected filters.
                                                     </td>
                                                 </tr>
-                                            ))}
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
@@ -618,7 +736,7 @@ export default function AdminDashboardPage() {
                                                                         <CreditCard className="h-5 w-5" />}
                                                             </div>
                                                             <div>
-                                                                <h4 className="font-bold text-foreground group-hover:text-[#005a41] transition-colors">{t.type} from {t.user}</h4>
+                                                                <h4 className="font-bold text-foreground group-hover:text-[#005a41] transition-colors">{t.itemType} for {t.itemTitle}</h4>
                                                                 <div className="flex items-center gap-3">
                                                                     <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
                                                                         ID: {t.id}
@@ -716,39 +834,45 @@ export default function AdminDashboardPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {filteredLeases.length > 0 ? (
-                                filteredLeases.map((l) => (
-                                    <Card key={l.id} className="border-border">
-                                        <CardHeader className="pb-2 border-b">
-                                            <div className="flex justify-between items-start">
-                                                <CardTitle className="text-sm font-bold">Lease Contract #{l.id.toUpperCase()}</CardTitle>
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="pt-4">
-                                            <div className="space-y-2 mb-4">
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-muted-foreground">Tenant:</span>
-                                                    <span className="font-medium">{l.tenant}</span>
+                                filteredLeases.map((l: any) => {
+                                    const property = l.property || properties.find((p: any) => p.id === l.propertyId);
+                                    const propertyName = property ? property.title : 'Unknown Property';
+                                    const tenantName = l.customer?.name || 'Unknown Tenant';
+                                    const ownerName = l.owner?.name || l.ownerId || 'Unknown Owner';
+                                    return (
+                                        <Card key={l.id} className="border-border">
+                                            <CardHeader className="pb-2 border-b">
+                                                <div className="flex justify-between items-start">
+                                                    <CardTitle className="text-sm font-bold">{propertyName} Lease</CardTitle>
                                                 </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-muted-foreground">Owner:</span>
-                                                    <span className="font-medium">{l.owner}</span>
+                                            </CardHeader>
+                                            <CardContent className="pt-4">
+                                                <div className="space-y-2 mb-4">
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-muted-foreground">Tenant:</span>
+                                                        <span className="font-medium">{tenantName}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-muted-foreground">Owner:</span>
+                                                        <span className="font-medium">{ownerName}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-muted-foreground">Dates:</span>
+                                                        <span className="font-medium text-xs">{new Date(l.startDate).toLocaleDateString()} - {new Date(l.endDate).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-sm">
+                                                        <span className="text-muted-foreground">Status:</span>
+                                                        <span className={cn("font-medium", l.status === 'ACTIVE' ? "text-green-600" : l.status === 'PENDING' ? "text-amber-600" : "text-gray-600")}>{l.status}</span>
+                                                    </div>
+                                                    {/* Debug Info for Term Remaining can be added here if needed */}
                                                 </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-muted-foreground">Term:</span>
-                                                    <span className="font-medium">{l.term}</span>
-                                                </div>
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-muted-foreground">Status:</span>
-                                                    <span className={cn("font-medium", l.status === 'Active' ? "text-green-600" : l.status === 'Pending' ? "text-amber-600" : "text-gray-600")}>{l.status}</span>
-                                                </div>
-                                                {/* Debug Info for Term Remaining can be added here if needed */}
-                                            </div>
-                                            <Link href={`/dashboard/owner/lease/${l.id}?source=admin`}>
-                                                <Button className="w-full text-xs" variant="outline">View Lease Detail</Button>
-                                            </Link>
-                                        </CardContent>
-                                    </Card>
-                                ))
+                                                <Link href={`/dashboard/owner/lease/${l.id}?source=admin`}>
+                                                    <Button className="w-full text-xs" variant="outline">View Lease Detail</Button>
+                                                </Link>
+                                            </CardContent>
+                                        </Card>
+                                    )
+                                })
                             ) : (
                                 <div className="col-span-full text-center py-12 bg-muted/5 rounded-lg border border-dashed border-border">
                                     <p className="text-muted-foreground font-medium">No leases found matching your filters</p>
@@ -879,9 +1003,8 @@ export default function AdminDashboardPage() {
                                         onChange={(e) => setVerificationHistoryFilter(e.target.value)}
                                         className="px-3 py-2 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005a41]"
                                     >
-                                        <option value="all">All Status</option>
-                                        <option value="Approved">Approved</option>
-                                        <option value="Rejected">Rejected</option>
+                                        <option value="all">Processed (All)</option>
+                                        <option value="Approved">Verified</option>
                                     </select>
                                 </div>
 
@@ -898,13 +1021,12 @@ export default function AdminDashboardPage() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {mockVerificationHistory
+                                            {verificationHistory
                                                 .filter(item => verificationHistoryFilter === 'all' || item.status === verificationHistoryFilter)
                                                 .map((item) => (
                                                     <tr key={item.id} className="border-b last:border-0 hover:bg-muted/5 transition-colors">
                                                         <td className="p-4">
                                                             <div className="font-bold">{item.title || item.name}</div>
-                                                            {item.reason && <p className="text-[10px] text-red-500 mt-1 font-medium">{item.reason}</p>}
                                                         </td>
                                                         <td className="p-4">
                                                             <Badge variant="outline" className="text-[10px] font-medium uppercase tracking-tighter">
@@ -926,7 +1048,7 @@ export default function AdminDashboardPage() {
                                                             </Badge>
                                                         </td>
                                                         <td className="p-4">
-                                                            <Link href={`/dashboard/admin/verifications/${item.type === 'Agent' ? 'agent' : 'property'}/${item.id.replace('vh', item.type === 'Agent' ? 'pa' : 'pp')}`}>
+                                                            <Link href={`/dashboard/admin/verifications/${item.type.toLowerCase()}/${item.id}`}>
                                                                 <Button size="sm" variant="ghost" className="h-7 text-[10px] font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
                                                                     View Detail
                                                                 </Button>

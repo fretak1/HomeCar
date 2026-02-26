@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from "react";
 import { usePropertyStore } from "@/store/usePropertyStore";
 import { useGlobalStore } from "@/store/useGlobalStore";
 import { useFavoriteStore } from "@/store/useFavoriteStore";
@@ -10,32 +9,17 @@ import CardCompact from "./CardCompact";
 
 const Listings = () => {
     const { user } = useAuth();
-    const { isFavorite, addFavorite, removeFavorite, fetchFavorites } = useFavoriteStore();
+    const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
     const { viewMode, filters, searchType } = useGlobalStore();
-    const { properties, isLoading, error, fetchProperties } = usePropertyStore();
-
-    useEffect(() => {
-        // Fetch items based on search type (Home or Car)
-        fetchProperties({
-            ...filters,
-            assetType: searchType === 'property' ? 'Home' : 'Car'
-        });
-    }, [filters, fetchProperties, searchType]);
-
-    useEffect(() => {
-        if (user?.id) {
-            fetchFavorites(user.id);
-        }
-    }, [user?.id, fetchFavorites]);
+    const { properties, isLoading, error } = usePropertyStore();
 
     const handleFavoriteToggle = async (itemId: string) => {
         if (!user?.id) return;
 
         if (isFavorite(itemId)) {
-            await removeFavorite(user.id, itemId);
+            await removeFavorite(itemId);
         } else {
-            const itemType = searchType === 'property' ? 'Home' : 'Car';
-            await addFavorite(user.id, itemId, itemType);
+            await addFavorite(itemId);
         }
     };
 
@@ -59,7 +43,7 @@ const Listings = () => {
                 <h3 className="font-semibold text-foreground flex items-center gap-2">
                     <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-md text-sm">{items.length}</span>
                     <span className="text-muted-foreground font-medium">
-                        {searchType === 'property' ? 'Properties' : 'Vehicles'} Found {filters.location ? `in ${filters.location}` : ""}
+                        {searchType === 'property' ? 'Properties' : 'Vehicles'} Found {filters.location ? `in ${String(filters.location)}` : ""}
                     </span>
                 </h3>
             </div>

@@ -17,6 +17,8 @@ export interface Filters {
     mileage: number | null;
     listingType: string;
     amenities: string[];
+    coordinates: [number | null, number | null];
+    sort: string;
 }
 
 interface GlobalState {
@@ -48,7 +50,9 @@ const initialFilters: Filters = {
     transmission: 'any',
     mileage: null,
     listingType: 'any',
-    amenities: []
+    amenities: [],
+    coordinates: [null, null],
+    sort: 'newest'
 };
 
 export const useGlobalStore = create<GlobalState>((set) => ({

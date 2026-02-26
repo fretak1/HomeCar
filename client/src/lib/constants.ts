@@ -4,11 +4,17 @@ import {
     Home,
     Building,
     Castle,
-    Coffee,
-    PawPrint,
+    Waves,
+    Wind,
+    ParkingCircle,
+    ChefHat,
+    Flame,
     Zap,
+    Monitor,
+    Key,
+    Navigation,
     Truck,
-    Wind
+    Check
 } from "lucide-react";
 
 export const NAVBAR_HEIGHT = 64;
@@ -31,14 +37,21 @@ export const VehicleTypeIcons = {
 } as const;
 
 export const AmenityIcons = {
-    Wifi: Wifi,
-    Parking: Car,
-    PetFriendly: PawPrint,
-    Furnished: Coffee,
-    AC: Wind,
+    wifi: Wifi,
+    parking: ParkingCircle,
+    pool: Waves,
+    ac: Wind,
+    kitchen: ChefHat,
+    furnished: Check,
+    heating: Flame,
+    bluetooth: Zap,
+    camera: Monitor,
+    leather: Check,
+    gps: Navigation,
+    sunroof: Waves,
+    keyless: Key,
 } as const;
 
-// Helper to map mock data types to icons if needed
 export const getPropertyTypeIcon = (type: string) => {
     const normalized = type.charAt(0).toUpperCase() + type.slice(1);
     return PropertyTypeIcons[normalized as keyof typeof PropertyTypeIcons] || Home;

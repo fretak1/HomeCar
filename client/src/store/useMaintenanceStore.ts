@@ -3,7 +3,8 @@ import { createApi, API_ROUTES } from '@/lib/api';
 
 const api = createApi();
 
-export type MaintenanceCategory = 'Plumbing' | 'Electrical' | 'Internet' | 'Damage' | 'Cleaning' | 'Engine' | 'Battery' | 'Tire' | 'Other';
+export type MaintenanceCategory = 'PLUMBING' | 'ELECTRICAL' | 'INTERNET' | 'DAMAGE' | 'CLEANING' | 'ENGINE' | 'BATTERY' | 'TIRE' | 'OTHER';
+
 
 export interface MaintenanceRequest {
     id: string;
@@ -13,7 +14,8 @@ export interface MaintenanceRequest {
     description: string;
     status: 'pending' | 'inProgress' | 'completed';
     date: string;
-    image?: string;
+    images: string[];
+    image?: string; // Kept for easy access to the first image
 }
 
 interface MaintenanceState {
@@ -21,7 +23,7 @@ interface MaintenanceState {
     isLoading: boolean;
     error: string | null;
     fetchRequests: (userId?: string) => Promise<void>;
-    addRequest: (request: Omit<MaintenanceRequest, 'id' | 'status' | 'date'>) => Promise<void>;
+    addRequest: (request: Omit<MaintenanceRequest, 'id' | 'status' | 'date' | 'images'> & { images: string[] }) => Promise<void>;
     updateRequestStatus: (id: string, status: MaintenanceRequest['status']) => Promise<void>;
 }
 

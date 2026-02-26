@@ -1,26 +1,49 @@
 import { create } from 'zustand';
-import { Application } from '@/data/mockData';
 import { createApi, API_ROUTES } from '@/lib/api';
 
 const api = createApi();
+
+export interface Application {
+    id: string;
+    propertyId: string;
+    customerId: string;
+    managerId: string;
+    status: 'pending' | 'accepted' | 'rejected';
+    message?: string;
+    createdAt: string;
+    propertyTitle?: string;
+    propertyImage?: string;
+    propertyLocation?: string;
+    price?: number;
+    listingType?: string;
+    date?: string;
+    customer?: {
+        name: string;
+        email: string;
+        profileImage?: string;
+    };
+}
+
+
 
 interface ApplicationState {
     applications: Application[];
     isLoading: boolean;
     error: string | null;
-    fetchApplications: (managerId: string) => Promise<void>;
-    addApplication: (application: Omit<Application, 'id' | 'date' | 'status'>) => Promise<void>;
-    updateApplicationStatus: (id: string, status: 'pending' | 'accepted') => Promise<void>;
+    fetchApplications: (filters: { managerId?: string; customerId?: string }) => Promise<void>;
+    addApplication: (application: { propertyId: string; message: string }) => Promise<void>;
+    updateApplicationStatus: (id: string, status: string) => Promise<void>;
 }
+
 
 export const useApplicationStore = create<ApplicationState>((set) => ({
     applications: [],
     isLoading: false,
     error: null,
-    fetchApplications: async (managerId: string) => {
+    fetchApplications: async (filters) => {
         set({ isLoading: true, error: null });
         try {
-            const response = await api.get(API_ROUTES.APPLICATIONS, { params: { managerId } });
+            const response = await api.get(API_ROUTES.APPLICATIONS, { params: filters });
             set({ applications: response.data, isLoading: false });
         } catch (error) {
             set({ error: 'Failed to fetch applications', isLoading: false });

@@ -5,10 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useUserStore } from '@/store/useUserStore';
 import {
   Building2,
-  Home,
   Search,
   User,
-  MessageSquare,
   ChevronDown,
   Bell
 } from 'lucide-react';
@@ -17,7 +15,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";

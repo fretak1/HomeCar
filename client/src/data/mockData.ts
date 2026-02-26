@@ -1,54 +1,17 @@
-export type AssetType = 'Home' | 'Car';
+import { type Property as StoreProperty } from '@/store/usePropertyStore';
+
+export type AssetType = 'HOME' | 'CAR';
 export type ListingType = 'rent' | 'buy';
 export type PropertyStatus = 'AVAILABLE' | 'UNAVAILABLE';
 
-export interface Property {
-  id: string;
-  title: string;
-  description: string;
-  assetType: AssetType;
-  listingType: ListingType[];
-  price: number;
-  status: PropertyStatus;
-
-  // Home Specifics
-  propertyType?: 'house' | 'apartment' | 'condominium' | 'villa';
-  bedrooms?: number;
-  bathrooms?: number;
-  area?: number;
-  amenities?: string[];
-
-  // Car Specifics
-  brand?: string;
-  model?: string;
-  year?: number;
-  fuelType?: string;
-  transmission?: string;
-  mileage?: number;
-
-  // Location Details
-  region?: string;
-  city?: string;
-  subCity?: string;
-  lat?: number;
-  lng?: number;
-
+export interface Property extends Omit<StoreProperty, 'images' | 'createdAt'> {
+  images: any[];
+  image?: any;
   createdAt?: string;
-  updatedAt?: string;
-
-  // Relationships
-  ownerName: string; // Keeping for UI convenience alongside owner relation
-
-  // Helpers
-  image: string; // Main image
-  images: string[];
-  rating: number; // Keeping for UI
-  reviews: number; // Keeping for UI
-
-  // Verification
-  ownerPhoto?: string;
-  ownershipDocument?: string;
 }
+
+
+
 
 export type Review = {
   id: string;
@@ -84,7 +47,8 @@ export interface Transaction {
   status: 'pending' | 'completed' | 'cancelled';
 }
 
-export type MaintenanceCategory = 'Plumbing' | 'Electrical' | 'Internet' | 'Damage' | 'Cleaning' | 'Engine' | 'Battery' | 'Tire' | 'Other';
+import { type MaintenanceCategory } from '@/store/useMaintenanceStore';
+export type { MaintenanceCategory };
 
 export interface MaintenanceRequest {
   id: string;
@@ -128,6 +92,20 @@ export interface Lease {
   customerId: string;
   ownerId: string;
   createdAt: string;
+  property?: {
+    id: string;
+    title: string;
+    assetType: AssetType;
+    description: string;
+    listingType: string
+    price: number;
+    location: string;
+  };
+  owner: {
+    name: string;
+    profileImage: string;
+    id: string;
+  }
 }
 
 export interface User {
@@ -135,13 +113,16 @@ export interface User {
   name: string;
   email: string;
   profileImage: string;
-  role: 'owner' | 'customer' | 'admin' | 'agent';
-    password?: string;
+  role: 'OWNER' | 'CUSTOMER' | 'ADMIN' | 'AGENT';
+  password?: string;
   phoneNumber?: string;
   marriageStatus?: string;
   kids?: string;
   gender?: string;
   employmentStatus?: string;
+  verificationPhoto?: string;
+  verified: boolean;
+  documents?: Document[];
   createdAt: string;
 }
 
@@ -168,7 +149,7 @@ export const mockProperties: Property[] = [
     id: 'p1',
     title: 'Modern Family House',
     description: 'Beautiful modern house with spacious rooms, hardwood floors, and a large backyard. Perfect for families looking for comfort and style.',
-    assetType: 'Home',
+    assetType: 'HOME',
     listingType: ['rent'],
     price: 450000,
     status: 'AVAILABLE',
@@ -191,7 +172,7 @@ export const mockProperties: Property[] = [
     id: 'p2',
     title: 'Luxury Downtown Apartment',
     description: 'Stunning apartment in the heart of downtown with floor-to-ceiling windows and breathtaking city views. Modern amenities and premium finishes throughout.',
-    assetType: 'Home',
+    assetType: 'HOME',
     listingType: ['rent'],
     price: 3200,
     status: 'AVAILABLE',
@@ -213,7 +194,7 @@ export const mockProperties: Property[] = [
     id: 'p3',
     title: 'Cozy Suburban Home',
     description: 'Charming home in a quiet neighborhood. Recently renovated with modern appliances and cozy living spaces.',
-    assetType: 'Home',
+    assetType: 'HOME',
     listingType: ['buy'],
     price: 2800,
     status: 'AVAILABLE',
@@ -238,7 +219,7 @@ export const mockCars: Property[] = [
     id: 'c1',
     title: 'Mercedes-Benz S-Class',
     description: 'Luxury sedan with premium features, advanced safety technology, and unmatched comfort. Perfect for executives and special occasions.',
-    assetType: 'Car',
+    assetType: 'CAR',
     listingType: ['rent'],
     price: 95000,
     status: 'AVAILABLE',
@@ -261,7 +242,7 @@ export const mockCars: Property[] = [
     id: 'c2',
     title: 'Tesla Model X',
     description: 'All-electric SUV with Autopilot, spacious interior, and cutting-edge technology. Zero emissions, maximum performance.',
-    assetType: 'Car',
+    assetType: 'CAR',
     listingType: ['rent'],
     price: 850,
     status: 'AVAILABLE',
@@ -284,7 +265,7 @@ export const mockCars: Property[] = [
     id: 'c3',
     title: 'Porsche 911 Carrera',
     description: 'Iconic sports car with exceptional performance and timeless design. Experience the thrill of driving excellence.',
-    assetType: 'Car',
+    assetType: 'CAR',
     listingType: ['buy'],
     price: 120000,
     status: 'AVAILABLE',
@@ -340,7 +321,7 @@ export const mockReviews: Review[] = [
 export const mockTransactions: Transaction[] = [
   {
     id: 't1',
-    itemType: 'Home',
+    itemType: 'HOME',
     itemId: 'p2',
     itemTitle: 'Luxury Downtown Apartment',
     amount: 3200,
@@ -349,7 +330,7 @@ export const mockTransactions: Transaction[] = [
   },
   {
     id: 't2',
-    itemType: 'Car',
+    itemType: 'CAR',
     itemId: 'c2',
     itemTitle: 'Tesla Model X',
     amount: 850,
@@ -358,7 +339,7 @@ export const mockTransactions: Transaction[] = [
   },
   {
     id: 't3',
-    itemType: 'Home',
+    itemType: 'HOME',
     itemId: 'p1',
     itemTitle: 'Modern Family House',
     amount: 450000,
@@ -474,56 +455,6 @@ export const mockApplications: Application[] = [
   }
 ];
 
-export const mockLeases: Lease[] = [
-  {
-    id: 'L1',
-    propertyId: 'p2',
-    leaseType: 'LongTerm',
-    startDate: '2026-01-01',
-    endDate: '2026-12-31',
-    totalPrice: 38400,
-    recurringAmount: 3200,
-    terms: 'Standard residential lease agreement with monthly payments.',
-    ownerAccepted: true,
-    customerAccepted: true,
-    status: 'ACTIVE',
-    customerId: 'u2',
-    ownerId: 'owner2',
-    createdAt: '2025-12-15T10:00:00Z',
-  },
-  {
-    id: 'L2',
-    propertyId: 'p1',
-    leaseType: 'LongTerm',
-    startDate: '2026-02-01',
-    endDate: '2027-01-31',
-    totalPrice: 5400000,
-    recurringAmount: 450000,
-    terms: 'Family home lease agreement. No smoking allowed.',
-    ownerAccepted: true,
-    customerAccepted: true,
-    status: 'ACTIVE',
-    customerId: 'u1',
-    ownerId: 'owner1',
-    createdAt: '2026-01-20T14:30:00Z',
-  },
-  {
-    id: 'L3',
-    propertyId: 'p3',
-    leaseType: 'LongTerm',
-    startDate: '2026-03-01',
-    endDate: '2027-02-28',
-    totalPrice: 33600,
-    recurringAmount: 2800,
-    terms: 'Pending approval from both parties.',
-    ownerAccepted: true,
-    customerAccepted: false,
-    status: 'PENDING',
-    customerId: 'u3',
-    ownerId: 'owner3',
-    createdAt: '2026-02-10T09:00:00Z',
-  }
-];
 
 export const mockDocuments: Document[] = [
   {
@@ -549,7 +480,7 @@ export const mockUsers: User[] = [
     id: 'u1',
     name: 'Selam Tesfaye',
     email: 'selam@example.com',
-    role: 'customer',
+    role: 'CUSTOMER',
     profileImage: 'ST',
     createdAt: '2026-01-01T10:00:00Z'
   },
@@ -557,7 +488,7 @@ export const mockUsers: User[] = [
     id: 'u2',
     name: 'Ermias Kebede',
     email: 'ermias@example.com',
-    role: 'customer',
+    role: 'CUSTOMER',
     profileImage: 'EK',
     createdAt: '2026-01-05T14:00:00Z'
   },
@@ -565,7 +496,7 @@ export const mockUsers: User[] = [
     id: 'u3',
     name: 'Teshome Gemechu',
     email: 'teshome@example.com',
-    role: 'customer',
+    role: 'CUSTOMER',
     profileImage: 'EK',
     createdAt: '2026-01-10T09:30:00Z'
   },
@@ -573,7 +504,7 @@ export const mockUsers: User[] = [
     id: 'u4',
     name: 'Aster Awoke',
     email: 'aster@example.com',
-    role: 'customer',
+    role: 'CUSTOMER',
     createdAt: '2026-01-12T11:20:00Z',
     profileImage: 'EK',
 
@@ -582,7 +513,7 @@ export const mockUsers: User[] = [
     id: 'owner1',
     name: 'Frezer Takele',
     email: 'frezer@example.com',
-    role: 'owner',
+    role: 'CUSTOMER',
     createdAt: '2025-12-01T08:00:00Z',
     profileImage: 'EK',
     password: 'password'
@@ -591,7 +522,7 @@ export const mockUsers: User[] = [
     id: 'owner2',
     name: 'Fikadu Kebede',
     email: 'fikadu@example.com',
-    role: 'owner',
+    role: 'CUSTOMER',
     createdAt: '2025-12-10T09:00:00Z',
     profileImage: 'EK',
     password: 'password'
@@ -600,7 +531,7 @@ export const mockUsers: User[] = [
     id: 'owner3',
     name: 'Tadesse Kebede',
     email: 'tadesse@example.com',
-    role: 'owner',
+    role: 'CUSTOMER',
     createdAt: '2025-12-15T10:00:00Z',
     profileImage: 'EK',
     password: 'password'
@@ -609,7 +540,7 @@ export const mockUsers: User[] = [
     id: 'admin1',
     name: 'Admin User',
     email: 'admin@homecar.com',
-    role: 'admin',
+    role: 'CUSTOMER',
     createdAt: '2025-11-01T00:00:00Z',
     profileImage: 'EK',
     password: 'password'
@@ -618,7 +549,7 @@ export const mockUsers: User[] = [
     id: 'agent1',
     name: 'Agent User',
     email: 'agent@homecar.com',
-    role: 'agent',
+    role: 'CUSTOMER',
     createdAt: '2025-11-15T00:00:00Z',
     profileImage: 'EK',
     password: 'password'
@@ -631,17 +562,17 @@ export const mockFavorites: Favorite[] = [
     id: 'f1',
     userId: 'u1',
     itemId: 'p1',
-    itemType: 'Home',
+    itemType: 'HOME',
     createdAt: '2026-02-01T10:00:00Z'
   },
   {
     id: 'f2',
     userId: 'u1',
     itemId: 'c1',
-    itemType: 'Car',
+    itemType: 'CAR',
     createdAt: '2026-02-02T11:00:00Z'
   }
 ];
 
 // For backward compatibility if needed, but we should move to mockUsers
-export const mockCustomers = mockUsers.filter(u => u.role === 'customer');
+export const mockCustomers = mockUsers.filter(u => u.role === 'CUSTOMER');

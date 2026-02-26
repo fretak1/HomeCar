@@ -1,11 +1,29 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import morgan from 'morgan';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { createServer } from 'http';
+import { initSocket } from './socket.js';
+import fs from 'fs';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
+const httpServer = createServer(app);
+initSocket(httpServer);
+
 const PORT = process.env.PORT || 5000;
+
+// Ensure uploads folder exists
+const uploadDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // Middleware
 // Middleware
@@ -24,13 +42,31 @@ app.use(
     })
 );
 app.use(express.json());
+app.use(morgan('dev'));
+
+// Static files
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Routes
 import userRoutes from './routes/userRoutes.js';
 import propertyRoutes from './routes/propertyRoutes.js';
+import applicationRoutes from './routes/applicationRoutes.js';
+import leaseRoutes from './routes/leaseRoutes.js';
+import maintenanceRoutes from './routes/maintenanceRoutes.js';
+import transactionRoutes from './routes/transactionRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
+import favoriteRoutes from './routes/favoriteRoutes.js';
+import uploadRoutes from './routes/uploadRoutes.js';
 
 app.use('/api/user', userRoutes);
 app.use('/api/properties', propertyRoutes);
+app.use('/api/applications', applicationRoutes);
+app.use('/api/leases', leaseRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/chats', chatRoutes);
+app.use('/api/favorites', favoriteRoutes);
+app.use('/api/upload', uploadRoutes);
 
 app.get('/health', (req: Request, res: Response) => {
     res.json({ status: 'OK', service: 'HomeCar Backend' });
@@ -45,6 +81,6 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     });
 });
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

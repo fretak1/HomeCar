@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useUserStore } from "@/store/useUserStore";
+import { useFavoriteStore } from "@/store/useFavoriteStore";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -11,12 +12,19 @@ import { Toaster } from "sonner";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const { getMe } = useUserStore();
+    const { getMe, currentUser } = useUserStore();
+    const { fetchFavorites } = useFavoriteStore();
     const isAuthPage = pathname === "/login" || pathname === "/signup";
 
     useEffect(() => {
         getMe();
     }, [getMe]);
+
+    useEffect(() => {
+        if (currentUser) {
+            fetchFavorites();
+        }
+    }, [currentUser, fetchFavorites]);
 
     return (
         <AuthProvider>

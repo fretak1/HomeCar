@@ -5,9 +5,10 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useGlobalStore } from "@/store/useGlobalStore";
 import { usePropertyStore } from "@/store/usePropertyStore";
+import { formatLocation, getListingMainImage } from "@/lib/utils";
 
 // Fix for Mapbox token
-const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 if (token) {
     mapboxgl.accessToken = token;
 }
@@ -17,15 +18,7 @@ const Map = () => {
     const mapRef = useRef<mapboxgl.Map | null>(null);
     const { filters, searchType } = useGlobalStore();
 
-    const { properties, isLoading, error, fetchProperties } = usePropertyStore();
-
-    useEffect(() => {
-        // Fetch items based on search type (Home or Car)
-        fetchProperties({
-            ...filters,
-            assetType: searchType === 'property' ? 'Home' : 'Car'
-        });
-    }, [filters, fetchProperties, searchType]);
+    const { properties, isLoading, error } = usePropertyStore();
 
     const items = properties;
 
@@ -36,7 +29,7 @@ const Map = () => {
         if (!mapRef.current) {
             const map = new mapboxgl.Map({
                 container: mapContainerRef.current,
-                style: "mapbox://styles/mapbox/light-v11",
+                style: "mapbox://styles/mapbox/satellite-streets-v12",
                 center: (filters.coordinates && filters.coordinates[0]) ? [filters.coordinates[0]!, filters.coordinates[1]!] : [-74.5, 40],
                 zoom: 9,
             });
@@ -56,15 +49,38 @@ const Map = () => {
             currentMarkers[0].parentNode?.removeChild(currentMarkers[0]);
         }
 
-        if (items) {
+        if (items && items.length > 0) {
+            const bounds = new mapboxgl.LngLatBounds();
+            let hasValidCoords = false;
+
             items.forEach((item: any) => {
                 if (!item) return;
-                const center = mapRef.current?.getCenter() || { lng: -74.5, lat: 40 };
-                const lng = center.lng + (Math.random() - 0.5) * 0.1;
-                const lat = center.lat + (Math.random() - 0.5) * 0.1;
 
-                createMarker(item, mapRef.current!, [lng, lat], searchType);
+                // Use real coordinates from location object
+                const lat = item.location?.lat;
+                const lng = item.location?.lng;
+
+                if (lat !== undefined && lng !== undefined && lat !== null && lng !== null) {
+                    createMarker(item, mapRef.current!, [lng, lat], searchType);
+                    bounds.extend([lng, lat]);
+                    hasValidCoords = true;
+                } else {
+                    // Fallback to random placement near center if no coordinates
+                    const center = mapRef.current?.getCenter() || { lng: -74.5, lat: 40 };
+                    const fallbackLng = center.lng + (Math.random() - 0.5) * 0.01;
+                    const fallbackLat = center.lat + (Math.random() - 0.5) * 0.01;
+                    createMarker(item, mapRef.current!, [fallbackLng, fallbackLat], searchType);
+                }
             });
+
+            // Automatically fit the map to show all markers
+            if (hasValidCoords && mapRef.current) {
+                mapRef.current.fitBounds(bounds, {
+                    padding: { top: 50, bottom: 50, left: 50, right: 50 },
+                    maxZoom: 14,
+                    duration: 1500
+                });
+            }
         }
     }, [isLoading, error, items, filters, searchType]);
 
@@ -108,8 +124,11 @@ const Map = () => {
 
 const createMarker = (item: any, map: mapboxgl.Map, lngLat: [number, number], type: string) => {
     const el = document.createElement('div');
+    const imageUrl = getListingMainImage(item);
+    const locationStr = formatLocation(item.location);
+
     el.className = 'marker';
-    el.style.backgroundImage = `url(${item.image})`;
+    el.style.backgroundImage = `url(${imageUrl})`;
     el.style.width = '42px';
     el.style.height = '42px';
     el.style.backgroundSize = 'cover';
@@ -133,10 +152,10 @@ const createMarker = (item: any, map: mapboxgl.Map, lngLat: [number, number], ty
             new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(
                 `
         <div class="p-0 w-48 overflow-hidden rounded-xl bg-card border border-border shadow-xl">
-          <div class="h-24 w-full bg-cover bg-center" style="background-image: url('${item.image}')"></div>
+          <div class="h-24 w-full bg-cover bg-center" style="background-image: url('${imageUrl}')"></div>
           <div class="p-3">
             <h3 class="font-bold text-sm truncate text-foreground">${item.title}</h3>
-            <p class="text-[10px] text-muted-foreground mb-1 font-medium uppercase truncate">${item.location}</p>
+            <p class="text-[10px] text-muted-foreground mb-1 font-medium uppercase truncate">${locationStr}</p>
             <p class="font-bold text-primary text-base">ETB ${item.price.toLocaleString()}<span class="text-[10px] font-normal text-muted-foreground ml-1">${type === 'property' ? '/mo' : ''}</span></p>
           </div>
         </div>

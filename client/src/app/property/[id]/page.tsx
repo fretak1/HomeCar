@@ -14,14 +14,31 @@ import {
     CheckCircle2,
     ArrowLeft,
     Loader2,
-    Calendar
+    Calendar,
+    Send,
+    MessageSquareText
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from 'sonner';
 import { usePropertyStore, Property } from '@/store/usePropertyStore';
 import { useReviewStore } from '@/store/useReviewStore';
+import { useUserStore } from '@/store/useUserStore';
+import { useApplicationStore } from '@/store/useApplicationStore';
+import { useChatStore } from '@/store/useChatStore';
+import { useFavoriteStore } from '@/store/useFavoriteStore';
 import { cn, formatLocation, getImageUrl } from '@/lib/utils';
 import { ReviewCard } from '@/components/ReviewCard';
 import { AIRecommendations } from '@/components/AIRecommendations';
@@ -34,8 +51,33 @@ export default function PropertyDetailPage() {
     const router = useRouter();
     const { fetchPropertyById, isLoading: isPropertyLoading } = usePropertyStore();
     const { reviews: propertyReviews, fetchReviews, isLoading: isReviewsLoading } = useReviewStore();
+    const { currentUser } = useUserStore();
+    const { applications, fetchApplications, addApplication, isLoading: isApplying } = useApplicationStore();
+    const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
+
     const [property, setProperty] = useState<Property | null>(null);
     const [selectedImage, setSelectedImage] = useState(0);
+    const [applicationMessage, setApplicationMessage] = useState("");
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    const favorite = id ? isFavorite(id) : false;
+
+    const handleFavoriteClick = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!currentUser || !id) {
+            toast.error("Please log in to add favorites");
+            return;
+        }
+
+        if (favorite) {
+            await removeFavorite(id);
+            toast.success("Removed from favorites");
+        } else {
+            await addFavorite(id);
+            toast.success("Added to favorites");
+        }
+    };
 
     useEffect(() => {
         if (id) {
@@ -43,6 +85,27 @@ export default function PropertyDetailPage() {
             fetchReviews(id);
         }
     }, [id, fetchPropertyById, fetchReviews]);
+
+    useEffect(() => {
+        if (currentUser?.id && currentUser?.role === 'CUSTOMER') {
+            fetchApplications({ customerId: currentUser.id });
+        }
+    }, [currentUser, fetchApplications]);
+
+    const handleApply = async () => {
+        if (!id) return;
+        try {
+            await addApplication({
+                propertyId: id,
+                message: applicationMessage
+            });
+            toast.success("Application submitted successfully!");
+            setIsDialogOpen(false);
+            setApplicationMessage("");
+        } catch (error) {
+            toast.error("Failed to submit application.");
+        }
+    };
 
     if (isPropertyLoading) {
         return (
@@ -92,8 +155,13 @@ export default function PropertyDetailPage() {
                                 className="w-full h-[500px] object-cover"
                             />
                             <div className="absolute top-4 right-4 flex space-x-2">
-                                <Button size="icon" variant="secondary" className="rounded-full cursor-pointer">
-                                    <Heart className="h-5 w-5" />
+                                <Button
+                                    size="icon"
+                                    variant="secondary"
+                                    className={`rounded-full cursor-pointer hover:scale-110 transition-transform ${favorite ? 'text-rose-500 hover:text-rose-600 shadow-sm' : 'text-gray-500 hover:text-gray-600 bg-white/90'}`}
+                                    onClick={handleFavoriteClick}
+                                >
+                                    <Heart className={`h-5 w-5 ${favorite ? 'fill-current' : ''}`} />
                                 </Button>
                             </div>
                         </div>
@@ -124,24 +192,72 @@ export default function PropertyDetailPage() {
                                         <span className="text-3xl text-primary font-bold">
                                             ETB {property.price.toLocaleString()}
                                         </span>
-                                        {listingTypes.some(type => type.toLowerCase().includes('rent') || type.toLowerCase().includes('lease')) && (
-                                            <span className="text-muted-foreground">/month</span>
-                                        )}
+                                        {listingTypes.some(type => {
+                                            const t = type.toLowerCase();
+                                            return t.includes('rent') || t.includes('lease');
+                                        }) && (
+                                                <span className="text-muted-foreground">/month</span>
+                                            )}
                                     </div>
                                 </div>
 
                                 <div className="space-y-3 mb-6">
-                                    {listingTypes.some(type => type.toLowerCase().includes('rent') || type.toLowerCase().includes('lease')) && (
-                                        <Button className="w-full bg-primary hover:bg-primary/90 cursor-pointer" size="lg">
-                                            <Calendar className="h-5 w-5 mr-2" />
-                                            Apply For {listingTypes.find(t => t.toLowerCase().includes('rent') || t.toLowerCase().includes('lease'))}
-                                        </Button>
-                                    )}
-                                    {(listingTypes.some(type => type.toLowerCase().includes('sale')) || property.assetType === 'CAR') && (
-                                        <Button variant="outline" className="w-full cursor-pointer" size="lg">
-                                            {property.assetType === 'CAR' ? 'Schedule Test Drive' : 'Schedule Viewing'}
-                                        </Button>
-                                    )}
+                                    {listingTypes.some(type => {
+                                        const t = type.toLowerCase();
+                                        return t.includes('rent') || t.includes('lease') || t.includes('buy') || t.includes('sale');
+                                    }) && (
+                                            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                                                <DialogTrigger asChild>
+                                                    <Button
+                                                        className="w-full bg-primary hover:bg-primary/90 cursor-pointer"
+                                                        size="lg"
+                                                        disabled={
+                                                            currentUser?.role === 'OWNER' ||
+                                                            currentUser?.role === 'AGENT' ||
+                                                            applications.some(app => app.propertyId === id)
+                                                        }
+                                                    >
+                                                        <Calendar className="h-5 w-5 mr-2" />
+                                                        {applications.some(app => app.propertyId === id)
+                                                            ? 'Already Applied'
+                                                            : `Apply For ${listingTypes[0]}`
+                                                        }
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="sm:max-w-[425px]">
+                                                    <DialogHeader>
+                                                        <DialogTitle className="flex items-center gap-2">
+                                                            <Send className="h-5 w-5 text-primary" />
+                                                            Apply for Property
+                                                        </DialogTitle>
+                                                        <DialogDescription>
+                                                            Send a message to the owner to express your interest.
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+                                                    <div className="grid gap-4 py-4">
+                                                        <div className="space-y-2">
+                                                            <h4 className="font-medium text-sm">Message</h4>
+                                                            <Textarea
+                                                                placeholder="Tell the owner why you're interested and any questions you have..."
+                                                                value={applicationMessage}
+                                                                onChange={(e) => setApplicationMessage(e.target.value)}
+                                                                className="min-h-[120px] resize-none"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <DialogFooter>
+                                                        <Button
+                                                            onClick={handleApply}
+                                                            disabled={isApplying || !applicationMessage.trim()}
+                                                            className="w-full"
+                                                        >
+                                                            {isApplying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                                            Submit Application
+                                                        </Button>
+                                                    </DialogFooter>
+                                                </DialogContent>
+                                            </Dialog>
+                                        )}
                                 </div>
 
                                 <div className="border-t border-border pt-4">
@@ -156,7 +272,21 @@ export default function PropertyDetailPage() {
                                             <p className="text-sm text-muted-foreground">{property.owner?.role || 'Property Owner'}</p>
                                         </div>
                                     </div>
-                                    <Button variant="outline" className="w-full cursor-pointer">
+                                    <Button
+                                        disabled={
+                                            currentUser?.role === 'OWNER' ||
+                                            currentUser?.role === 'AGENT' ||
+                                            !applications.some(app => app.managerId === property.owner?.id && app.status === 'accepted')
+                                        }
+                                        variant="outline"
+                                        className="w-full cursor-pointer"
+                                        onClick={async () => {
+                                            if (!property.owner?.id) return;
+                                            const { initiateChat } = useChatStore.getState();
+                                            await initiateChat(property.owner.id);
+                                            router.push(`/chat?partnerId=${property.owner.id}`);
+                                        }}
+                                    >
                                         <MessageSquare className="h-4 w-4 mr-2" />
                                         Contact {property.owner?.role || 'Owner'}
                                     </Button>

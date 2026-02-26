@@ -14,17 +14,18 @@ export const API_ROUTES = {
     NEWSLETTER: `${API_BASE_URL}/api/newsletter`,
     PAYMENT: `${API_BASE_URL}/api/payment`,
     BLOGS: `${API_BASE_URL}/api/blogs`,
-    MESSAGES: `${API_BASE_URL}/api/messages`,
     NOTIFICATIONS: `${API_BASE_URL}/api/notifications`,
     APPLICATIONS: `${API_BASE_URL}/api/applications`,
     SHIFTS: `${API_BASE_URL}/api/shifts`,
+    LEASES: `${API_BASE_URL}/api/leases`,
     PROPERTIES: `${API_BASE_URL}/api/properties`,
     FAVORITES: `${API_BASE_URL}/api/favorites`,
-    LEASES: `${API_BASE_URL}/api/leases`,
     MAINTENANCE: `${API_BASE_URL}/api/maintenance`,
     REVIEWS: `${API_BASE_URL}/api/reviews`,
     DOCUMENTS: `${API_BASE_URL}/api/documents`,
-    TRANSACTIONS: `${API_BASE_URL}/api/transactions`
+    TRANSACTIONS: `${API_BASE_URL}/api/transactions`,
+    CHATS: `${API_BASE_URL}/api/chats`,
+    UPLOAD: `${API_BASE_URL}/api/upload`
 };
 
 export const createApi = (baseURL: string = API_BASE_URL || '') => {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Filter, Grid, List, Search, Home, Car, ChevronDown, MapPin } from "lucide-react";
+import { Filter, Grid, List, Home, ChevronDown, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useGlobalStore } from "@/store/useGlobalStore";
@@ -14,28 +14,12 @@ const FiltersBar = () => {
         filters,
         isFiltersFullOpen,
         viewMode,
-        searchType,
         toggleFiltersFullOpen,
         setViewMode,
         setFilters,
-        setSearchType
     } = useGlobalStore();
 
-    // Local state for the popover inputs
-    const [localRegion, setLocalRegion] = useState(filters.region || "");
-    const [localCity, setLocalCity] = useState(filters.city || "");
-    const [localSubCity, setLocalSubCity] = useState(filters.subCity || "");
     const [isOpen, setIsOpen] = useState(false);
-
-    const handleSaveFilters = () => {
-        setFilters({
-            region: localRegion,
-            city: localCity,
-            subCity: localSubCity,
-            location: [localRegion, localCity, localSubCity].filter(Boolean).join(", ")
-        });
-        setIsOpen(false);
-    };
 
     const displayLocation = [filters.region, filters.city].filter(Boolean).join(", ") || "Location";
 
@@ -48,33 +32,11 @@ const FiltersBar = () => {
 
     return (
         <div className="flex flex-col lg:flex-row items-center w-full py-4 gap-4">
-            {/* Left Section: Type Toggle & Search */}
+            {/* Left Section: Search Label & Filters Toggle */}
             <div className="flex items-center gap-2 w-full lg:w-auto">
-                <div className="flex bg-muted p-1 rounded-full border shadow-sm shrink-0">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                            "px-4 h-8 rounded-full transition-all",
-                            searchType === "property" ? "bg-background text-primary shadow-sm font-semibold" : "text-muted-foreground"
-                        )}
-                        onClick={() => setSearchType("property")}
-                    >
-                        <Home className="w-4 h-4 mr-2" />
-                        Home
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                            "px-4 h-8 rounded-full transition-all",
-                            searchType === "vehicle" ? "bg-background text-primary shadow-sm font-semibold" : "text-muted-foreground"
-                        )}
-                        onClick={() => setSearchType("vehicle")}
-                    >
-                        <Car className="w-4 h-4 mr-2" />
-                        Car
-                    </Button>
+                <div className="flex items-center px-4 h-9 bg-muted/50 rounded-full border border-border/50 shadow-sm shrink-0">
+                    <Home className="w-4 h-4 mr-2 text-primary" />
+                    <span className="text-sm font-semibold text-foreground">Home Search</span>
                 </div>
 
                 <Button
@@ -90,7 +52,6 @@ const FiltersBar = () => {
                     <Filter className="w-4 h-4" />
                     Filters
                 </Button>
-
             </div>
 
             {/* Separator - Desktop */}
@@ -121,8 +82,8 @@ const FiltersBar = () => {
                                 <Label className="text-sm font-semibold text-foreground ml-1">Region</Label>
                                 <Input
                                     placeholder="Select Region"
-                                    value={localRegion}
-                                    onChange={(e) => setLocalRegion(e.target.value)}
+                                    value={filters.region}
+                                    onChange={(e) => setFilters({ region: e.target.value })}
                                     className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
                                 />
                             </div>
@@ -130,8 +91,8 @@ const FiltersBar = () => {
                                 <Label className="text-sm font-semibold text-foreground ml-1">City</Label>
                                 <Input
                                     placeholder="Select City"
-                                    value={localCity}
-                                    onChange={(e) => setLocalCity(e.target.value)}
+                                    value={filters.city}
+                                    onChange={(e) => setFilters({ city: e.target.value })}
                                     className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
                                 />
                             </div>
@@ -139,23 +100,18 @@ const FiltersBar = () => {
                                 <Label className="text-sm font-semibold text-foreground ml-1">Sub City</Label>
                                 <Input
                                     placeholder="Select Sub city ..."
-                                    value={localSubCity}
-                                    onChange={(e) => setLocalSubCity(e.target.value)}
+                                    value={filters.subCity}
+                                    onChange={(e) => setFilters({ subCity: e.target.value })}
                                     className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
                                 />
                             </div>
-                            <Button
-                                onClick={handleSaveFilters}
-                                className="w-full h-12 mt-2 bg-primary hover:opacity-90 text-primary-foreground font-bold rounded-xl transition-all shadow-lg shadow-primary/20 active:scale-[0.98]"
-                            >
-                                Save Filter
-                            </Button>
                         </div>
                     </PopoverContent>
                 </Popover>
 
                 <Select
                     value={filters.listingType || "any"}
+                    onValueChange={(v) => setFilters({ listingType: v })}
                 >
                     <SelectTrigger className={cn(
                         "w-fit min-w-[110px] h-10 rounded-full border px-4 shadow-sm",
@@ -163,32 +119,37 @@ const FiltersBar = () => {
                     )}>
                         <SelectValue placeholder="All" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-2xl">
                         <SelectItem value="any">All</SelectItem>
-                        <SelectItem value="For rent">For Rent</SelectItem>
-                        <SelectItem value="For Sale">For Sale</SelectItem>
+                        <SelectItem value="rent">For Rent</SelectItem>
+                        <SelectItem value="buy">For Sale</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
 
-            {/* View Mode Section */}
-            <div className="flex lg:flex bg-card p-1 rounded-xl border shadow-sm shrink-0">
+            {/* View Mode & Sort Section */}
+            <div className="flex items-center gap-2 shrink-0">
                 <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn("px-3 h-8 rounded-lg", viewMode === "list" ? "bg-muted font-medium" : "text-muted-foreground")}
-                    onClick={() => setViewMode("list")}
+                    variant="outline"
+                    className="rounded-full h-10 px-4 border shadow-sm transition-all flex items-center gap-2 font-medium bg-background border-border hover:bg-muted/50"
+                    onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
                 >
-                    <List className="w-4 h-4" />
+                    {viewMode === 'grid' ? <List className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
+                    <span className="hidden sm:inline">{viewMode === 'grid' ? 'List' : 'Grid'}</span>
                 </Button>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className={cn("px-3 h-8 rounded-lg", viewMode === "grid" ? "bg-muted font-medium" : "text-muted-foreground")}
-                    onClick={() => setViewMode("grid")}
-                >
-                    <Grid className="w-4 h-4" />
-                </Button>
+
+                <div className="h-6 w-px bg-border hidden sm:block mx-1 shrink-0"></div>
+
+                <Select value={filters.sort} onValueChange={(v) => setFilters({ sort: v })}>
+                    <SelectTrigger className="w-[140px] md:w-[160px] h-10 rounded-full border shadow-sm bg-background border-border hover:bg-muted/50 font-medium">
+                        <SelectValue placeholder="Sort By" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl">
+                        <SelectItem value="newest">Newest First</SelectItem>
+                        <SelectItem value="price-low">Price: Low to High</SelectItem>
+                        <SelectItem value="price-high">Price: High to Low</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
         </div>
     );

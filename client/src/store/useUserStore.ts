@@ -10,11 +10,13 @@ interface UserState {
     isLoading: boolean;
     error: string | null;
     fetchUsers: () => Promise<void>;
+    fetchUserById: (id: string) => Promise<User>;
     login: (email: string, password: string) => Promise<void>;
     register: (userData: any) => Promise<void>;
     logout: () => void;
     getMe: () => Promise<void>;
     updateUser: (userData: any) => Promise<void>;
+    verifyUser: (id: string, verified: boolean) => Promise<void>;
 }
 
 export const useUserStore = create<UserState>((set) => ({
@@ -49,8 +51,25 @@ export const useUserStore = create<UserState>((set) => ({
             set({ error: 'Failed to fetch users', isLoading: false });
         }
     },
-  
-   
+    fetchUserById: async (id: string) => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await api.get(`${API_ROUTES.USER}/${id}`);
+            const user = response.data;
+            set((state) => ({
+                users: state.users.some(u => u.id === id)
+                    ? state.users.map(u => u.id === id ? user : u)
+                    : [user, ...state.users],
+                isLoading: false
+            }));
+            return user;
+        } catch (error: any) {
+            set({ error: error.message || 'Failed to fetch user', isLoading: false });
+            throw error;
+        }
+    },
+
+
 
     login: async (email, password) => {
         set({ isLoading: true, error: null });
@@ -118,6 +137,20 @@ export const useUserStore = create<UserState>((set) => ({
             set({ currentUser: response.data, isLoading: false });
         } catch (error: any) {
             const message = error.response?.data?.error || 'Update failed';
+            set({ error: message, isLoading: false });
+            throw new Error(message);
+        }
+    },
+    verifyUser: async (id: string, verified: boolean) => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await api.patch(`${API_ROUTES.USER}/${id}/verify`, { verified });
+            set((state) => ({
+                users: state.users.map(u => u.id === id ? response.data : u),
+                isLoading: false
+            }));
+        } catch (error: any) {
+            const message = error.response?.data?.error || 'Verification failed';
             set({ error: message, isLoading: false });
             throw new Error(message);
         }

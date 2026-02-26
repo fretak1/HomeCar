@@ -12,7 +12,8 @@ const storage = new CloudinaryStorage({
 
         return {
             folder: folder,
-            allowed_formats: ['jpg', 'png', 'jpeg', 'pdf', 'webp', 'gif'],
+            allowed_formats: ['jpg', 'png', 'jpeg', 'avif', 'pdf', 'webp', 'gif'],
+            resource_type: 'auto',
             public_id: `${file.fieldname}_${Date.now()}`,
         };
     },

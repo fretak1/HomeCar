@@ -18,12 +18,17 @@ const Card = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, itemLink
     if (!item) return null;
     const isProperty = type === 'property';
 
+    const mainImage = item.images?.find((img: any) => img.isMain)?.url || item.images?.[0]?.url || item.image || '/placeholder-property.jpg';
+    const locationString = typeof item.location === 'string'
+        ? item.location
+        : [item.location?.subcity, item.location?.city].filter(Boolean).join(', ') || 'Addis Ababa';
+
     return (
         <div className="group relative bg-card rounded-2xl border border-border overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary/20 flex flex-col h-full">
             {/* Image Container */}
             <div className="relative aspect-[4/3] overflow-hidden">
                 <img
-                    src={item.image}
+                    src={mainImage}
                     alt={item.title}
                     className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
                 />
@@ -32,7 +37,7 @@ const Card = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, itemLink
                 {/* Badges */}
                 <div className="absolute top-3 left-3 flex gap-2">
                     <Badge variant="outline" className="bg-black/50 text-white border-none backdrop-blur-sm">
-                        {item.status}
+                        {item.status || 'Available'}
                     </Badge>
                 </div>
 
@@ -60,7 +65,7 @@ const Card = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, itemLink
                             <Link href={itemLink}>{item.title}</Link>
                         </h3>
                         <p className="text-muted-foreground text-sm flex items-center gap-1 mt-1">
-                            {item.location}
+                            {locationString}
                         </p>
                     </div>
                     <div className="text-right shrink-0">

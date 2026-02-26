@@ -2,7 +2,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { AddPropertyForm } from '@/components/forms/AddPropertyForm';
-import { toast } from 'sonner';
 import { usePropertyStore, Property } from '@/store/usePropertyStore';
 import { Loader2 } from 'lucide-react';
 
@@ -10,7 +9,7 @@ export default function AddPropertyPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const id = searchParams.get('id');
-    const { fetchPropertyById, isLoading } = usePropertyStore();
+    const { fetchPropertyById } = usePropertyStore();
     const [initialData, setInitialData] = useState<Property | null>(null);
     const [isFetching, setIsFetching] = useState(!!id);
 
@@ -53,7 +52,6 @@ export default function AddPropertyPage() {
                             initialData={initialData}
                             onCancel={() => router.push('/dashboard/owner')}
                             onSuccess={() => {
-                                toast.success(initialData ? 'Listing updated successfully!' : 'Listing created successfully! Our team will verify it shortly.');
                                 router.push('/dashboard/owner');
                             }}
                         />

@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from "react";
 import { cn, formatEnumString } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { X, Fuel, Settings2 } from "lucide-react";
-import { AmenityIcons, PropertyTypeIcons, VehicleTypeIcons } from "@/lib/constants";
+import { AmenityIcons, PropertyTypeIcons } from "@/lib/constants";
 import { Slider } from "@/components/ui/slider";
 import {
     Select,
@@ -14,15 +13,14 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useGlobalStore } from "@/store/useGlobalStore";
+import { useGlobalStore, Filters } from "@/store/useGlobalStore";
 
 const FiltersFull = () => {
-    const { filters, searchType, toggleFiltersFullOpen } = useGlobalStore();
-    const [localFilters, setLocalFilters] = useState(filters);
+    const { filters, setFilters, searchType, toggleFiltersFullOpen } = useGlobalStore();
 
-    // Sync with global filters when they change
-
-
+    const updateFilter = (newFilters: Partial<Filters>) => {
+        setFilters(newFilters);
+    };
 
     return (
         <div className="bg-card h-full overflow-y-auto px-4 pt-4 pb-20 custom-scrollbar border-r border-border shadow-sm">
@@ -38,7 +36,7 @@ const FiltersFull = () => {
 
             <div className="flex flex-col space-y-8 pr-2">
 
-                {/* Search Type Specific Headers */}
+                {/* Content Header */}
                 <div className="flex items-center justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
                         <div className="w-1 h-4 bg-primary rounded-full"></div>
@@ -46,10 +44,9 @@ const FiltersFull = () => {
                             {searchType === 'property' ? 'Property' : 'Vehicle'} Details
                         </Label>
                     </div>
-
                 </div>
 
-                {/* Price Range - Shared */}
+                {/* Price Range */}
                 <div className="space-y-4">
                     <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-wider">
                         <span>Price Range</span>
@@ -60,22 +57,21 @@ const FiltersFull = () => {
                         max={searchType === 'property' ? 50000 : 5000000}
                         step={searchType === 'property' ? 500 : 50000}
                         value={[
-                            localFilters.priceRange[0] ?? 0,
-                            localFilters.priceRange[1] ?? (searchType === 'property' ? 50000 : 5000000),
+                            filters.priceRange[0] ?? 0,
+                            filters.priceRange[1] ?? (searchType === 'property' ? 50000 : 5000000),
                         ]}
                         onValueChange={(value: any) =>
-                            setLocalFilters((prev) => ({
-                                ...prev,
-                                priceRange: value as [number, number],
-                            }))
+                            updateFilter({
+                                priceRange: value as [number | null, number | null],
+                            })
                         }
                     />
                     <div className="grid grid-cols-2 gap-3 mt-4">
                         <Select
-                            value={localFilters.priceRange[0]?.toString() || "any"}
+                            value={filters.priceRange[0]?.toString() || "any"}
                             onValueChange={(v) => {
                                 const min = v === "any" ? null : Number(v);
-                                setLocalFilters(p => ({ ...p, priceRange: [min, p.priceRange[1]] }));
+                                updateFilter({ priceRange: [min, filters.priceRange[1]] });
                             }}
                         >
                             <SelectTrigger className="rounded-xl h-10">
@@ -90,10 +86,10 @@ const FiltersFull = () => {
                         </Select>
 
                         <Select
-                            value={localFilters.priceRange[1]?.toString() || "any"}
+                            value={filters.priceRange[1]?.toString() || "any"}
                             onValueChange={(v) => {
                                 const max = v === "any" ? null : Number(v);
-                                setLocalFilters(p => ({ ...p, priceRange: [p.priceRange[0], max] }));
+                                updateFilter({ priceRange: [filters.priceRange[0], max] });
                             }}
                         >
                             <SelectTrigger className="rounded-xl h-10">
@@ -111,13 +107,13 @@ const FiltersFull = () => {
 
                 {searchType === 'property' ? (
                     <>
-                        {/* Type Grid */}
+                        {/* Property Type Grid */}
                         <div className="grid grid-cols-2 gap-3">
                             {Object.entries(PropertyTypeIcons).map(([type, Icon]) => (
                                 <FilterButton
                                     key={type}
-                                    active={localFilters.propertyType === type}
-                                    onClick={() => setLocalFilters(p => ({ ...p, propertyType: type }))}
+                                    active={filters.propertyType === type}
+                                    onClick={() => updateFilter({ propertyType: type })}
                                 >
                                     <Icon className="w-4 h-4 mb-1" />
                                     <span>{type}</span>
@@ -127,14 +123,14 @@ const FiltersFull = () => {
 
                         {/* Beds & Baths Selects */}
                         <div className="grid grid-cols-2 gap-3">
-                            <Select value={localFilters.beds} onValueChange={v => setLocalFilters(p => ({ ...p, beds: v }))}>
+                            <Select value={filters.beds} onValueChange={v => updateFilter({ beds: v })}>
                                 <SelectTrigger className="rounded-xl h-10"><SelectValue placeholder="Beds" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="any">Any Beds</SelectItem>
                                     {['1', '2', '3', '4+'].map(v => <SelectItem key={v} value={v}>{v}+ Bed</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Select value={localFilters.baths} onValueChange={v => setLocalFilters(p => ({ ...p, baths: v }))}>
+                            <Select value={filters.baths} onValueChange={v => updateFilter({ baths: v })}>
                                 <SelectTrigger className="rounded-xl h-10"><SelectValue placeholder="Baths" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="any">Any Baths</SelectItem>
@@ -143,31 +139,41 @@ const FiltersFull = () => {
                             </Select>
                         </div>
 
+                        {/* Amenities */}
                         <div className="space-y-4">
                             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Amenities & Features</Label>
                             <div className="flex flex-wrap gap-2">
-                                {Object.entries(AmenityIcons).map(([amenity, Icon]) => (
-                                    <button
-                                        key={amenity}
-                                        className={cn(
-                                            "flex items-center gap-2 px-3 py-2 rounded-full border text-xs font-medium transition-all",
-                                            localFilters.amenities.includes(amenity)
-                                                ? "bg-primary border-primary text-primary-foreground shadow-sm"
-                                                : "bg-background border-border text-foreground hover:border-primary/50"
-                                        )}
-                                    >
-                                        <Icon className="w-3 h-3" />
-                                        {formatEnumString(amenity)}
-                                    </button>
-                                ))}
+                                {Object.entries(AmenityIcons)
+                                    .filter(([amenity]) => ['wifi', 'parking', 'pool', 'ac', 'kitchen', 'furnished', 'heating'].includes(amenity))
+                                    .map(([amenity, Icon]) => (
+                                        <button
+                                            key={amenity}
+                                            className={cn(
+                                                "flex items-center gap-2 px-3 py-2 rounded-full border text-xs font-medium transition-all",
+                                                filters.amenities.includes(amenity)
+                                                    ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                                                    : "bg-background border-border text-foreground hover:border-primary/50"
+                                            )}
+                                            onClick={() => {
+                                                const current = filters.amenities;
+                                                const updated = current.includes(amenity)
+                                                    ? current.filter(a => a !== amenity)
+                                                    : [...current, amenity];
+                                                updateFilter({ amenities: updated });
+                                            }}
+                                        >
+                                            <Icon className="w-3 h-3" />
+                                            {formatEnumString(amenity)}
+                                        </button>
+                                    ))}
                             </div>
                         </div>
-
                     </>
                 ) : (
                     <>
+                        {/* Car Specific Filters */}
                         <div className="space-y-4">
-                            <Select value={localFilters.fuelTech} onValueChange={v => setLocalFilters(p => ({ ...p, fuelTech: v }))}>
+                            <Select value={filters.fuelTech} onValueChange={v => updateFilter({ fuelTech: v })}>
                                 <SelectTrigger className="rounded-xl h-12">
                                     <div className="flex items-center gap-3">
                                         <Fuel className="w-4 h-4 text-muted-foreground" />
@@ -176,14 +182,14 @@ const FiltersFull = () => {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="any">Any Technology</SelectItem>
-                                    <SelectItem value="Gasoline">Gasoline</SelectItem>
+                                    <SelectItem value="Petrol">Petrol</SelectItem>
                                     <SelectItem value="Diesel">Diesel</SelectItem>
                                     <SelectItem value="Electric">Electric</SelectItem>
                                     <SelectItem value="Hybrid">Hybrid</SelectItem>
                                 </SelectContent>
                             </Select>
 
-                            <Select value={localFilters.transmission} onValueChange={v => setLocalFilters(p => ({ ...p, transmission: v }))}>
+                            <Select value={filters.transmission} onValueChange={v => updateFilter({ transmission: v })}>
                                 <SelectTrigger className="rounded-xl h-12">
                                     <div className="flex items-center gap-3">
                                         <Settings2 className="w-4 h-4 text-muted-foreground" />
@@ -197,7 +203,7 @@ const FiltersFull = () => {
                                 </SelectContent>
                             </Select>
 
-                            <Select value={localFilters.brand || 'any'} onValueChange={v => setLocalFilters(p => ({ ...p, brand: v }))}>
+                            <Select value={filters.brand || 'any'} onValueChange={v => updateFilter({ brand: v })}>
                                 <SelectTrigger className="rounded-xl h-12">
                                     <div className="flex items-center gap-3">
                                         <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center text-[8px] font-bold">B</div>
@@ -219,12 +225,12 @@ const FiltersFull = () => {
                                 min={1990}
                                 max={2025}
                                 step={1}
-                                value={[localFilters.year[0] || 1990, localFilters.year[1] || 2025]}
-                                onValueChange={(v) => setLocalFilters(p => ({ ...p, year: [v[0], v[1]] }))}
+                                value={[filters.year[0] || 1990, filters.year[1] || 2025]}
+                                onValueChange={(v) => updateFilter({ year: [v[0], v[1]] })}
                             />
                             <div className="flex justify-between text-xs font-medium">
-                                <span>{localFilters.year[0] || 1990}</span>
-                                <span>{localFilters.year[1] || 2025}</span>
+                                <span>{filters.year[0] || 1990}</span>
+                                <span>{filters.year[1] || 2025}</span>
                             </div>
                         </div>
 
@@ -233,49 +239,70 @@ const FiltersFull = () => {
                             <Slider
                                 max={200000}
                                 step={5000}
-                                value={[localFilters.mileage || 200000]}
-                                onValueChange={([v]) => setLocalFilters(p => ({ ...p, mileage: v }))}
+                                value={[filters.mileage || 200000]}
+                                onValueChange={([v]) => updateFilter({ mileage: v })}
                             />
-                            <div className="text-right text-xs font-medium">{localFilters.mileage?.toLocaleString() || '200,000+'} km</div>
+                            <div className="text-right text-xs font-medium">{filters.mileage ? filters.mileage.toLocaleString() : '200,000+'} km</div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vehicle Features</Label>
+                            <div className="flex flex-wrap gap-2">
+                                {Object.entries(AmenityIcons)
+                                    .filter(([amenity]) => ['bluetooth', 'ac', 'camera', 'leather', 'gps', 'sunroof', 'keyless'].includes(amenity))
+                                    .map(([amenity, Icon]) => (
+                                        <button
+                                            key={amenity}
+                                            className={cn(
+                                                "flex items-center gap-2 px-3 py-2 rounded-full border text-xs font-medium transition-all",
+                                                filters.amenities.includes(amenity)
+                                                    ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                                                    : "bg-background border-border text-foreground hover:border-primary/50"
+                                            )}
+                                            onClick={() => {
+                                                const current = filters.amenities;
+                                                const updated = current.includes(amenity)
+                                                    ? current.filter(a => a !== amenity)
+                                                    : [...current, amenity];
+                                                updateFilter({ amenities: updated });
+                                            }}
+                                        >
+                                            <Icon className="w-3 h-3" />
+                                            {formatEnumString(amenity)}
+                                        </button>
+                                    ))}
+                            </div>
                         </div>
                     </>
                 )}
 
-                {/* Amenities - Shared with dynamic list? No, probably fixed for demo */}
-
                 {/* Actions */}
-                <div className="sticky bottom-0 bg-card pt-4 pb-0 grid grid-cols-2 gap-3 border-t border-border mt-auto">
+                <div className="sticky bottom-0 bg-card pt-4 pb-0 flex flex-col gap-3 border-t border-border mt-auto">
                     <Button
                         variant="outline"
-                        className="rounded-xl h-12"
+                        className="rounded-xl h-12 w-full"
                         onClick={() => {
-                            const resetState = {
-                                ...filters,
+                            updateFilter({
                                 beds: 'any',
                                 baths: 'any',
                                 propertyType: 'any',
                                 vehicleType: 'any',
                                 brand: 'any',
-                                year: [2010, 2025],
+                                year: [1990, 2025],
                                 fuelTech: 'any',
                                 transmission: 'any',
                                 priceRange: [null, null],
                                 mileage: null,
-                                amenities: []
-                            };
-                            setLocalFilters(resetState);
+                                amenities: [],
+                                region: '',
+                                city: '',
+                                subCity: '',
+                                location: '',
+                                listingType: 'any'
+                            });
                         }}
                     >
-                        Reset
-                    </Button>
-                    <Button
-                        className="rounded-xl h-12 bg-primary flex items-center gap-2"
-                        onClick={() => {
-                            useGlobalStore.getState().setFilters(localFilters);
-                            toggleFiltersFullOpen();
-                        }}
-                    >
-                        Apply
+                        Reset Filters
                     </Button>
                 </div>
             </div>

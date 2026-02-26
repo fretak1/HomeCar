@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import * as TabsPrimitive from "@radix-ui/react-tabs";
-import { cn, formatLocation, getListingMainImage, getImageUrl } from "@/lib/utils";
-import { useSearchParams } from 'next/navigation';
+import { useRef, useState, useEffect } from 'react';
+import { createApi, API_ROUTES } from '@/lib/api';
+const api = createApi();
+import { cn, formatLocation, getListingMainImage } from "@/lib/utils";
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
     FileText,
     DollarSign,
@@ -13,16 +14,16 @@ import {
     AlertCircle,
     Clock,
     ClipboardList,
-    ChevronDown,
     ChevronUp,
+    ChevronDown,
     Heart,
     MessageSquare,
     Search,
     Plus,
     Eye,
     Camera,
-    ImagePlus,
     Loader2,
+    X
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,17 +36,11 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
+    DialogTrigger
 } from "@/components/ui/dialog";
 import DashboardTabs from '@/components/DashboardTabs';
 import {
-    mockApplications,
-    mockLeases,
     mockTransactions,
-    mockMaintenanceRequests,
-    mockFavorites,
-    mockProperties,
-    MaintenanceCategory
 } from '@/data/mockData';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useUserStore } from '@/store/useUserStore';
@@ -61,18 +56,28 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { usePropertyStore } from '@/store/usePropertyStore';
-import { useTransactionStore } from '@/store/useTransactionStore';
+import { toast } from 'sonner';
+
+import { useApplicationStore } from '@/store/useApplicationStore';
+import { useMaintenanceStore, MaintenanceCategory } from '@/store/useMaintenanceStore';
+import { useChatStore } from '@/store/useChatStore';
+import { useFavoriteStore } from '@/store/useFavoriteStore';
+import { useLeaseStore } from '@/store/useLeaseStore';
+import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth } from 'date-fns';
+
 
 export default function CustomerDashboardPage() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState('applications');
     const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [isUploading, setIsUploading] = useState(false);
     const [newRequest, setNewRequest] = useState({
         propertyId: '',
         category: '' as MaintenanceCategory | '',
         description: '',
-        image: null as string | null,
+        images: [] as string[],
     });
     const [transactionSearch, setTransactionSearch] = useState('');
     const [transactionStatus, setTransactionStatus] = useState('all');
@@ -80,34 +85,30 @@ export default function CustomerDashboardPage() {
 
     const { currentUser: currentCustomer } = useUserStore();
     const { properties, fetchProperties } = usePropertyStore();
+    const { initiateChat } = useChatStore();
+    const { applications: rawApplications, fetchApplications, isLoading: isAppLoading } = useApplicationStore();
+    const applications = rawApplications || [];
+    const { favorites: rawFavorites } = useFavoriteStore();
+    const favorites = rawFavorites || [];
+    const { leases: rawLeases, fetchLeases, acceptLease, isLoading: isLeaseLoading } = useLeaseStore();
+    const leases = rawLeases || [];
+    const { requests: rawRequests, updateRequestStatus, fetchRequests, addRequest, isLoading: isMaintenanceLoading } = useMaintenanceStore();
+    const maintenanceRequests = rawRequests || [];
 
-    // Using mock data as requested for "others"
-    const applications = mockApplications;
-    const maintenanceRequests = mockMaintenanceRequests;
-    const leases = mockLeases;
-    const transactions = mockTransactions;
-
-    // Join mock favorites with mock properties for rendering
-    const favorites = mockFavorites.map(f => ({
-        ...f,
-        property: mockProperties.find(p => p.id === f.itemId) || mockProperties[0]
-    }));
-
-    const isCustomerLoading = false;
-    const isAppLoading = false;
-    const isMaintenanceLoading = false;
-    const isLeaseLoading = false;
-    const isTransactionLoading = false;
 
     useEffect(() => {
-        if (currentCustomer) {
-            fetchProperties(); // For property selection in dialogs
+        if (currentCustomer?.id) {
+            fetchApplications({ customerId: currentCustomer.id });
+            fetchProperties();
+            fetchLeases(currentCustomer.id);
+            fetchRequests(currentCustomer.id);
         }
-    }, [fetchProperties, currentCustomer]);
+    }, [currentCustomer, fetchApplications, fetchProperties, fetchLeases, fetchRequests]);
 
-    const handleRemoveFavorite = (id: string) => {
-        console.log('Remove favorite', id);
-    };
+    // Using mock data as requested for "others"
+    const transactions = mockTransactions || [];
+
+    const isTransactionLoading = false;
 
     useEffect(() => {
         const tab = searchParams.get('tab');
@@ -116,12 +117,86 @@ export default function CustomerDashboardPage() {
         }
     }, [searchParams]);
 
+    // Re-fetch applications whenever the tab is switched to 'applications' or 'maintenance'
+    useEffect(() => {
+        if (activeTab === 'applications' && currentCustomer?.id) {
+            fetchApplications({ customerId: currentCustomer.id });
+        } else if (activeTab === 'maintenance' && currentCustomer?.id) {
+            fetchRequests(currentCustomer.id);
+        }
+    }, [activeTab, currentCustomer?.id, fetchApplications, fetchRequests]);
+
     const [expandedSchedules, setExpandedSchedules] = useState<string[]>([]);
 
     const toggleSchedule = (id: string) => {
         setExpandedSchedules(prev =>
             prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
         );
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        // Check if we already have 4 images
+        if (newRequest.images.length + files.length > 4) {
+            toast.error('You can only upload up to 4 images.');
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const uploadPromises = Array.from(files).map(async (file) => {
+                const formData = new FormData();
+                formData.append('file', file);
+                const response = await api.post(`${API_ROUTES.UPLOAD}/single`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                return response.data.url;
+            });
+
+            const uploadedUrls = await Promise.all(uploadPromises);
+            setNewRequest(prev => ({
+                ...prev,
+                images: [...prev.images, ...uploadedUrls]
+            }));
+            toast.success('Images uploaded successfully');
+        } catch (error) {
+            console.error('Upload failed:', error);
+            toast.error('Failed to upload images');
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
+    const handleCreateMaintenanceRequest = async () => {
+        if (!newRequest.propertyId || !newRequest.category || !newRequest.description) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
+        try {
+            const selectedProperty = properties.find(p => p.id === newRequest.propertyId);
+            await addRequest({
+                propertyId: newRequest.propertyId,
+                propertyTitle: selectedProperty?.title || 'Unknown Property',
+                category: newRequest.category,
+                description: newRequest.description,
+                images: newRequest.images,
+            });
+            setIsNewRequestOpen(false);
+            setNewRequest({
+                propertyId: '',
+                category: '' as MaintenanceCategory | '',
+                description: '',
+                images: [],
+            });
+            // Optionally refetch maintenance requests
+        } catch (error) {
+            console.error('Failed to create maintenance request:', error);
+            alert('Failed to create maintenance request.');
+        }
     };
 
     return (
@@ -301,7 +376,7 @@ export default function CustomerDashboardPage() {
                                                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                                                                 <div className="bg-muted/30 p-2.5 rounded-lg border border-border/50">
                                                                     <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight mb-1">Rent/Price</p>
-                                                                    <p className="text-sm font-bold text-foreground">ETB {app.price.toLocaleString()}{app.listingType === 'rent' ? '/mo' : ''}</p>
+                                                                    <p className="text-sm font-bold text-foreground">ETB {app.price != null ? app.price.toLocaleString() : 'N/A'}{app.listingType === 'rent' ? '/mo' : ''}</p>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -310,12 +385,17 @@ export default function CustomerDashboardPage() {
                                                     {/* Absolute positioned Start Chat button - Bottom Right */}
                                                     {app.status === 'accepted' && (
                                                         <div className="absolute bottom-4 right-4">
-                                                            <Link href={`/chat?applicationId=${app.id}`}>
-                                                                <Button size="sm" className="bg-[#005a41] hover:bg-[#004a35] text-white shadow-lg shadow-[#005a41]/20 font-bold text-xs h-9 px-5 rounded-lg transition-all hover:scale-105 active:scale-95">
-                                                                    <MessageSquare className="h-3.5 w-3.5 mr-2" />
-                                                                    Start Chat
-                                                                </Button>
-                                                            </Link>
+                                                            <Button
+                                                                size="sm"
+                                                                className="bg-[#005a41] hover:bg-[#004a35] text-white shadow-lg shadow-[#005a41]/20 font-bold text-xs h-9 px-5 rounded-lg transition-all hover:scale-105 active:scale-95"
+                                                                onClick={async () => {
+                                                                    await initiateChat(app.managerId);
+                                                                    router.push(`/chat?partnerId=${app.managerId}`);
+                                                                }}
+                                                            >
+                                                                <MessageSquare className="h-3.5 w-3.5 mr-2" />
+                                                                Start Chat
+                                                            </Button>
                                                         </div>
                                                     )}
                                                 </div>
@@ -347,12 +427,19 @@ export default function CustomerDashboardPage() {
                                             Loading leases...
                                         </div>
                                     ) : leases.length > 0 ? (
-                                        leases.map((lease) => {
-                                            const property = mockProperties.find(p => p.id === lease.propertyId);
+                                        leases.map((lease: any) => {
+                                            const property = lease.property || properties.find((p: any) => p.id === lease.propertyId);
                                             if (!property) return null;
 
+                                            const leaseStartDate = new Date(lease.startDate);
+                                            const leaseEndDate = new Date(lease.endDate);
+                                            const totalLeaseMonths = differenceInMonths(leaseEndDate, leaseStartDate);
+                                            const currentMonthIndex = differenceInMonths(new Date(), leaseStartDate);
+                                            const leaseProgressValue = Math.min(100, (currentMonthIndex / totalLeaseMonths) * 100);
+
+
                                             return (
-                                                <Card key={lease.leaseId} className="border-border">
+                                                <Card key={lease.id} className="border-border">
                                                     <CardContent className="p-6">
                                                         <div className="flex items-start justify-between">
                                                             <div className="flex space-x-4">
@@ -364,7 +451,7 @@ export default function CustomerDashboardPage() {
                                                                 <div>
                                                                     <h3 className="mb-1 text-foreground">{property.title}</h3>
                                                                     <p className="text-sm text-muted-foreground mb-2">
-                                                                        {formatLocation(property.location)}
+                                                                        {formatLocation(property as any)}
                                                                     </p>
                                                                     <div className="flex items-center space-x-4 text-sm">
                                                                         <div className="flex items-center text-muted-foreground">
@@ -373,8 +460,8 @@ export default function CustomerDashboardPage() {
                                                                         </div>
                                                                         <Badge className={cn(
                                                                             "border-none",
-                                                                            lease.status === 'Active' ? "bg-green-100 text-green-700" :
-                                                                                lease.status === 'Pending' ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"
+                                                                            lease.status === 'ACTIVE' ? "bg-green-100 text-green-700" :
+                                                                                lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"
                                                                         )}>
                                                                             {lease.status}
                                                                         </Badge>
@@ -383,19 +470,27 @@ export default function CustomerDashboardPage() {
                                                             </div>
                                                             <div className="text-right">
                                                                 <p className="text-2xl text-primary">
-                                                                    ETB {property.price.toLocaleString()}
+                                                                    ETB {(lease.recurringAmount || lease.totalPrice || property.price).toLocaleString()}
                                                                 </p>
-                                                                <p className="text-sm text-muted-foreground">/month</p>
-                                                                <Link href={`/dashboard/customer/lease/${lease.leaseId}`}>
-                                                                    <Button variant="outline" size="sm" className="mt-2 text-primary border-primary hover:bg-primary hover:text-white transition-all duration-300 shadow-sm hover:shadow-md active:scale-95">
-                                                                        View Details
-                                                                    </Button>
-                                                                </Link>
+                                                                <p className="text-sm text-muted-foreground">{lease.recurringAmount ? '/month' : 'total'}</p>
+                                                                <div className="flex flex-wrap md:justify-end gap-2 mt-2">
+                                                                    <Link href={`/dashboard/customer/lease/${lease.id}`}>
+                                                                        <Button variant="outline" size="sm" className="text-primary border-primary hover:bg-primary hover:text-white transition-all duration-300 shadow-sm hover:shadow-md active:scale-95">
+                                                                            View Details
+                                                                        </Button>
+                                                                    </Link>
+                                                                    {lease.status === 'PENDING' && !lease.customerAccepted && (
+                                                                        <Button size="sm" onClick={() => acceptLease(lease.id, 'customer')} className="bg-[#005a41] hover:bg-[#004a35] text-white transition-all duration-300 shadow-sm hover:shadow-md active:scale-95">
+                                                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                                                            Accept Lease
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                         <div className="mt-6 pt-6 border-t border-border">
                                                             <button
-                                                                onClick={() => toggleSchedule(lease.leaseId)}
+                                                                onClick={() => toggleSchedule(lease.id)}
                                                                 className="flex justify-between items-center w-full mb-4 hover:bg-muted/50 p-2 rounded-lg transition-all group"
                                                             >
                                                                 <h4 className="text-sm font-semibold text-foreground flex items-center">
@@ -403,8 +498,8 @@ export default function CustomerDashboardPage() {
                                                                     Monthly Payment Schedule
                                                                 </h4>
                                                                 <div className="flex items-center space-x-2">
-                                                                    <Badge variant="outline" className="text-[10px] uppercase">{lease.paymentModel}</Badge>
-                                                                    {expandedSchedules.includes(lease.leaseId) ? (
+                                                                    <Badge variant="outline" className="text-[10px] uppercase">{(lease as any).paymentModel || 'MONTHLY'}</Badge>
+                                                                    {expandedSchedules.includes(lease.id) ? (
                                                                         <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                                                                     ) : (
                                                                         <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -412,94 +507,107 @@ export default function CustomerDashboardPage() {
                                                                 </div>
                                                             </button>
 
-                                                            {expandedSchedules.includes(lease.leaseId) && (
+                                                            {expandedSchedules.includes(lease.id) && (
                                                                 <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                                    {Array.from({ length: 12 }).map((_, i) => {
-                                                                        const isPaid = i < 2;
-                                                                        const isCurrent = i === 2; // March 2026 is current for demo
-                                                                        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                                                                    {(() => {
+                                                                        const startDate = new Date(lease.startDate);
+                                                                        const endDate = new Date(lease.endDate);
+                                                                        const totalMonths = Math.max(1, differenceInMonths(endDate, startDate));
+                                                                        const now = new Date();
 
-                                                                        // 30 days filling representation
-                                                                        const daysFilled = isPaid ? 30 : (isCurrent ? 12 : 0);
+                                                                        return Array.from({ length: totalMonths }).map((_, i) => {
+                                                                            const monthDate = addMonths(startDate, i);
+                                                                            const isMonthPast = isBefore(endOfMonth(monthDate), now);
+                                                                            const isCurrentMonth = isSameMonth(monthDate, now);
 
-                                                                        return (
-                                                                            <div
-                                                                                key={i}
-                                                                                className={`p-5 rounded-2xl border transition-all ${isPaid
-                                                                                    ? 'bg-green-50/20 border-green-100'
-                                                                                    : isCurrent
-                                                                                        ? 'bg-white border-primary shadow-lg ring-1 ring-primary/10'
-                                                                                        : 'bg-muted/5 border-border opacity-70'
-                                                                                    }`}
-                                                                            >
-                                                                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                                                                    {/* Month Info */}
-                                                                                    <div className="min-w-[140px]">
-                                                                                        <div className="flex items-center space-x-2 mb-1">
-                                                                                            <h5 className={`font-bold text-sm ${isCurrent ? 'text-primary' : 'text-foreground'}`}>
-                                                                                                {monthNames[i]} 2026
-                                                                                            </h5>
-                                                                                            {isCurrent && (
-                                                                                                <Badge className="bg-primary text-white text-[8px] h-4 px-1 border-none shadow-sm">ACTIVE</Badge>
-                                                                                            )}
-                                                                                        </div>
-                                                                                        <p className="text-2xl font-black text-foreground">
-                                                                                            ETB {property.price.toLocaleString()}
-                                                                                        </p>
-                                                                                    </div>
+                                                                            const daysInThisMonth = differenceInDays(endOfMonth(monthDate), startOfMonth(monthDate)) + 1;
+                                                                            const daysPassedThisMonth = isMonthPast ? daysInThisMonth : isCurrentMonth ? differenceInDays(now, startOfMonth(monthDate)) : 0;
+                                                                            const daysFilled = Math.min(daysInThisMonth, Math.max(0, daysPassedThisMonth));
 
-                                                                                    {/* 30 Days Horizontal Bar */}
-                                                                                    <div className="flex-1 space-y-2">
-                                                                                        <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
-                                                                                            <span>Monthly progress </span>
-                                                                                            <span className={isPaid ? 'text-green-600' : isCurrent ? 'text-primary' : ''}>
-                                                                                                {daysFilled}/30 Days
-                                                                                            </span>
-                                                                                        </div>
-                                                                                        <div className="flex gap-0.5 h-3">
-                                                                                            {Array.from({ length: 30 }).map((_, d) => (
-                                                                                                <div
-                                                                                                    key={d}
-                                                                                                    className={`h-full w-full rounded-[1px] transition-all duration-700 ${d < daysFilled
-                                                                                                        ? (isPaid ? 'bg-green-500 shadow-[0_0_2px_rgba(34,197,94,0.3)]' : 'bg-primary shadow-[0_0_3px_rgba(var(--primary),0.2)] animate-pulse')
-                                                                                                        : 'bg-muted-foreground/20'
-                                                                                                        }`}
-                                                                                                />
-                                                                                            ))}
-                                                                                        </div>
-                                                                                    </div>
-
-                                                                                    {/* Action / Status */}
-                                                                                    <div className="md:w-56 flex justify-end">
-                                                                                        {isPaid ? (
-                                                                                            <div className="flex items-center text-green-600 font-bold text-xs bg-green-50 py-2.5 rounded-xl border border-green-100 w-full md:w-auto justify-center px-4">
-                                                                                                <CheckCircle className="h-4 w-4 mr-2" />
-                                                                                                Completed
+                                                                            return (
+                                                                                <div
+                                                                                    key={i}
+                                                                                    className={`p-5 rounded-2xl border transition-all ${isMonthPast
+                                                                                        ? 'bg-green-50/20 border-green-100'
+                                                                                        : isCurrentMonth
+                                                                                            ? 'bg-white border-primary shadow-lg ring-1 ring-primary/10'
+                                                                                            : 'bg-muted/5 border-border opacity-70'
+                                                                                        }`}
+                                                                                >
+                                                                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                                                                        {/* Month Info */}
+                                                                                        <div className="min-w-[140px]">
+                                                                                            <div className="flex items-center space-x-2 mb-1">
+                                                                                                <h5 className={`font-bold text-sm ${isCurrentMonth ? 'text-primary' : 'text-foreground'}`}>
+                                                                                                    {format(monthDate, 'MMM yyyy')}
+                                                                                                </h5>
+                                                                                                {isCurrentMonth && (
+                                                                                                    <Badge className="bg-primary text-white text-[8px] h-4 px-1 border-none shadow-sm">ACTIVE</Badge>
+                                                                                                )}
                                                                                             </div>
-                                                                                        ) : isCurrent ? (
-                                                                                            <Button className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white font-black text-[10px] h-11 px-8 shadow-md transition-transform hover:scale-[1.03] uppercase tracking-widest">
-                                                                                                PAY RENT NOW
-                                                                                            </Button>
-                                                                                        ) : (
-                                                                                            <div className="flex items-center text-muted-foreground font-bold text-xs bg-muted/30 py-2.5 rounded-xl border border-border/10 w-full md:w-auto justify-center px-4">
-                                                                                                <Clock className="h-4 w-4 mr-2" />
-                                                                                                Pending
+                                                                                            <p className="text-2xl font-black text-foreground">
+                                                                                                ETB {(lease.recurringAmount || property.price).toLocaleString()}
+                                                                                            </p>
+                                                                                        </div>
+
+                                                                                        {/* Days Horizontal Bar */}
+                                                                                        <div className="flex-1 space-y-2">
+                                                                                            <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
+                                                                                                <span>Monthly progress </span>
+                                                                                                <span className={isMonthPast ? 'text-green-600' : isCurrentMonth ? 'text-primary' : ''}>
+                                                                                                    {daysFilled}/{daysInThisMonth} Days
+                                                                                                </span>
                                                                                             </div>
-                                                                                        )}
+                                                                                            <div className="flex gap-0.5 h-3">
+                                                                                                {Array.from({ length: daysInThisMonth }).map((_, d) => (
+                                                                                                    <div
+                                                                                                        key={d}
+                                                                                                        className={`h-full w-full rounded-[1px] transition-all duration-700 ${d < daysFilled
+                                                                                                            ? (isMonthPast ? 'bg-green-500 shadow-[0_0_2px_rgba(34,197,94,0.3)]' : 'bg-primary shadow-[0_0_3px_rgba(var(--primary),0.2)] animate-pulse')
+                                                                                                            : 'bg-muted-foreground/20'
+                                                                                                            }`}
+                                                                                                    />
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        </div>
+
+                                                                                        {/* Status */}
+                                                                                        <div className="flex flex-col items-end min-w-[100px]">
+                                                                                            <div className={`flex items-center space-x-1.5 ${isMonthPast ? 'text-green-600' : isCurrentMonth ? 'text-amber-500' : 'text-muted-foreground/50'}`}>
+                                                                                                {isMonthPast ? (
+                                                                                                    <>
+                                                                                                        <CheckCircle className="h-5 w-5" />
+                                                                                                        <span className="text-xs font-bold tracking-wide">PAID</span>
+                                                                                                    </>
+                                                                                                ) : isCurrentMonth ? (
+                                                                                                    <>
+                                                                                                        <Clock className="h-5 w-5" />
+                                                                                                        <span className="text-xs font-bold tracking-wide">DUE</span>
+                                                                                                    </>
+                                                                                                ) : (
+                                                                                                    <>
+                                                                                                        <div className="h-5 w-5 rounded-full border-2 border-dashed border-current flex items-center justify-center">
+                                                                                                            <div className="w-1.5 h-1.5 rounded-full bg-current opacity-30"></div>
+                                                                                                        </div>
+                                                                                                        <span className="text-xs font-bold tracking-wide">UPCOMING</span>
+                                                                                                    </>
+                                                                                                )}
+                                                                                            </div>
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
-                                                                            </div>
-                                                                        );
-                                                                    })}
+                                                                            );
+                                                                        });
+                                                                    })()}
                                                                 </div>
                                                             )}
                                                         </div>
                                                         <div className="mt-4 pt-4 border-t border-border">
                                                             <div className="flex justify-between items-center mb-2">
                                                                 <span className="text-sm text-muted-foreground">Lease Progress</span>
-                                                                <span className="text-sm text-foreground">2 of 12 months</span>
+                                                                <span className="text-sm text-foreground">{Math.min(currentMonthIndex + 1, totalLeaseMonths)} of {totalLeaseMonths} months</span>
                                                             </div>
-                                                            <Progress value={16.6} className="h-2" />
+                                                            <Progress value={leaseProgressValue} className="h-2" />
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -651,6 +759,7 @@ export default function CustomerDashboardPage() {
                                     <h2 className="text-2xl font-bold text-foreground">Maintenance Requests</h2>
                                     <p className="text-muted-foreground">Track and manage your property maintenance needs</p>
                                 </div>
+                                {/* New Maintenance Request Dialog */}
                                 <Dialog open={isNewRequestOpen} onOpenChange={setIsNewRequestOpen}>
                                     <DialogTrigger asChild>
                                         <Button className="bg-[#005a41] hover:bg-[#004a35] text-white shadow-lg shadow-[#005a41]/20 px-6">
@@ -680,11 +789,17 @@ export default function CustomerDashboardPage() {
                                                             <SelectValue placeholder="Which property or car has an issue?" />
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-xl border-border">
-                                                            {properties.map(p => (
-                                                                <SelectItem key={p.id} value={p.id} className="cursor-pointer">
-                                                                    {p.title}
-                                                                </SelectItem>
-                                                            ))}
+                                                            {leases
+                                                                .filter(l => l.status === 'ACTIVE')
+                                                                .map(l => {
+                                                                    const prop = l.property || properties.find((p: any) => p.id === l.propertyId);
+                                                                    if (!prop) return null;
+                                                                    return (
+                                                                        <SelectItem key={prop.id} value={prop.id} className="cursor-pointer">
+                                                                            {prop.title}
+                                                                        </SelectItem>
+                                                                    );
+                                                                })}
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
@@ -699,7 +814,7 @@ export default function CustomerDashboardPage() {
                                                             <SelectValue placeholder="Select maintenance category" />
                                                         </SelectTrigger>
                                                         <SelectContent className="rounded-xl border-border">
-                                                            {['Plumbing', 'Electrical', 'Internet', 'Damage', 'Cleaning', 'Engine', 'Battery', 'Tire', 'Other'].map(cat => (
+                                                            {['PLUMBING', 'ELECTRICAL', 'INTERNET', 'DAMAGE', 'CLEANING', 'ENGINE', 'BATTERY', 'TIRE', 'OTHER'].map(cat => (
                                                                 <SelectItem key={cat} value={cat} className="cursor-pointer">
                                                                     {cat}
                                                                 </SelectItem>
@@ -710,41 +825,57 @@ export default function CustomerDashboardPage() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Add Photo</Label>
-                                                <div className="flex items-center gap-4">
-                                                    <div
-                                                        onClick={() => {
-                                                            const demoImages = [
-                                                                'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400',
-                                                                'https://images.unsplash.com/photo-1632733027509-00f75e24c6e9?w=400',
-                                                                'https://images.unsplash.com/photo-1558350315-8aa00e4e569b?w=400'
-                                                            ];
-                                                            const randomImg = demoImages[Math.floor(Math.random() * demoImages.length)];
-                                                            setNewRequest(prev => ({ ...prev, image: randomImg }));
-                                                        }}
-                                                        className="w-24 h-24 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-[#005a41] hover:bg-[#005a41]/5 transition-all group overflow-hidden"
-                                                    >
-                                                        {newRequest.image ? (
-                                                            <img src={newRequest.image} alt="Preview" className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <>
-                                                                <Camera className="h-6 w-6 text-muted-foreground group-hover:text-[#005a41] mb-1" />
-                                                                <span className="text-[10px] text-muted-foreground group-hover:text-[#005a41]">Add Photo</span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                    {newRequest.image && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="text-red-500 hover:text-red-600 p-0 h-auto font-bold text-[10px] underline"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setNewRequest(prev => ({ ...prev, image: null }));
-                                                            }}
+                                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                                    Add Photos (Max 4)
+                                                </Label>
+                                                <div className="flex flex-wrap gap-4">
+                                                    <input
+                                                        type="file"
+                                                        ref={fileInputRef}
+                                                        onChange={handleFileUpload}
+                                                        accept="image/*"
+                                                        multiple
+                                                        className="hidden"
+                                                    />
+                                                    {newRequest.images.map((img, index) => (
+                                                        <div key={index} className="relative group w-24 h-24 rounded-xl border border-border overflow-hidden shadow-sm">
+                                                            <img src={img} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setNewRequest(prev => ({
+                                                                        ...prev,
+                                                                        images: prev.images.filter((_, i) => i !== index)
+                                                                    }));
+                                                                }}
+                                                                className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                                            >
+                                                                <X className="h-3 w-3" />
+                                                            </button>
+                                                        </div>
+                                                    ))}
+
+                                                    {newRequest.images.length < 4 && (
+                                                        <div
+                                                            onClick={() => fileInputRef.current?.click()}
+                                                            className={cn(
+                                                                "w-24 h-24 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-[#005a41] hover:bg-[#005a41]/5 transition-all group",
+                                                                isUploading && "opacity-50 cursor-not-allowed pointer-events-none"
+                                                            )}
                                                         >
-                                                            Remove Photo
-                                                        </Button>
+                                                            {isUploading ? (
+                                                                <div className="flex flex-col items-center">
+                                                                    <div className="h-4 w-4 border-2 border-[#005a41] border-t-transparent rounded-full animate-spin mb-1" />
+                                                                    <span className="text-[10px] text-muted-foreground">Uploading...</span>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <Camera className="h-6 w-6 text-muted-foreground group-hover:text-[#005a41] mb-1" />
+                                                                    <span className="text-[10px] text-muted-foreground group-hover:text-[#005a41]">Add Photo</span>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -771,11 +902,7 @@ export default function CustomerDashboardPage() {
                                                 <Button
                                                     className="flex-3 bg-[#005a41] hover:bg-[#004a35] text-white rounded-xl font-bold px-8"
                                                     disabled={!newRequest.propertyId || !newRequest.category}
-                                                    onClick={async () => {
-                                                        console.log('New request:', newRequest);
-                                                        setIsNewRequestOpen(false);
-                                                        setNewRequest({ propertyId: '', category: '' as any, description: '', image: null });
-                                                    }}
+                                                    onClick={handleCreateMaintenanceRequest}
                                                 >
                                                     Submit Request
                                                 </Button>
@@ -789,7 +916,7 @@ export default function CustomerDashboardPage() {
                                 {isMaintenanceLoading ? (
                                     <div className="text-center py-10 text-muted-foreground">Loading requests...</div>
                                 ) : maintenanceRequests.length > 0 ? (
-                                    maintenanceRequests.map((request, index) => {
+                                    maintenanceRequests.map((request) => {
                                         const handleSetComplete = (id: string) => {
                                             console.log('Set complete', id);
                                         };
@@ -807,9 +934,9 @@ export default function CustomerDashboardPage() {
 
                                                         <div className="flex-1 p-6">
                                                             <div className="flex flex-col lg:flex-row gap-6">
-                                                                {request.image && (
+                                                                {request.images && request.images.length > 0 && (
                                                                     <div className="w-full lg:w-48 h-32 rounded-xl overflow-hidden shadow-inner flex-shrink-0">
-                                                                        <img src={request.image} alt={request.category} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                                        <img src={request.images[0]} alt={request.category} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                                                     </div>
                                                                 )}
                                                                 <div className="flex-1 space-y-3">
@@ -846,12 +973,15 @@ export default function CustomerDashboardPage() {
                                                                     <div className="flex flex-wrap gap-2 w-full lg:w-auto mt-auto justify-end">
                                                                         {request.status === 'inProgress' && (
                                                                             <Button
-                                                                                onClick={() => handleSetComplete(request.id)}
+                                                                                onClick={() => {
+                                                                                    updateRequestStatus(request.id, 'completed');
+                                                                                    toast.success('Maintenance marked as fixed');
+                                                                                }}
                                                                                 size="sm"
-                                                                                className="bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold"
+                                                                                className="bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-sm"
                                                                             >
                                                                                 <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                                                                                Set as Complete
+                                                                                Mark as Fixed
                                                                             </Button>
                                                                         )}
                                                                         <Dialog>
@@ -872,9 +1002,13 @@ export default function CustomerDashboardPage() {
                                                                                     </DialogDescription>
                                                                                 </DialogHeader>
                                                                                 <div className="space-y-4 pt-2">
-                                                                                    {request.image && (
-                                                                                        <div className="h-40 w-full rounded-xl overflow-hidden border border-border">
-                                                                                            <img src={request.image} alt={request.category} className="w-full h-full object-cover" />
+                                                                                    {request.images && request.images.length > 0 && (
+                                                                                        <div className="grid grid-cols-2 gap-2">
+                                                                                            {request.images.map((img, idx) => (
+                                                                                                <div key={idx} className="h-40 rounded-xl overflow-hidden border border-border">
+                                                                                                    <img src={img} alt={`${request.category} ${idx + 1}`} className="w-full h-full object-cover cursor-pointer hover:scale-110 transition-transform" />
+                                                                                                </div>
+                                                                                            ))}
                                                                                         </div>
                                                                                     )}
                                                                                     <div className="grid grid-cols-2 gap-4">
@@ -978,18 +1112,6 @@ export default function CustomerDashboardPage() {
                                         .map((favorite) => (
                                             <div key={favorite.id} className="relative group">
                                                 <PropertyCard property={favorite.property} />
-                                                <Button
-                                                    variant="destructive"
-                                                    size="icon"
-                                                    className="absolute top-3 right-3 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg hover:scale-110"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        if (currentCustomer) handleRemoveFavorite(favorite.property.id);
-                                                    }}
-                                                >
-                                                    <Heart className="h-4 w-4 fill-white" />
-                                                </Button>
                                             </div>
                                         ))}
                                 </div>
@@ -1017,6 +1139,7 @@ export default function CustomerDashboardPage() {
                         </div>
                     </TabsContent>
                 </DashboardTabs>
+
             </div>
         </div >
     );

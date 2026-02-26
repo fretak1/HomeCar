@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 type UserRole = 'customer' | 'owner' | 'agent' | 'admin';
 
 interface User {
+  id: string;
   name: string;
   email: string;
   role: UserRole;
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (email: string, _password: string, role: UserRole = 'customer') => {
     const newUser: User = {
+      id: Math.random().toString(36).substr(2, 9),
       name: email.split('@')[0],
       email,
       role,

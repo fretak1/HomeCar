@@ -102,6 +102,28 @@ export const getUsers = async (req: Request, res: Response) => {
     }
 };
 
+export const getUserById = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const user = await prisma.user.findUnique({
+            where: { id },
+            include: {
+                documents: true
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const { passwordHash: _, ...userWithoutPassword } = user;
+        res.json(userWithoutPassword);
+    } catch (error: any) {
+        console.error('Error fetching user by ID:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
 
 
 export const getCurrentUser = async (req: any, res: Response) => {
@@ -179,6 +201,78 @@ export const updateCurrentUser = async (req: any, res: Response) => {
         res.json(userWithoutPassword);
     } catch (error: any) {
         console.error('Error updating current user:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+export const submitAgentVerification = async (req: any, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+        const licenseFile = files?.license?.[0];
+        const selfieFile = files?.selfie?.[0];
+
+        if (!licenseFile || !selfieFile) {
+            return res.status(400).json({ error: 'License document and selfie are required for agent verification' });
+        }
+
+        // Store license in Document model
+        await prisma.document.create({
+            data: {
+                type: 'AGENT_LICENSE',
+                url: licenseFile.path,
+                userId: userId,
+                verified: false
+            }
+        });
+
+        // Store selfie in User model and update verification status
+        // Note: The user is NOT fully verified yet, this is just a submission.
+        // verified = false (default) but we have the photo now.
+        const user = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                verificationPhoto: selfieFile.path
+            }
+        });
+
+        const { passwordHash: _, ...userWithoutPassword } = user;
+        res.json({
+            message: 'Verification documents submitted successfully for admin review.',
+            user: userWithoutPassword
+        });
+    } catch (error: any) {
+        console.error('Error submitting agent verification:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+export const verifyUser = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { verified } = req.body;
+
+        const user = await prisma.user.update({
+            where: { id },
+            data: { verified: !!verified }
+        });
+
+        // Also update agent licenses to verified if user is verified
+        if (verified) {
+            await prisma.document.updateMany({
+                where: { userId: id, type: 'AGENT_LICENSE' },
+                data: { verified: true }
+            });
+        }
+
+        const { passwordHash: _, ...userWithoutPassword } = user;
+        res.json(userWithoutPassword);
+    } catch (error: any) {
+        console.error('Error verifying user:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };

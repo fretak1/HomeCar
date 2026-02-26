@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -22,16 +21,32 @@ import {
 } from '@/components/ui/select';
 import {
     Calendar,
-    FileText,
-    DollarSign,
     Check,
-    Building2,
-    CalendarDays
+    ChevronsUpDown,
+    Search
 } from 'lucide-react';
-import { mockProperties, mockCustomers } from '@/data/mockData';
-import { useState, useEffect } from 'react';
+import { mockProperties } from '@/data/mockData';
+import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Users } from 'lucide-react';
+import { useLeaseStore } from '@/store/useLeaseStore';
+import { usePropertyStore } from '@/store/usePropertyStore';
+import { useUserStore } from '@/store/useUserStore';
+import { useApplicationStore } from '@/store/useApplicationStore';
+import { getListingMainImage, cn } from '@/lib/utils';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
 
 interface CreateLeaseFormProps {
     onSuccess: () => void;
@@ -41,15 +56,29 @@ interface CreateLeaseFormProps {
 
 export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateLeaseFormProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    // Extract unique owners from mockProperties
-    const uniqueOwners = Array.from(new Set(mockProperties.map(p => p.ownerId))).map(id => {
-        const prop = mockProperties.find(p => p.ownerId === id);
-        return { id, name: prop?.ownerName || 'Unknown Owner' };
-    });
+    const [ownerSearchOpen, setOwnerSearchOpen] = useState(false);
+    const [ownerSearchQuery, setOwnerSearchQuery] = useState('');
+    const { createLease } = useLeaseStore();
+    const { currentUser, users: allUsers, fetchUsers } = useUserStore();
+    const { properties: allProperties, fetchProperties, fetchPropertiesByOwnerId } = usePropertyStore();
+    const { applications, fetchApplications } = useApplicationStore();
+    useEffect(() => {
+        if (currentUser?.id) {
+            if (role === 'owner') {
+                fetchPropertiesByOwnerId(currentUser.id);
+            } else {
+                // For agent, fetch properties they have listed (manage)
+                fetchProperties({ listedById: currentUser.id });
+            }
+            fetchApplications({ managerId: currentUser.id });
+        }
+        fetchUsers();
+    }, [currentUser, role, fetchPropertiesByOwnerId, fetchProperties, fetchUsers, fetchApplications]);
 
     const form = useForm({
         defaultValues: {
+            ownerId: '',
+            tenantId: '',
             propertyId: '',
             leaseType: 'LongTerm' as const,
             startDate: '',
@@ -67,41 +96,86 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
     const startDate = watch('startDate');
     const endDate = watch('endDate');
 
-    // Filter properties based on selected owner (if agent)
-    const filteredProperties = role === 'agent' && ownerId
-        ? mockProperties.filter(p => p.ownerId === ownerId)
-        : mockProperties;
+    // For agents and owners, filter customers who have an ACCEPTED application with the logged-in user (manager)
+    const acceptedApplicantIds = applications
+        .filter(app => app.status.toLowerCase() === 'accepted')
+        .map(app => app.customerId);
+
+    const availableTenants = allUsers.filter(u => acceptedApplicantIds.includes(u.id));
+
+    // Agent can select properties managed by them, filtered by selected owner
+    const propertySource = allProperties;
+
+
+    // Owners are users with the role 'OWNER' or users who own properties in the propertySource
+    const ownersFromProps = Array.from(new Set(propertySource.map(p => p.owner?.id || p.ownerName))).filter(Boolean);
+    const ownerList = allUsers
+        .filter(u => u.role === 'OWNER' || ownersFromProps.includes(u.id))
+        .map(u => ({ id: u.id, name: u.name }));
+
+    const filteredOwnerList = ownerList.filter(o =>
+        o.name.toLowerCase().includes(ownerSearchQuery.toLowerCase())
+    );
+
+    // Filter properties based on selected owner (if agent) with stability
+    const filteredProperties = useMemo(() => {
+        return Array.isArray(propertySource) ? propertySource : [];
+    }, [propertySource]);
 
     // Auto-calculate values
+    const paymentModel = watch('paymentModel');
     useEffect(() => {
         if (!propertyId) return;
 
-        const property = mockProperties.find(p => p.id === propertyId);
+        const property = propertySource.find(p => p.id === propertyId);
         if (property) {
-            setValue('recurringAmount', property.price.toString());
+            const price = property.price;
+            setValue('recurringAmount', price.toString());
 
             if (startDate && endDate) {
                 const start = new Date(startDate);
                 const end = new Date(endDate);
 
                 // Calculate months difference
-                const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
-                const totalMonths = Math.max(1, months);
+                const yearDiff = end.getFullYear() - start.getFullYear();
+                const monthDiff = end.getMonth() - start.getMonth();
+                const totalMonths = Math.max(1, yearDiff * 12 + monthDiff);
 
-                setValue('totalPrice', (property.price * totalMonths).toString());
+                if (paymentModel === 'Recurring') {
+                    setValue('totalPrice', (price * totalMonths).toString());
+                } else {
+                    // For one-time, total price is the property price (or could be price * months if it's a bulk payment, but usually it's just the price)
+                    setValue('totalPrice', price.toString());
+                    setValue('recurringAmount', '');
+                }
+            } else {
+                // Fallback if dates aren't set
+                setValue('totalPrice', price.toString());
             }
         }
-    }, [propertyId, startDate, endDate, setValue]);
+    }, [propertyId, startDate, endDate, paymentModel, setValue, propertySource]);
 
-    const onSubmit = (data: any) => {
+    const onSubmit = async (data: any) => {
         setIsSubmitting(true);
-        // Mocking submission
-        setTimeout(() => {
-            console.log('Lease created:', data);
+        try {
+            await createLease({
+                leaseType: data.leaseType,
+                startDate: data.startDate,
+                endDate: data.endDate,
+                totalPrice: parseFloat(data.totalPrice),
+                recurringAmount: data.recurringAmount ? parseFloat(data.recurringAmount) : undefined,
+                terms: data.terms,
+                propertyId: data.propertyId,
+                customerId: data.tenantId,
+                ownerId: data.ownerId || currentUser?.id || ownerId || 'o1' // use actual currentUser or fallback
+            } as any);
             toast.success("Lease agreement created successfully!");
-            setIsSubmitting(false);
             onSuccess();
-        }, 1000);
+        } catch (error) {
+            toast.error("Failed to create lease.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -121,51 +195,66 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                 name="ownerId"
                                 rules={{ required: role === 'agent' ? 'Please select an owner' : false }}
                                 render={({ field }) => (
-                                    <FormItem>
-                                        <Select onValueChange={(val) => {
-                                            field.onChange(val);
-                                            setValue('propertyId', ''); // Reset property when owner changes
-                                        }} defaultValue={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger className="h-14 bg-muted/5 border-border/60 rounded-xl">
-                                                    <SelectValue placeholder="Identify the property owner" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent className="rounded-xl">
-                                                {uniqueOwners.map(o => (
-                                                    <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-
-                        <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">
-                            <div className="flex items-center space-x-2 mb-6 text-primary">
-                                <Users className="h-5 w-5" />
-                                <h3 className="text-lg font-bold">Select Customer</h3>
-                            </div>
-                            <FormField
-                                control={form.control}
-                                name="tenantId"
-                                rules={{ required: role === 'agent' ? 'Please select a customer' : false }}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger className="h-14 bg-muted/5 border-border/60 rounded-xl">
-                                                    <SelectValue placeholder="Identify the tenant" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent className="rounded-xl">
-                                                {mockCustomers.map(c => (
-                                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                    <FormItem className="flex flex-col">
+                                        <Popover open={ownerSearchOpen} onOpenChange={setOwnerSearchOpen}>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <div className="relative group">
+                                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                        <Input
+                                                            placeholder="Type owner name to search..."
+                                                            className="h-14 pl-11 bg-muted/5 border-border/60 rounded-xl font-normal focus:bg-white transition-all"
+                                                            value={field.value && !ownerSearchQuery ? (ownerList.find(o => o.id === field.value)?.name || '') : ownerSearchQuery}
+                                                            onChange={(e) => {
+                                                                setOwnerSearchQuery(e.target.value);
+                                                                if (!ownerSearchOpen) setOwnerSearchOpen(true);
+                                                                if (field.value) field.onChange(''); // Reset selection when typing
+                                                            }}
+                                                            onFocus={() => setOwnerSearchOpen(true)}
+                                                        />
+                                                        <ChevronsUpDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </div>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent
+                                                className="w-[--radix-popover-trigger-width] p-0 z-[110] border-border shadow-xl rounded-xl"
+                                                align="start"
+                                                onOpenAutoFocus={(e) => e.preventDefault()}
+                                            >
+                                                <Command className="rounded-xl overflow-hidden">
+                                                    <CommandList className="max-h-[300px]">
+                                                        {filteredOwnerList.length === 0 ? (
+                                                            <CommandEmpty className="py-6 text-sm">No owner found.</CommandEmpty>
+                                                        ) : (
+                                                            <CommandGroup heading="Results">
+                                                                {filteredOwnerList.map((o) => (
+                                                                    <CommandItem
+                                                                        value={`${o.name} ${o.id}`}
+                                                                        key={o.id}
+                                                                        onSelect={() => {
+                                                                            field.onChange(o.id);
+                                                                            setValue('propertyId', '');
+                                                                            setOwnerSearchQuery('');
+                                                                            setOwnerSearchOpen(false);
+                                                                        }}
+                                                                        className="py-3 px-4 flex items-center gap-3 aria-selected:bg-primary/5 cursor-pointer"
+                                                                    >
+                                                                        <div className={cn(
+                                                                            "flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary font-bold text-xs",
+                                                                            o.id === field.value && "bg-primary text-white"
+                                                                        )}>
+                                                                            {o.name.charAt(0)}
+                                                                        </div>
+                                                                        <span className="flex-1 font-medium">{o.name}</span>
+                                                                        {o.id === field.value && <Check className="h-4 w-4 text-primary" />}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        )}
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -174,10 +263,39 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                     </div>
                 )}
 
+                {/* Select Customer (For Both Agent and Owner) */}
+                <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center space-x-2 mb-6 text-primary">
+                        <Users className="h-5 w-5" />
+                        <h3 className="text-lg font-bold">Select Customer</h3>
+                    </div>
+                    <FormField
+                        control={form.control}
+                        name="tenantId"
+                        rules={{ required: 'Please select a customer for this lease' }}
+                        render={({ field }) => (
+                            <FormItem>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-14 bg-muted/5 border-border/60 rounded-xl">
+                                            <SelectValue placeholder="Identify the tenant" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent position="popper" side="bottom" sideOffset={4} className="rounded-xl max-h-56 z-[100]">
+                                        {availableTenants.map(c => (
+                                            <SelectItem key={c.id} value={c.id}>{c.name} {c.email ? `(${c.email})` : ''}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+
                 {/* 1. Property Selection */}
                 <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">
                     <div className="flex items-center space-x-2 mb-6 text-primary">
-                        <Building2 className="h-5 w-5" />
                         <h3 className="text-lg font-bold">Select Property</h3>
                     </div>
 
@@ -187,21 +305,39 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                         rules={{ required: 'Please select a property' }}
                         render={({ field }) => (
                             <FormItem>
-                                <Select onValueChange={field.onChange} value={field.value} disabled={role === 'agent' && !ownerId}>
+                                <Select
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                >
                                     <FormControl>
                                         <SelectTrigger className="h-14 bg-muted/5 border-border/60 rounded-xl">
-                                            <SelectValue placeholder={role === 'agent' && !ownerId ? "Select an owner first" : "Choose a property for this lease"} />
+                                            <SelectValue placeholder="Choose a property for this lease" />
                                         </SelectTrigger>
                                     </FormControl>
-                                    <SelectContent className="rounded-xl">
-                                        {filteredProperties.map(p => (
-                                            <SelectItem key={p.id} value={p.id}>
-                                                <div className="flex items-center space-x-3">
-                                                    <img src={p.image} className="w-8 h-8 rounded object-cover" />
-                                                    <span>{p.title}</span>
-                                                </div>
+                                    <SelectContent position="popper" side="bottom" sideOffset={4} className="rounded-xl max-h-56 z-[110]">
+                                        {filteredProperties.length > 0 ? (
+                                            filteredProperties.map(p => (
+                                                <SelectItem key={p.id} value={p.id}>
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="w-8 h-8 rounded overflow-hidden border border-border bg-muted flex-shrink-0">
+                                                            <img
+                                                                src={getListingMainImage(p)}
+                                                                className="w-full h-full object-cover"
+                                                                onError={(e) => (e.currentTarget.src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=100')}
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-col text-left">
+                                                            <span className="font-bold text-sm leading-none mb-1">{p.title}</span>
+                                                            <span className="text-[10px] text-muted-foreground uppercase font-medium">ETB {p.price.toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </SelectItem>
+                                            ))
+                                        ) : (
+                                            <SelectItem value="no-properties" disabled>
+                                                <span className="text-xs text-muted-foreground italic px-2">No properties available</span>
                                             </SelectItem>
-                                        ))}
+                                        )}
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />
@@ -213,7 +349,6 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                 {/* 2. Lease Details */}
                 <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">
                     <div className="flex items-center space-x-2 mb-6 text-primary">
-                        <CalendarDays className="h-5 w-5" />
                         <h3 className="text-lg font-bold">Lease Configuration</h3>
                     </div>
 
@@ -304,7 +439,6 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
 
                     <div className="relative z-10 space-y-6">
                         <div className="flex items-center space-x-2 text-primary mb-2">
-                            <DollarSign className="h-6 w-6" />
                             <h3 className="text-xl font-black">Financial Terms</h3>
                         </div>
 
@@ -357,7 +491,6 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                 {/* 4. Terms & Conditions */}
                 <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm">
                     <div className="flex items-center space-x-2 mb-4 text-primary">
-                        <FileText className="h-5 w-5" />
                         <h3 className="text-lg font-bold">Agreement Terms</h3>
                     </div>
                     <FormField

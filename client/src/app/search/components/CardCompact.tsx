@@ -17,16 +17,21 @@ const CardCompact = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, i
     if (!item) return null;
     const isProperty = type === 'property';
 
+    const mainImage = item.images?.find((img: any) => img.isMain)?.url || item.images?.[0]?.url || item.image || '/placeholder-property.jpg';
+    const locationString = typeof item.location === 'string'
+        ? item.location
+        : [item.location?.subcity, item.location?.city].filter(Boolean).join(', ') || 'Addis Ababa';
+
     return (
         <div className="group relative bg-card rounded-xl border border-border overflow-hidden transition-all duration-300 hover:shadow-md hover:border-primary/20 flex mb-3 h-32">
             {/* Image */}
             <div className="relative w-40 h-full shrink-0">
                 <img
-                    src={item.image}
+                    src={mainImage}
                     alt={item.title}
                     className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
                 />
-              
+
             </div>
 
             {/* Content */}
@@ -38,10 +43,10 @@ const CardCompact = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, i
                                 <Link href={itemLink}>{item.title}</Link>
                             </h3>
                         </div>
-                        <p className="text-muted-foreground text-[10px] uppercase font-medium tracking-tight line-clamp-1">{item.location}</p>
+                        <p className="text-muted-foreground text-[10px] uppercase font-medium tracking-tight line-clamp-1">{locationString}</p>
                     </div>
                     {/* Favorite Button */}
-                    
+
                     {showFavoriteButton && (
                         <Button
                             size="icon"

@@ -1,15 +1,34 @@
 import Link from 'next/link';
-import { MapPin, Star, Gauge, Fuel, Settings } from 'lucide-react';
+import { MapPin, Star, Gauge, Fuel, Settings, Heart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { formatLocation, getListingMainImage } from '@/lib/utils';
 import { Property } from '@/store/usePropertyStore';
+import { useFavoriteStore } from '@/store/useFavoriteStore';
+import { useUserStore } from '@/store/useUserStore';
 
 interface CarCardProps {
   car: Property;
 }
 
 export function CarCard({ car }: CarCardProps) {
+  const { currentUser } = useUserStore();
+  const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
+  const favorite = isFavorite(car.id);
+
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!currentUser) return; // Prevent action if not logged in
+
+    if (favorite) {
+      await removeFavorite(car.id);
+    } else {
+      await addFavorite(car.id);
+    }
+  };
+
   const listingTypes = car.listingType?.map(type =>
     type.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
   ) || [];
@@ -33,6 +52,17 @@ export function CarCard({ car }: CarCardProps) {
                 {type}
               </Badge>
             ))}
+          </div>
+
+          <div className="absolute top-4 right-4 z-10">
+            <Button
+              variant="secondary"
+              size="icon"
+              className={`h-8 w-8 rounded-full bg-white/90 shadow-sm hover:bg-white transition-all duration-200 hover:scale-110 ${favorite ? 'text-rose-500' : 'text-gray-500'}`}
+              onClick={handleFavoriteClick}
+            >
+              <Heart className={`h-4 w-4 ${favorite ? 'fill-current' : ''}`} />
+            </Button>
           </div>
         </div>
 

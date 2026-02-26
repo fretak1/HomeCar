@@ -16,7 +16,7 @@ export const createProperty = async (req: any, res: Response) => {
             title, description, assetType, listingType, price,
             propertyType, bedrooms, bathrooms, area,
             brand, model, year, fuelType, transmission, mileage,
-            location
+            location, amenities
         } = req.body;
 
         // Parse location safely
@@ -49,8 +49,18 @@ export const createProperty = async (req: any, res: Response) => {
             ownerId: userId,
             listedById: userId,
             locationId: newLocation.id,
-            status: 'AVAILABLE'
+            status: 'AVAILABLE',
+            amenities: [],
+            isVerified: req.user?.role === 'AGENT'
         };
+
+        if (amenities) {
+            try {
+                propertyData.amenities = typeof amenities === 'string' ? JSON.parse(amenities) : amenities;
+            } catch (e) {
+                console.error('Error parsing amenities:', e);
+            }
+        }
 
         if (assetType === 'Home') {
             propertyData.propertyType = propertyType || req.body.category;
@@ -59,11 +69,11 @@ export const createProperty = async (req: any, res: Response) => {
             propertyData.area = parseFloat(area) || 0;
 
         } else {
-            propertyData.brand = brand;
-            propertyData.model = model;
+            propertyData.brand = brand?.trim();
+            propertyData.model = model?.trim();
             propertyData.year = parseInt(year) || 0;
-            propertyData.fuelType = fuelType;
-            propertyData.transmission = transmission;
+            propertyData.fuelType = fuelType?.trim();
+            propertyData.transmission = transmission?.trim();
             propertyData.mileage = parseInt(mileage) || 0;
         }
 
@@ -107,6 +117,10 @@ export const createProperty = async (req: any, res: Response) => {
                 });
             }
 
+            console.log("Ownership Doc:", ownershipDocs[0]);
+
+
+
             // Handle Owner Photo (Identification Photo for Verification)
             const ownerPhotos = files['ownerPhoto'] || [];
             if (ownerPhotos.length > 0) {
@@ -139,25 +153,180 @@ export const createProperty = async (req: any, res: Response) => {
 
 export const getProperties = async (req: Request, res: Response) => {
     try {
+        const {
+            assetType,
+            listingType,
+            priceMin,
+            priceMax,
+            propertyType,
+            beds,
+            baths,
+            region,
+            city,
+            subCity,
+            brand,
+            model,
+            yearMin,
+            yearMax,
+            fuelType,
+            transmission,
+            mileageMax,
+            amenities,
+            ownerId,
+            listedById,
+            isVerified,
+            sort
+        } = req.query as any;
+
+        const where: any = {};
+        const requesterRole = req.user?.role;
+
+        // 0. Verification Filter
+        // If explicitly requested, use that filter
+        if (isVerified !== undefined) {
+            where.isVerified = isVerified === 'true';
+        } else if (requesterRole !== 'ADMIN') {
+            // By default, hide unverified properties from non-admins
+            where.isVerified = true;
+        }
+        // If requester is ADMIN and no isVerified filter is provided, 
+        // they get everything (verified + unverified)
+
+        // 0. Owner Filter
+        if (ownerId) {
+            where.ownerId = ownerId;
+        }
+
+        // 0.1 Lister Filter
+        if (listedById) {
+            where.listedById = listedById;
+        }
+
+        // 1. Asset Type Filter
+        if (assetType) {
+            where.assetType = assetType.toUpperCase() === 'PROPERTY' || assetType.toUpperCase() === 'HOME' ? 'HOME' : 'CAR';
+        }
+
+        // 2. Listing Type Filter
+        if (listingType && listingType !== 'any') {
+            const type = listingType.toUpperCase();
+            // Handle mapping 'buy' to 'BUY' or 'FOR_SALE'
+            if (type === 'BUY') {
+                where.listingType = { hasSome: ['BUY', 'FOR_SALE'] };
+            } else {
+                where.listingType = { has: type };
+            }
+        }
+
+        // 3. Price Filter
+        if (priceMin || priceMax) {
+            where.price = {};
+            if (priceMin) where.price.gte = parseFloat(priceMin);
+            if (priceMax) where.price.lte = parseFloat(priceMax);
+        }
+
+        // 4. Property Specifics
+        if (propertyType && propertyType !== 'any') {
+            where.propertyType = { contains: propertyType.trim(), mode: 'insensitive' };
+        }
+        if (beds && beds !== 'any') {
+            if (beds === '4+') {
+                where.bedrooms = { gte: 4 };
+            } else {
+                where.bedrooms = parseInt(beds);
+            }
+        }
+        if (baths && baths !== 'any') {
+            if (baths === '3+') {
+                where.bathrooms = { gte: 3 };
+            } else {
+                where.bathrooms = parseInt(baths);
+            }
+        }
+
+        // 5. Vehicle Specifics
+        if (brand && brand !== 'any') {
+            where.brand = { contains: brand.trim(), mode: 'insensitive' };
+        }
+        if (model && model !== 'any') {
+            where.model = { contains: model.trim(), mode: 'insensitive' };
+        }
+        if (yearMin || yearMax) {
+            where.year = {};
+            if (yearMin) where.year.gte = parseInt(yearMin);
+            if (yearMax) where.year.lte = parseInt(yearMax);
+        }
+        if (fuelType && fuelType !== 'any') {
+            where.fuelType = { contains: fuelType.trim(), mode: 'insensitive' };
+        }
+        if (transmission && transmission !== 'any') {
+            where.transmission = { contains: transmission.trim(), mode: 'insensitive' };
+        }
+        if (mileageMax) {
+            where.mileage = { lte: parseInt(mileageMax) };
+        }
+
+        // 6. Location Filter
+        if (region || city || subCity) {
+            where.location = {};
+            if (region) where.location.region = { contains: region.trim(), mode: 'insensitive' };
+            if (city) where.location.city = { contains: city.trim(), mode: 'insensitive' };
+            if (subCity) where.location.subcity = { contains: subCity.trim(), mode: 'insensitive' };
+        }
+
+        // 7. Amenities Filter
+        if (amenities) {
+            const amenityList = Array.isArray(amenities) ? amenities : [amenities];
+            if (amenityList.length > 0) {
+                where.amenities = { hasEvery: amenityList };
+            }
+        }
+
+        // 8. Sorting
+        let orderBy: any = { createdAt: 'desc' };
+        if (sort) {
+            switch (sort) {
+                case 'newest':
+                    orderBy = { createdAt: 'desc' };
+                    break;
+                case 'price-low':
+                    orderBy = { price: 'asc' };
+                    break;
+                case 'price-high':
+                    orderBy = { price: 'desc' };
+                    break;
+            }
+        }
+
         const properties = await prisma.property.findMany({
+            where,
             include: {
                 location: true,
-                images: true
+                images: true,
+                owner: {
+                    select: {
+                        id: true,
+                        name: true,
+                        profileImage: true
+                    }
+                }
             },
-            orderBy: {
-                createdAt: 'desc'
-            }
+            orderBy
         });
+
         res.json(properties);
     } catch (error: any) {
         console.error('Error fetching properties:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error', details: error.message });
     }
 };
 
-export const getPropertyById = async (req: Request, res: Response) => {
+export const getPropertyById = async (req: any, res: Response) => {
     try {
         const { id } = req.params;
+        const requesterId = req.user?.id;
+        const requesterRole = req.user?.role;
+
         const property = await prisma.property.findUnique({
             where: { id },
             include: {
@@ -168,9 +337,11 @@ export const getPropertyById = async (req: Request, res: Response) => {
                         id: true,
                         name: true,
                         profileImage: true,
-                        role: true
+                        role: true,
+                        verificationPhoto: true
                     }
-                }
+                },
+                ownershipDocuments: true
             }
         });
 
@@ -178,9 +349,51 @@ export const getPropertyById = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Property not found' });
         }
 
+        // Privacy check: If property is NOT verified, only the owner or an admin can see it
+        if (!property.isVerified) {
+            if (requesterId !== property.ownerId && requesterRole !== 'ADMIN') {
+                return res.status(404).json({ error: 'Property not found' });
+            }
+        }
+
         res.json(property);
     } catch (error: any) {
-        console.error('Error fetching property details:', error);
+        console.error('Error fetching property:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+export const getPropertiesByOwnerId = async (req: any, res: Response) => {
+    try {
+        const { ownerId } = req.params;
+        const requesterId = req.user?.id;
+        const requesterRole = req.user?.role;
+
+        const where: any = { ownerId };
+
+        // If not the owner and not an admin, only show verified properties
+        if (requesterId !== ownerId && requesterRole !== 'ADMIN') {
+            where.isVerified = true;
+        }
+
+        const properties = await prisma.property.findMany({
+            where,
+            include: {
+                location: true,
+                images: true,
+                owner: {
+                    select: {
+                        id: true,
+                        name: true,
+                        profileImage: true
+                    }
+                }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(properties);
+    } catch (error: any) {
+        console.error('Error fetching owner properties:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
@@ -199,7 +412,7 @@ export const updateProperty = async (req: any, res: Response) => {
             title, description, listingType, price,
             propertyType, bedrooms, bathrooms, area,
             brand, model, year, fuelType, transmission, mileage,
-            location, amenities
+            location, amenities, keepImages
         } = req.body;
 
         // Parse location
@@ -251,6 +464,23 @@ export const updateProperty = async (req: any, res: Response) => {
             include: { location: true, images: true }
         });
 
+        // Image Reconciliation: delete images that were removed in the UI
+        if (keepImages) {
+            try {
+                const keptUrls = typeof keepImages === 'string' ? JSON.parse(keepImages) : keepImages;
+                if (Array.isArray(keptUrls)) {
+                    await prisma.propertyImage.deleteMany({
+                        where: {
+                            propertyId: id,
+                            url: { notIn: keptUrls }
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("Error parsing keepImages:", e);
+            }
+        }
+
         // Add new images if provided
         const files = req.files as { [fieldname: string]: any[] } | undefined;
         if (files?.['images']?.length) {
@@ -260,6 +490,40 @@ export const updateProperty = async (req: any, res: Response) => {
                 isMain: index === 0 && updated.images.length === 0 // Only set main if no existing images
             }));
             await prisma.propertyImage.createMany({ data: imageRecords });
+        }
+
+        // Handle Ownership Document Update
+        if (files?.['ownershipDocument']?.length) {
+            const doc = files['ownershipDocument'][0];
+            const existingDoc = await prisma.document.findFirst({
+                where: { propertyId: id, type: 'OWNERSHIP_PROOF' }
+            });
+
+            if (existingDoc) {
+                await prisma.document.update({
+                    where: { id: existingDoc.id },
+                    data: { url: doc.path }
+                });
+            } else {
+                await prisma.document.create({
+                    data: {
+                        type: 'OWNERSHIP_PROOF',
+                        url: doc.path,
+                        userId: userId,
+                        propertyId: id,
+                        verified: false
+                    }
+                });
+            }
+        }
+
+        // Handle Owner Photo Update (Identification Photo)
+        if (files?.['ownerPhoto']?.length) {
+            const photo = files['ownerPhoto'][0];
+            await prisma.user.update({
+                where: { id: userId },
+                data: { verificationPhoto: photo.path } as any
+            });
         }
 
         res.json(updated);
@@ -282,6 +546,36 @@ export const deleteProperty = async (req: any, res: Response) => {
         res.json({ message: 'Property deleted successfully' });
     } catch (error: any) {
         console.error('Error deleting property:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+export const verifyProperty = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { isVerified } = req.body;
+
+        const property = await prisma.property.update({
+            where: { id },
+            data: { isVerified },
+            include: {
+                location: true,
+                images: true,
+                ownershipDocuments: true
+            }
+        });
+
+        // Also update the documents to verified
+        if (isVerified) {
+            await prisma.document.updateMany({
+                where: { propertyId: id },
+                data: { verified: true }
+            });
+        }
+
+        res.json(property);
+    } catch (error: any) {
+        console.error('Error verifying property:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };

@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { CreateLeaseForm } from '@/components/forms/CreateLeaseForm';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, FileText, ShieldCheck } from 'lucide-react';
-import Link from 'next/link';
 
 export default function CreateLeasePage() {
     const router = useRouter();
