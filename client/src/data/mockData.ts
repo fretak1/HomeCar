@@ -105,6 +105,7 @@ export interface Lease {
     name: string;
     profileImage: string;
     id: string;
+    chapaSubaccountId: string;
   }
 }
 

@@ -80,7 +80,6 @@ export default function AdminDashboardPage() {
     const [propSearch, setPropSearch] = useState('');
     const [propTypeFilter, setPropTypeFilter] = useState('all');
     const [propStatusFilter, setPropStatusFilter] = useState('all');
-    const [propLocationFilter, setPropLocationFilter] = useState('all');
 
 
 
@@ -150,15 +149,8 @@ export default function AdminDashboardPage() {
         const matchesType = propTypeFilter === 'all' || p.assetType === propTypeFilter;
         const matchesStatus = propStatusFilter === 'all' || p.status === propStatusFilter;
 
-        let matchesLocation = true;
-        if (propLocationFilter !== 'all') {
-            matchesLocation = p.location?.city === propLocationFilter;
-        }
-
-        return matchesSearch && matchesType && matchesStatus && matchesLocation;
+        return matchesSearch && matchesType && matchesStatus;
     });
-
-    const uniqueCities = Array.from(new Set(allAssets.map(p => p.location?.city).filter(Boolean)));
 
     const stats = [
         { label: 'Total Users', value: users.length.toString(), trend: '+18.2%', isUp: true, icon: Users, color: 'bg-blue-50 text-blue-600' },
@@ -594,17 +586,7 @@ export default function AdminDashboardPage() {
                                         <option value="SOLD">Sold</option>
                                         <option value="UNAVAILABLE">Unavailable</option>
                                     </select>
-                                    <select
-                                        value={propLocationFilter}
-                                        onChange={(e) => setPropLocationFilter(e.target.value)}
-                                        className="px-3 py-2 bg-white border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20"
-                                    >
-                                        <option value="all">All Locations</option>
-                                        {uniqueCities.map(city => (
-                                            <option key={city} value={city}>{city}</option>
-                                        ))}
-                                    </select>
-                                    {(propSearch || propTypeFilter !== 'all' || propStatusFilter !== 'all' || propLocationFilter !== 'all') && (
+                                    {(propSearch || propTypeFilter !== 'all' || propStatusFilter !== 'all') && (
                                         <Button
                                             variant="ghost"
                                             size="sm"
@@ -612,7 +594,6 @@ export default function AdminDashboardPage() {
                                                 setPropSearch('');
                                                 setPropTypeFilter('all');
                                                 setPropStatusFilter('all');
-                                                setPropLocationFilter('all');
                                             }}
                                             className="text-red-500 hover:text-red-600 hover:bg-red-50"
                                         >

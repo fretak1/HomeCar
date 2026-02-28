@@ -9,9 +9,9 @@ router.post('/', registerUser);
 router.post('/login', loginUser);
 router.post('/logout', logoutUser);
 router.get('/', authenticate, getUsers);
-router.get('/:id', authenticate, getUserById);
 router.get('/me', authenticate, getCurrentUser);
 router.patch('/me', authenticate, upload.single('profileImage'), updateCurrentUser);
+router.get('/:id', authenticate, getUserById);
 router.patch('/verify', authenticate, upload.fields([
     { name: 'license', maxCount: 1 },
     { name: 'selfie', maxCount: 1 }

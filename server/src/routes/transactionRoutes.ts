@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import express from 'express';
 import { getTransactions } from '../controllers/transactionController.js';
 import { authenticate } from '../middleware/auth.js';
 
-const router = Router();
+const router = express.Router();
 
 router.get('/', authenticate, getTransactions);
 

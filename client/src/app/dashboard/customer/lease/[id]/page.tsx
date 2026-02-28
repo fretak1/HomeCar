@@ -25,6 +25,7 @@ import { cn, formatLocation, getListingMainImage } from '@/lib/utils';
 import { useLeaseStore } from '@/store/useLeaseStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useChatStore } from '@/store/useChatStore';
+import { useTransactionStore } from '@/store/useTransactionStore';
 import { format, differenceInMonths, isBefore, startOfMonth, endOfMonth, isSameMonth, addMonths } from 'date-fns';
 
 export default function LeaseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -32,6 +33,7 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
     const { id } = use(params);
     const { leases, fetchLeases, isLoading: isLeaseLoading } = useLeaseStore();
     const { properties, fetchProperties, isLoading: isPropertyLoading } = usePropertyStore();
+    const { transactions, fetchTransactions } = useTransactionStore();
     const { initiateChat } = useChatStore();
 
     useEffect(() => {
@@ -42,9 +44,10 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
             if (properties.length === 0) {
                 await fetchProperties();
             }
+            await fetchTransactions();
         };
         loadData();
-    }, [leases.length, properties.length, fetchLeases, fetchProperties]);
+    }, [leases.length, properties.length, fetchLeases, fetchProperties, fetchTransactions]);
 
     const lease = leases.find(l => l.id === id);
     const property = lease?.property || properties.find(p => p.id === lease?.propertyId);
@@ -259,6 +262,14 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                                     const monthDate = addMonths(start, i);
                                                     const isMonthPast = isBefore(endOfMonth(monthDate), now);
                                                     const isCurrentMonth = isSameMonth(monthDate, now);
+                                                    const monthLabel = format(monthDate, 'MMM-yyyy');
+                                                    const transaction = transactions.find(t =>
+                                                        t.leaseId === lease.id &&
+                                                        (t.status === 'COMPLETED' || t.status === 'PENDING') &&
+                                                        (t.metadata as any)?.month === monthLabel
+                                                    );
+                                                    const isPaid = transaction?.status === 'COMPLETED';
+                                                    const isPending = transaction?.status === 'PENDING';
 
                                                     return (
                                                         <tr key={i} className={cn("hover:bg-muted/10 transition-colors", isCurrentMonth ? "bg-primary/5" : "")}>
@@ -267,25 +278,31 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                                                 <p className="text-[10px] text-muted-foreground">Standard Rent Collection</p>
                                                             </td>
                                                             <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
-                                                                {format(addMonths(start, i + 1), 'MMM dd, yyyy')}
+                                                                {isPaid ? format(new Date(transaction.updatedAt), 'MMM dd, yyyy') : '—'}
                                                             </td>
                                                             <td className="px-6 py-4 text-sm font-black text-foreground">ETB {(lease.recurringAmount || property.price).toLocaleString()}</td>
                                                             <td className="px-6 py-4">
-                                                                {isMonthPast ? (
+                                                                {isPaid ? (
                                                                     <Badge className="bg-green-50 text-green-700 border-green-100 px-2 py-0.5 text-[8px] font-bold">COLLECTED</Badge>
+                                                                ) : isPending ? (
+                                                                    <Badge className="bg-amber-50 text-amber-700 border-amber-100 px-2 py-0.5 text-[8px] font-bold">PENDING</Badge>
                                                                 ) : isCurrentMonth ? (
-                                                                    <Badge className="bg-[#005a41] text-white border-none px-2 py-0.5 text-[8px] font-bold animate-pulse">SETTLING</Badge>
+                                                                    <Badge className="bg-primary text-white border-none px-2 py-0.5 text-[8px] font-bold animate-pulse">SETTLING</Badge>
+                                                                ) : isMonthPast ? (
+                                                                    <Badge variant="destructive" className="px-2 py-0.5 text-[8px] font-bold">OVERDUE</Badge>
                                                                 ) : (
                                                                     <Badge variant="outline" className="text-[8px] font-bold opacity-50">UPCOMING</Badge>
                                                                 )}
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
-                                                                {isMonthPast ? (
-                                                                    <Link href={`/dashboard/customer/documents/receipt/${property.id}`} target="_blank">
+                                                                {isPaid ? (
+                                                                    <Link href={`/dashboard/customer/documents/receipt/${transaction.id}`}>
                                                                         <Button variant="outline" size="sm" className="h-7 text-[10px] font-bold text-primary border-primary hover:bg-primary hover:text-white transition-colors duration-200 uppercase">View</Button>
                                                                     </Link>
-                                                                ) : isCurrentMonth ? (
-                                                                    <Button size="sm" className="h-7 text-[10px] font-bold bg-primary hover:bg-primary/90 text-white uppercase shadow-sm active:scale-95 transition-all">Pay Now</Button>
+                                                                ) : (isCurrentMonth || isMonthPast) && !isPending ? (
+                                                                    <Link href="/dashboard/customer?tab=leases">
+                                                                        <Button size="sm" className="h-7 text-[10px] font-bold bg-primary hover:bg-primary/90 text-white uppercase shadow-sm active:scale-95 transition-all">Pay Now</Button>
+                                                                    </Link>
                                                                 ) : (
                                                                     <span className="text-[10px] text-muted-foreground font-bold">—</span>
                                                                 )}

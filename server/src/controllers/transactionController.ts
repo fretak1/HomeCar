@@ -1,31 +1,67 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
 
-export const getTransactions = async (req: Request, res: Response) => {
+/**
+ * Fetches transactions based on user role and ID.
+ */
+export const getTransactions = async (req: any, res: Response) => {
     try {
-        const { userId } = req.query as any;
-        const where: any = {};
+        const userId = req.user?.id;
+        const role = req.user?.role;
 
-        // In a real app, transactions might be linked to User or Property
-        // For now, let's assume we fetch them if the user is involved
-        // This is a simplified implementation
-        if (userId) {
-            // where.userId = userId;
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        // Just returning an empty array for now as we don't have Transaction model in prisma yet
-        // OR we can use the Lease model as a base for transactions if that's the intent
+        let transactions;
 
-        /* 
-        const transactions = await prisma.transaction.findMany({
-            where,
-            orderBy: { createdAt: 'desc' }
-        });
-        */
+        if (role === 'ADMIN') {
+            transactions = await prisma.transaction.findMany({
+                include: {
+                    payer: {
+                        select: { id: true, name: true, profileImage: true }
+                    },
+                    payee: {
+                        select: { id: true, name: true, profileImage: true }
+                    },
+                    property: {
+                        select: { id: true, title: true, assetType: true }
+                    }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+        } else if (role === 'OWNER' || role === 'AGENT') {
+            transactions = await prisma.transaction.findMany({
+                where: { payeeId: userId },
+                include: {
+                    payer: {
+                        select: { id: true, name: true, profileImage: true }
+                    },
+                    property: {
+                        select: { id: true, title: true, assetType: true }
+                    }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+        } else {
+            // Default to CUSTOMER
+            transactions = await prisma.transaction.findMany({
+                where: { payerId: userId },
+                include: {
+                    payee: {
+                        select: { id: true, name: true, profileImage: true }
+                    },
+                    property: {
+                        select: { id: true, title: true, assetType: true }
+                    }
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+        }
 
-        res.json([]);
+        res.json(transactions);
     } catch (error: any) {
         console.error('Error fetching transactions:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Failed to fetch transactions' });
     }
 };

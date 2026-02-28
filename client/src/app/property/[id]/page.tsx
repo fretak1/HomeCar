@@ -32,6 +32,9 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { DollarSign, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { usePropertyStore, Property } from '@/store/usePropertyStore';
 import { useReviewStore } from '@/store/useReviewStore';
@@ -41,7 +44,10 @@ import { useChatStore } from '@/store/useChatStore';
 import { useFavoriteStore } from '@/store/useFavoriteStore';
 import { cn, formatLocation, getImageUrl } from '@/lib/utils';
 import { ReviewCard } from '@/components/ReviewCard';
+import { ReviewForm } from '@/components/ReviewForm';
 import { AIRecommendations } from '@/components/AIRecommendations';
+import { usePaymentStore } from '@/store/usePaymentStore';
+import { useTransactionStore } from '@/store/useTransactionStore';
 
 
 
@@ -54,11 +60,17 @@ export default function PropertyDetailPage() {
     const { currentUser } = useUserStore();
     const { applications, fetchApplications, addApplication, isLoading: isApplying } = useApplicationStore();
     const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
+    const { transactions, fetchTransactions } = useTransactionStore();
 
     const [property, setProperty] = useState<Property | null>(null);
     const [selectedImage, setSelectedImage] = useState(0);
     const [applicationMessage, setApplicationMessage] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const { initializePayment, isLoading: isPaymentLoading } = usePaymentStore();
+
+    // Email confirmation state
+    const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+    const [emailToConfirm, setEmailToConfirm] = useState(currentUser?.email || '');
 
     const favorite = id ? isFavorite(id) : false;
 
@@ -89,8 +101,9 @@ export default function PropertyDetailPage() {
     useEffect(() => {
         if (currentUser?.id && currentUser?.role === 'CUSTOMER') {
             fetchApplications({ customerId: currentUser.id });
+            fetchTransactions();
         }
-    }, [currentUser, fetchApplications]);
+    }, [currentUser, fetchApplications, fetchTransactions]);
 
     const handleApply = async () => {
         if (!id) return;
@@ -104,6 +117,49 @@ export default function PropertyDetailPage() {
             setApplicationMessage("");
         } catch (error) {
             toast.error("Failed to submit application.");
+        }
+    };
+
+    const handlePayment = async () => {
+        if (!property || !currentUser || !id) return;
+
+        setEmailToConfirm(currentUser.email || '');
+        setIsEmailDialogOpen(true);
+    };
+
+    const processPaymentWithEmail = async () => {
+        if (!property || !currentUser || !id) return;
+
+        if (!property.owner?.chapaSubaccountId) {
+            toast.error("Owner has not set up their payout account yet. Please contact them.");
+            return;
+        }
+
+        const txRef = `TX-${id.substring(0, 5)}-${currentUser.id.substring(0, 5)}-${Date.now()}`;
+
+        try {
+            const data = await initializePayment({
+                amount: property.price,
+                email: emailToConfirm,
+                firstName: currentUser.name.split(' ')[0],
+                lastName: currentUser.name.split(' ')[1] || '',
+                txRef: txRef,
+                callbackUrl: `${window.location.origin}/api/payments/webhook`,
+                subaccountId: property.owner.chapaSubaccountId,
+                propertyId: id,
+                payerId: currentUser.id,
+                payeeId: property.owner.id,
+            });
+
+            if (data?.checkout_url) {
+                window.location.href = data.checkout_url;
+            } else {
+                toast.error("Failed to get payment link. Please try again.");
+            }
+        } catch (err) {
+            toast.error("Payment initialization failed.");
+        } finally {
+            setIsEmailDialogOpen(false);
         }
     };
 
@@ -258,6 +314,23 @@ export default function PropertyDetailPage() {
                                                 </DialogContent>
                                             </Dialog>
                                         )}
+
+                                    {/* Pay and Secure Button - Visible only if application is accepted */}
+                                    {currentUser?.role === 'CUSTOMER' &&
+                                        applications.some(app => app.propertyId === id && app.status === 'accepted') && (
+                                            <Button
+                                                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl shadow-lg transition-all active:scale-95"
+                                                onClick={handlePayment}
+                                                disabled={isPaymentLoading}
+                                            >
+                                                {isPaymentLoading ? (
+                                                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                                                ) : (
+                                                    <CheckCircle2 className="h-5 w-5 mr-2" />
+                                                )}
+                                                Pay and Secure Listing
+                                            </Button>
+                                        )}
                                 </div>
 
                                 <div className="border-t border-border pt-4">
@@ -312,7 +385,7 @@ export default function PropertyDetailPage() {
                                             <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
                                             <span className="text-foreground font-bold">{property.rating || 0}</span>
                                             <span className="text-muted-foreground">
-                                                ({property.reviews || propertyReviews.length} reviews)
+                                                ({property.reviewCount || propertyReviews.length || 0} reviews)
                                             </span>
                                         </div>
                                     </div>
@@ -392,6 +465,21 @@ export default function PropertyDetailPage() {
                         <Card className="border-border">
                             <CardContent className="p-6">
                                 <h3 className="mb-6 text-lg font-bold text-foreground">Reviews</h3>
+
+                                {/* Review Form - Only for customers with completed transactions */}
+                                {currentUser?.role === 'CUSTOMER' &&
+                                    transactions.some(tx =>
+                                        tx.propertyId === id &&
+                                        tx.status === 'COMPLETED'
+                                    ) && (
+                                        <div className="mb-8">
+                                            <ReviewForm
+                                                propertyId={id}
+                                                onSuccess={() => fetchReviews(id)}
+                                            />
+                                        </div>
+                                    )}
+
                                 <div className="space-y-4">
                                     {isReviewsLoading ? (
                                         <div className="flex justify-center py-8">
@@ -449,6 +537,55 @@ export default function PropertyDetailPage() {
                     <AIRecommendations type={property.assetType === 'HOME' ? 'property' : 'car'} title="Similar Listings" />
                 </div>
             </div>
+
+            {/* Email Confirmation Dialog */}
+            <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl border-border bg-card">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                            <CheckCircle className="h-5 w-5 text-primary" />
+                            Confirm Payment Email
+                        </DialogTitle>
+                        <DialogDescription className="text-muted-foreground">
+                            Chapa requires a valid email to process your payment for "{property?.title}". Please confirm your email address.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="payment-email" className="text-sm font-medium">Email Address</Label>
+                            <Input
+                                id="payment-email"
+                                type="email"
+                                placeholder="name@example.com"
+                                value={emailToConfirm}
+                                onChange={(e) => setEmailToConfirm(e.target.value)}
+                                className="rounded-xl border-border h-11"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex gap-3 justify-end">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setIsEmailDialogOpen(false)}
+                            className="rounded-xl hover:bg-muted font-medium"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            disabled={!emailToConfirm.includes('@') || isPaymentLoading}
+                            onClick={processPaymentWithEmail}
+                            className="rounded-xl bg-primary hover:bg-primary/90 text-white font-bold px-6"
+                        >
+                            {isPaymentLoading ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                                <DollarSign className="h-4 w-4 mr-2" />
+                            )}
+                            Initialize Payment
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

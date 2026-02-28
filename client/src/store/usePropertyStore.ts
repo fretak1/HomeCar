@@ -51,10 +51,12 @@ export interface Property {
         profileImage?: string;
         role: string;
         verificationPhoto?: string;
+        chapaSubaccountId?: string;
     };
     ownerName?: string; // For backward compatibility or UI convenience
     rating?: number;
-    reviews?: number;
+    reviews?: any[];
+    reviewCount?: number;
     createdAt: string;
 }
 

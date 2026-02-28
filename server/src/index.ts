@@ -57,6 +57,8 @@ import transactionRoutes from './routes/transactionRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import favoriteRoutes from './routes/favoriteRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+import reviewRoutes from './routes/reviewRoutes.js';
 
 app.use('/api/user', userRoutes);
 app.use('/api/properties', propertyRoutes);
@@ -67,6 +69,8 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 app.get('/health', (req: Request, res: Response) => {
     res.json({ status: 'OK', service: 'HomeCar Backend' });

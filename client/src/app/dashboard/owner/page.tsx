@@ -62,6 +62,7 @@ import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, e
 
 import DashboardTabs from '@/components/DashboardTabs';
 import { PropertyCard } from '@/components/PropertyCard';
+import PayoutSettings from '@/components/PayoutSettings';
 import { mockTransactions } from '@/data/mockData';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useApplicationStore } from '@/store/useApplicationStore';
@@ -105,6 +106,7 @@ export default function OwnerDashboardPage() {
         { value: 'leases', label: 'Leases' },
         { value: 'maintenance', label: 'Maintenance' },
         { value: 'transactions', label: 'Transactions' },
+        { value: 'payout', label: 'Payout' },
     ];
 
     const stats = [
@@ -496,7 +498,7 @@ export default function OwnerDashboardPage() {
                                                                 <X className="h-4 w-4 mr-1" /> Reject
                                                             </Button>
                                                         </div>
-                                                    ) }
+                                                    )}
                                                 </div>
                                             </div>
                                         ))
@@ -549,7 +551,7 @@ export default function OwnerDashboardPage() {
 
                                                         <div className="flex-1 p-6">
                                                             <div className="flex flex-col lg:flex-row gap-6">
-                                                                 {request.images && request.images.length > 0 && (
+                                                                {request.images && request.images.length > 0 && (
                                                                     <div className="w-full lg:w-48 h-32 rounded-xl overflow-hidden shadow-inner flex-shrink-0 border border-border">
                                                                         <img src={request.images[0]} alt={request.category} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                                                     </div>
@@ -595,7 +597,7 @@ export default function OwnerDashboardPage() {
                                                                                 Start Progress
                                                                             </Button>
                                                                         )}
-                                                                      
+
                                                                         <Dialog>
                                                                             <DialogTrigger asChild>
                                                                                 <Button variant="outline" size="sm" className="rounded-lg text-xs font-bold border-border hover:bg-muted/50">
@@ -613,7 +615,7 @@ export default function OwnerDashboardPage() {
                                                                                         Reference ID: {request.id}
                                                                                     </DialogDescription>
                                                                                 </DialogHeader>
-                                                                                 <div className="space-y-4 pt-2">
+                                                                                <div className="space-y-4 pt-2">
                                                                                     {request.images && request.images.length > 0 && (
                                                                                         <div className="grid grid-cols-2 gap-2">
                                                                                             {request.images.map((img, idx) => (
@@ -802,6 +804,9 @@ export default function OwnerDashboardPage() {
                                 </CardContent>
                             </Card>
                         </div>
+                    </TabsContent>
+                    <TabsContent value="payout">
+                        <PayoutSettings />
                     </TabsContent>
                 </DashboardTabs>
             </div>

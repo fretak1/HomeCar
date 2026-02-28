@@ -309,12 +309,30 @@ export const getProperties = async (req: Request, res: Response) => {
                         name: true,
                         profileImage: true
                     }
+                },
+                reviews: {
+                    select: {
+                        rating: true
+                    }
                 }
             },
             orderBy
         });
 
-        res.json(properties);
+        // Add calculated fields
+        const propertiesWithRatings = properties.map(property => {
+            const reviews = property.reviews || [];
+            const avgRating = reviews.length > 0
+                ? reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length
+                : 0;
+            return {
+                ...property,
+                rating: avgRating,
+                reviewCount: reviews.length
+            };
+        });
+
+        res.json(propertiesWithRatings);
     } catch (error: any) {
         console.error('Error fetching properties:', error);
         res.status(500).json({ error: 'Internal server error', details: error.message });
@@ -338,16 +356,41 @@ export const getPropertyById = async (req: any, res: Response) => {
                         name: true,
                         profileImage: true,
                         role: true,
-                        verificationPhoto: true
+                        verificationPhoto: true,
+                        chapaSubaccountId: true
                     }
                 },
-                ownershipDocuments: true
+                ownershipDocuments: true,
+                reviews: {
+                    include: {
+                        reviewer: {
+                            select: {
+                                id: true,
+                                name: true,
+                                profileImage: true
+                            }
+                        }
+                    },
+                    orderBy: { createdAt: 'desc' }
+                }
             }
         });
 
         if (!property) {
             return res.status(404).json({ error: 'Property not found' });
         }
+
+        // Add calculated fields
+        const reviews = property.reviews || [];
+        const avgRating = reviews.length > 0
+            ? reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length
+            : 0;
+
+        const propertyWithStats = {
+            ...property,
+            rating: avgRating,
+            reviewCount: reviews.length
+        };
 
         // Privacy check: If property is NOT verified, only the owner or an admin can see it
         if (!property.isVerified) {
@@ -356,7 +399,7 @@ export const getPropertyById = async (req: any, res: Response) => {
             }
         }
 
-        res.json(property);
+        res.json(propertyWithStats);
     } catch (error: any) {
         console.error('Error fetching property:', error);
         res.status(500).json({ error: 'Internal server error' });

@@ -49,7 +49,8 @@ export const getLeases = async (req: Request, res: Response) => {
                     select: {
                         id: true,
                         name: true,
-                        profileImage: true
+                        profileImage: true,
+                        chapaSubaccountId: true
                     }
                 }
             },

@@ -57,6 +57,7 @@ import { useLeaseStore } from '@/store/useLeaseStore';
 import { useUserStore } from '@/store/useUserStore';
 import { formatLocation, getListingMainImage } from '@/lib/utils';
 import { format, differenceInMonths, addMonths, isBefore, endOfMonth, isSameMonth, startOfMonth, differenceInDays } from 'date-fns';
+import PayoutSettings from '@/components/PayoutSettings';
 
 export default function AgentDashboardPage() {
     const router = useRouter();
@@ -93,6 +94,7 @@ export default function AgentDashboardPage() {
         { value: 'applications', label: 'Applications' },
         { value: 'leases', label: 'Leases' },
         { value: 'transactions', label: 'Transactions' },
+        { value: 'payout', label: 'Payout' },
     ];
 
     const stats = [
@@ -575,6 +577,9 @@ export default function AgentDashboardPage() {
                                 </CardContent>
                             </Card>
                         </div>
+                    </TabsContent>
+                    <TabsContent value="payout">
+                        <PayoutSettings />
                     </TabsContent>
                 </DashboardTabs>
             </div>

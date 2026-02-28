@@ -35,6 +35,12 @@ model User {
   listings            Property[]           @relation("ListedBy")
   ownedProperties     Property[]           @relation("PropertyOwner")
   reviews             Review[]
+  chapaSubaccountId   String?
+  payoutBankCode      String?
+  payoutAccountNumber String?
+  payoutAccountName   String?
+  transactionsAsPayer Transaction[]        @relation("PayerTransactions")
+  transactionsAsPayee Transaction[]        @relation("PayeeTransactions")
 }
 
 model Property {
@@ -67,6 +73,7 @@ model Property {
   ownershipDocuments  Document[]           @relation("PropertyDocuments")
   favoredBy           Favorite[]
   leases              Lease[]
+  transactions        Transaction[]
   maintenanceRequests MaintenanceRequest[]
   listedBy            User                 @relation("ListedBy", fields: [listedById], references: [id])
   location            Location?            @relation(fields: [locationId], references: [id])
@@ -123,6 +130,7 @@ model Lease {
   customer         User        @relation("CustomerLeases", fields: [customerId], references: [id])
   owner            User        @relation("OwnerLeases", fields: [ownerId], references: [id])
   property         Property    @relation(fields: [propertyId], references: [id])
+  transactions     Transaction[]
 }
 
 model Chat {
@@ -147,6 +155,28 @@ model Application {
   customer   User     @relation("CustomerApplications", fields: [customerId], references: [id])
   manager    User     @relation("ManagerApplications", fields: [managerId], references: [id])
   property   Property @relation(fields: [propertyId], references: [id])
+}
+
+model Transaction {
+  id              String            @id @default(cuid())
+  amount          Float
+  currency        String            @default("ETB")
+  status          TransactionStatus @default(PENDING)
+  type            TransactionType
+  payerId         String
+  payeeId         String
+  leaseId         String?
+  propertyId      String?
+  chapaReference  String?           @unique
+  payoutRef       String?           @unique
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  
+  payer           User              @relation("PayerTransactions", fields: [payerId], references: [id])
+  payee           User              @relation("PayeeTransactions", fields: [payeeId], references: [id])
+  lease           Lease?            @relation(fields: [leaseId], references: [id])
+  property        Property?         @relation(fields: [propertyId], references: [id])
 }
 
 model MaintenanceRequest {
@@ -229,4 +259,20 @@ enum MaintenanceCategory {
   BATTERY
   TIRE
   OTHER
+}
+
+enum TransactionStatus {
+  PENDING
+  HELD_BY_ADMIN
+  PAYOUT_APPROVED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TransactionType {
+  RENT
+  LEASE_DEPOSIT
+  BOOKING_FEE
+  FULL_PURCHASE
 }
