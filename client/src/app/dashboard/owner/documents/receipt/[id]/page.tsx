@@ -1,36 +1,61 @@
 "use client";
 
-import { use } from 'react';
+import { useEffect, useRef, useState, use } from 'react';
 import Link from 'next/link';
 import {
-    ChevronLeft,
-    Printer,
+    FileText,
     Download,
+    Printer,
+    ChevronLeft,
     CheckCircle,
     Building2,
     Mail,
     Phone,
     MapPin,
-    ShieldCheck
+    ShieldCheck,
+    Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { mockTransactions } from '@/data/mockData';
+import { format } from 'date-fns';
+import { API_ROUTES } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 export default function OwnerReceiptPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const transaction = mockTransactions.find(t => t.id === id);
+    const { transactions, fetchTransactions, isLoading: isTxLoading } = useTransactionStore();
+    const receiptRef = useRef<HTMLDivElement>(null);
+    const [isDownloading, setIsDownloading] = useState(false);
+
+    useEffect(() => {
+        if (transactions.length === 0) {
+            fetchTransactions();
+        }
+    }, [transactions.length, fetchTransactions]);
+
+    const transaction = transactions.find(t => t.id === id);
+
+    if (isTxLoading && !transaction) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-background p-4 gap-4">
+                <Loader2 className="h-12 w-12 animate-spin text-[#005a41]" />
+                <p className="text-muted-foreground font-medium animate-pulse">Fetching revenue record...</p>
+            </div>
+        );
+    }
 
     if (!transaction) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background p-4">
-                <Card className="max-w-md w-full text-center p-8 border-dashed">
-                    <h2 className="text-2xl font-bold mb-2">Receipt Not Found</h2>
-                    <p className="text-muted-foreground mb-6">The transaction record you're looking for doesn't exist.</p>
+                <Card className="max-w-md w-full text-center p-8 border-dashed shadow-lg">
+                    <div className="bg-red-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <FileText className="h-10 w-10 text-red-500" />
+                    </div>
+                    <h2 className="text-2xl font-black mb-3">Record Not Found</h2>
+                    <p className="text-muted-foreground mb-8 text-sm leading-relaxed">The transaction record you're looking for doesn't exist.</p>
                     <Link href="/dashboard/owner?tab=transactions">
-                        <Button className="w-full bg-[#005a41] hover:bg-[#004a35]">Back to My Transactions</Button>
+                        <Button className="w-full bg-[#005a41] hover:bg-[#004a35] h-12 rounded-xl font-bold active:scale-95 transition-all">Back to My Transactions</Button>
                     </Link>
                 </Card>
             </div>
@@ -39,6 +64,36 @@ export default function OwnerReceiptPage({ params }: { params: Promise<{ id: str
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleDownloadPdf = async () => {
+        if (!transaction) return;
+
+        setIsDownloading(true);
+        try {
+            const token = localStorage.getItem('auth_token');
+            const response = await fetch(`${API_ROUTES.TRANSACTIONS}/${transaction.id}/download`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) throw new Error('Failed to download receipt');
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Revenue-Receipt-${transaction.chapaReference || transaction.id}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('PDF Download Error:', error);
+        } finally {
+            setIsDownloading(false);
+        }
     };
 
     return (
@@ -57,16 +112,25 @@ export default function OwnerReceiptPage({ params }: { params: Promise<{ id: str
                             <Printer className="h-4 w-4" />
                             Print Receipt
                         </Button>
-                        <Button size="sm" onClick={handlePrint} className="gap-2 bg-[#005a41] hover:bg-[#004a35] text-white">
-                            <Download className="h-4 w-4" />
-                            Download PDF
+                        <Button
+                            size="sm"
+                            onClick={handleDownloadPdf}
+                            disabled={isDownloading}
+                            className="gap-2 bg-[#005a41] hover:bg-[#004a35] text-white"
+                        >
+                            {isDownloading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Download className="h-4 w-4" />
+                            )}
+                            {isDownloading ? 'Generating...' : 'Download PDF'}
                         </Button>
                     </div>
                 </div>
             </div>
 
             {/* Receipt Content */}
-            <div className="max-w-4xl mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto px-4 py-8" ref={receiptRef} id="owner-receipt-content">
                 <Card className="border-none shadow-2xl shadow-black/5 ring-1 ring-border bg-white print:shadow-none print:ring-0">
                     <CardContent className="p-12 sm:p-20">
                         {/* Header */}
@@ -89,7 +153,7 @@ export default function OwnerReceiptPage({ params }: { params: Promise<{ id: str
                                 <h1 className="text-5xl font-black text-foreground/10 uppercase tracking-tighter">Receipt</h1>
                                 <div className="space-y-1">
                                     <p className="text-xs font-bold text-muted-foreground tracking-widest uppercase">Receipt Number</p>
-                                    <p className="text-xl font-bold text-foreground">#TX-{transaction.id.toUpperCase()}-2026</p>
+                                    <p className="text-xl font-bold text-foreground">{(transaction as any).chapaReference || `#TX-${transaction.id.toUpperCase()}`}</p>
                                 </div>
                                 <div className="inline-flex">
                                     <Badge className="bg-green-100 text-green-700 border-none px-4 py-1.5 text-xs font-black uppercase tracking-widest gap-2">
@@ -105,11 +169,11 @@ export default function OwnerReceiptPage({ params }: { params: Promise<{ id: str
                             <div className="space-y-4">
                                 <p className="text-xs font-bold text-muted-foreground tracking-widest uppercase">Payment From</p>
                                 <div className="space-y-2">
-                                    <p className="text-2xl font-black text-foreground text-[#005a41]">Abebe Kelemu</p>
+                                    <p className="text-2xl font-black text-foreground text-[#005a41]">{transaction.payer?.name || 'Customer'}</p>
                                     <div className="text-sm text-muted-foreground font-medium space-y-1.5">
-                                        <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5" /> tenant.support@example.com</p>
-                                        <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> +251 91 234 5678</p>
-                                        <p className="flex items-center gap-2 pt-2"><MapPin className="h-3.5 w-3.5" /> Unit: {transaction.itemTitle}</p>
+                                        <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5" /> {(transaction as any).payer?.email || 'N/A'}</p>
+                                        <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> {(transaction as any).payer?.phoneNumber || 'N/A'}</p>
+                                        <p className="flex items-center gap-2 pt-2"><MapPin className="h-3.5 w-3.5" /> Unit: {transaction.property?.title || 'Unknown Property'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -119,12 +183,12 @@ export default function OwnerReceiptPage({ params }: { params: Promise<{ id: str
                                     <div className="grid grid-cols-2 md:block md:space-y-4">
                                         <div className="space-y-1">
                                             <p className="text-[10px] font-bold text-muted-foreground uppercase">Date Recorded</p>
-                                            <p className="text-sm font-bold">{transaction.date}</p>
+                                            <p className="text-sm font-bold">{format(new Date(transaction.createdAt), 'MMM dd, yyyy')}</p>
                                         </div>
                                         <div className="space-y-1 md:pt-4">
                                             <p className="text-[10px] font-bold text-muted-foreground uppercase">Verification</p>
                                             <p className="text-sm font-bold flex items-center md:justify-end gap-2 text-[#005a41]">
-                                                <Badge variant="outline" className="text-[10px] uppercase font-bold border-[#005a41]/20 bg-[#005a41]/5 text-[#005a41]">Internal Transfer</Badge>
+                                                <Badge variant="outline" className="text-[10px] uppercase font-bold border-[#005a41]/20 bg-[#005a41]/5 text-[#005a41]">Chapa Checkout</Badge>
                                             </p>
                                         </div>
                                     </div>
@@ -146,8 +210,8 @@ export default function OwnerReceiptPage({ params }: { params: Promise<{ id: str
                                 <tbody className="divide-y divide-border">
                                     <tr>
                                         <td className="py-8">
-                                            <p className="font-black text-lg text-foreground">{transaction.itemTitle}</p>
-                                            <p className="text-sm text-muted-foreground font-medium">Revenue collection for the current billing cycle.</p>
+                                            <p className="font-black text-lg text-foreground">{transaction.property?.title || 'Revenue'}</p>
+                                            <p className="text-sm text-muted-foreground font-medium">Revenue collection for the specified asset.</p>
                                         </td>
                                         <td className="py-8 text-center font-bold">1</td>
                                         <td className="py-8 text-right font-bold text-muted-foreground">ETB {transaction.amount.toLocaleString()}</td>

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
+import { createNotification } from './notificationController.js';
 
 export const getApplications = async (req: Request, res: Response) => {
     try {
@@ -91,15 +92,19 @@ export const addApplication = async (req: Request, res: Response) => {
                 status: 'pending'
             },
             include: {
-                property: {
-                    include: {
-                        images: true,
-                        location: true
-                    }
-                },
+                property: true,
                 customer: true
             }
         });
+
+        // Notify manager/owner
+        await createNotification(
+            property.ownerId,
+            'New Application',
+            `You have a new application from ${application.customer.name} for ${application.property.title}`,
+            'APPLICATION',
+            `/dashboard/owner?tab=applications`
+        );
 
         res.status(201).json(application);
     } catch (error: any) {
@@ -115,8 +120,20 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
 
         const application = await prisma.application.update({
             where: { id },
-            data: { status }
+            data: { status },
+            include: {
+                property: true
+            }
         });
+
+        // Notify customer
+        await createNotification(
+            application.customerId,
+            'Application Updated',
+            `Your application for ${application.property.title} has been ${status}`,
+            'APPLICATION',
+            `/dashboard/customer`
+        );
 
         res.json(application);
     } catch (error: any) {

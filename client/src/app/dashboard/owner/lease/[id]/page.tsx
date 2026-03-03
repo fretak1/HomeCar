@@ -23,7 +23,7 @@ import { cn, formatLocation, getListingMainImage } from '@/lib/utils';
 import { useLeaseStore } from '@/store/useLeaseStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useChatStore } from '@/store/useChatStore';
-import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth } from 'date-fns';
+import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth, addDays, isWithinInterval } from 'date-fns';
 
 export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -154,9 +154,10 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                         {(() => {
                             const startDate = new Date(lease.startDate);
                             const endDate = new Date(lease.endDate);
-                            const totalMonths = Math.max(1, differenceInMonths(endDate, startDate));
-                            const currentMonthIndex = differenceInMonths(new Date(), startDate);
-                            const leaseProgressValue = Math.min(100, Math.max(0, (currentMonthIndex / totalMonths) * 100));
+                            const totalDays = differenceInDays(endDate, startDate);
+                            const totalMonths = Math.max(1, Math.floor(totalDays / 30));
+                            const elapsedDays = differenceInDays(new Date(), startDate);
+                            const leaseProgressValue = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
 
                             return (
                                 <>
@@ -168,7 +169,15 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                                     <Clock className="h-5 w-5 text-[#005a41]" />
                                                     Lease Lifecycle
                                                 </CardTitle>
-                                                <Badge variant="outline" className="text-[10px] font-bold">TERM: {totalMonths} MONTHS</Badge>
+                                                <Badge variant="outline" className="text-[10px] font-bold uppercase">
+                                                    TERM: {(() => {
+                                                        const start = new Date(lease.startDate);
+                                                        const end = new Date(lease.endDate);
+                                                        const days = differenceInDays(end, start);
+                                                        const months = Math.floor(days / 30);
+                                                        return `${months} MONTH${months !== 1 ? 'S' : ''} (${days} DAYS)`;
+                                                    })()}
+                                                </Badge>
                                             </div>
                                         </CardHeader>
                                         <CardContent className="p-8">
@@ -181,7 +190,7 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="text-[10px] uppercase font-bold text-muted-foreground">Remaining</p>
-                                                            <p className="text-lg font-bold text-[#005a41]">{Math.max(0, totalMonths - currentMonthIndex)} Months</p>
+                                                            <p className="text-lg font-bold text-[#005a41]">{Math.max(0, Math.floor((totalDays - elapsedDays) / 30))} Months</p>
                                                         </div>
                                                     </div>
                                                     <Progress value={leaseProgressValue} className="h-4 bg-muted border border-border rounded-full" />
@@ -217,18 +226,19 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                                     </thead>
                                                     <tbody className="divide-y divide-border/50">
                                                         {Array.from({ length: totalMonths }).map((_, i) => {
-                                                            const monthDate = addMonths(startDate, i);
-                                                            const isMonthPast = isBefore(endOfMonth(monthDate), new Date());
-                                                            const isCurrentMonth = isSameMonth(monthDate, new Date());
+                                                            const periodStart = addDays(startDate, i * 30);
+                                                            const periodEnd = addDays(periodStart, 30);
+                                                            const isMonthPast = isBefore(periodEnd, new Date());
+                                                            const isCurrentMonth = isWithinInterval(new Date(), { start: periodStart, end: periodEnd });
 
                                                             return (
                                                                 <tr key={i} className={cn("hover:bg-muted/10 transition-colors", isCurrentMonth ? "bg-[#005a41]/5" : "")}>
                                                                     <td className="px-6 py-4">
-                                                                        <p className="text-sm font-bold text-foreground">{format(monthDate, 'MMM yyyy')}</p>
-                                                                        <p className="text-[10px] text-muted-foreground">Standard Rent Collection</p>
+                                                                        <p className="text-sm font-bold text-foreground">{format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd, yyyy')}</p>
+                                                                        <p className="text-[10px] text-muted-foreground">Fixed 30-Day Billing Cycle</p>
                                                                     </td>
                                                                     <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
-                                                                        {format(addMonths(startDate, i + 1), 'MMM dd, yyyy')}
+                                                                        {format(periodEnd, 'MMM dd, yyyy')}
                                                                     </td>
                                                                     <td className="px-6 py-4 text-sm font-black text-foreground">ETB {(lease.recurringAmount || property.price).toLocaleString()}</td>
                                                                     <td className="px-6 py-4">

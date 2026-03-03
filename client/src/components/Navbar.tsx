@@ -2,13 +2,20 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { useUserStore } from '@/store/useUserStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { formatDistanceToNow } from 'date-fns';
 import {
   Building2,
   Search,
   User,
   ChevronDown,
-  Bell
+  Bell,
+  MessageSquare,
+  FileText,
+  Wrench,
+  CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,6 +31,33 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { currentUser, logout } = useUserStore();
+  const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead } = useNotificationStore();
+  const [isOpen, setIsOpen] = useState(false);
+  const [displayNotifications, setDisplayNotifications] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (currentUser) {
+      fetchNotifications();
+      // Poll for notifications every 30 seconds
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [currentUser, fetchNotifications]);
+
+  // Handle dropdown open/close
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open) {
+      // Capture what was unread before marking as read
+      const unread = notifications.filter(n => !n.read);
+      setDisplayNotifications(unread);
+
+      // Auto-mark all as read
+      if (unread.length > 0) {
+        markAllAsRead();
+      }
+    }
+  };
 
   const isActive = (path: string) => {
     return pathname === path;
@@ -39,6 +73,15 @@ export function Navbar() {
     return `${role.charAt(0).toUpperCase() + role.slice(1)} Dashboard`;
   };
 
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'MESSAGE': return <MessageSquare className="h-4 w-4 text-blue-500" />;
+      case 'APPLICATION': return <FileText className="h-4 w-4 text-orange-500" />;
+      case 'MAINTENANCE': return <Wrench className="h-4 w-4 text-red-500" />;
+      case 'LEASE': return <CheckCircle2 className="h-4 w-4 text-primary" />;
+      default: return <Bell className="h-4 w-4 text-gray-500" />;
+    }
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-border shadow-sm">
@@ -79,10 +122,63 @@ export function Navbar() {
 
             {currentUser ? (
               <div className="flex items-center space-x-3">
-                <Button variant="ghost" size="icon" className="relative h-10 w-10 text-muted-foreground hover:bg-primary/5 rounded-full transition-all active:scale-95 group">
-                  <Bell className="h-5 w-5 group-hover:text-primary transition-colors" />
-                  <span className="absolute top-2.5 right-2.5 h-2 w-2 bg-red-500 rounded-full border-2 border-white" />
-                </Button>
+                <DropdownMenu onOpenChange={handleOpenChange}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="relative h-10 w-10 text-muted-foreground hover:bg-primary/5 rounded-full transition-all active:scale-95 group">
+                      <Bell className="h-5 w-5 group-hover:text-primary transition-colors" />
+                      {unreadCount > 0 && (
+                        <span className="absolute top-2 right-2 h-4 w-4 bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-white flex items-center justify-center">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80 mt-2 rounded-xl shadow-lg border-border p-0 overflow-hidden animate-in fade-in zoom-in duration-200">
+                    <div className="p-3 border-b border-border flex justify-between items-center bg-gray-50/50">
+                      <span className="text-sm font-bold text-foreground">Notifications</span>
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Unread Only</span>
+                    </div>
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {displayNotifications.length === 0 ? (
+                        <div className="p-8 text-center">
+                          <Bell className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+                          <p className="text-xs text-muted-foreground font-medium">No new notifications</p>
+                        </div>
+                      ) : (
+                        displayNotifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            onClick={() => {
+                              if (notification.link) router.push(notification.link);
+                            }}
+                            className="p-3 border-b border-border last:border-0 cursor-pointer transition-colors hover:bg-gray-50 flex gap-3 bg-primary/[0.02]"
+                          >
+                            <div className="mt-0.5">
+                              {getNotificationIcon(notification.type)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] leading-tight mb-0.5 font-bold text-foreground">
+                                {notification.title}
+                              </p>
+                              <p className="text-[11px] text-muted-foreground line-clamp-2 mb-1">
+                                {notification.message}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground/60 font-medium">
+                                {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                              </p>
+                            </div>
+                            <div className="w-2 h-2 bg-primary rounded-full mt-2 self-start" />
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <div className="p-2 border-t border-border bg-gray-50/50">
+                      <Button variant="ghost" size="sm" className="w-full text-[11px] font-bold text-muted-foreground" onClick={() => router.push('/dashboard')}>
+                        See all in dashboard
+                      </Button>
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
+import { createNotification } from './notificationController.js';
 
 export const getLeases = async (req: Request, res: Response) => {
     try {
@@ -88,8 +89,41 @@ export const createLease = async (req: Request, res: Response) => {
                 ownerAccepted: isOwnerCreator ? true : false,
                 customerAccepted: false,
                 status: 'PENDING'
+            },
+            include: {
+                property: true,
+                owner: true,
+                customer: true
             }
         });
+
+        // Fetch creator details for the notification
+        const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { name: true }
+        });
+        const creatorName = dbUser?.name || 'Someone';
+        const creatorRole = user.role === 'AGENT' ? 'Agent' : 'Owner';
+
+        await createNotification(
+            lease.customerId,
+            'New Lease Offer',
+            `${creatorRole} ${creatorName} has created a new lease offer for ${lease.property.title}`,
+            'LEASE',
+            `/dashboard/customer`
+        );
+
+        // If Agent created it, also notify the owner to accept
+        if (user.role === 'AGENT') {
+            await createNotification(
+                lease.ownerId,
+                'New Lease Proposal',
+                `Agent ${creatorName} has created a lease proposal for your property: ${lease.property.title}. Please review and accept.`,
+                'LEASE',
+                `/dashboard/owner?tab=leases`
+            );
+        }
+
         res.status(201).json(lease);
     } catch (error: any) {
         console.error('Error creating lease:', error);
@@ -104,8 +138,20 @@ export const updateLeaseStatus = async (req: Request, res: Response) => {
 
         const lease = await prisma.lease.update({
             where: { id },
-            data: { status }
+            data: { status },
+            include: {
+                property: true
+            }
         });
+
+        // Notify customer
+        await createNotification(
+            lease.customerId,
+            'Lease Status Updated',
+            `Your lease for ${lease.property.title} is now ${status}`,
+            'LEASE',
+            `/dashboard/customer`
+        );
 
         res.json(lease);
     } catch (error: any) {
@@ -119,7 +165,10 @@ export const acceptLease = async (req: Request, res: Response) => {
         const { id } = req.params;
         const { role } = req.body;
 
-        const existingLease = await prisma.lease.findUnique({ where: { id } });
+        const existingLease = await prisma.lease.findUnique({
+            where: { id },
+            include: { property: true }
+        });
         if (!existingLease) {
             return res.status(404).json({ error: 'Lease not found' });
         }
@@ -138,8 +187,52 @@ export const acceptLease = async (req: Request, res: Response) => {
 
         const lease = await prisma.lease.update({
             where: { id },
-            data
+            data,
+            include: {
+                property: {
+                    include: { listedBy: true }
+                },
+                customer: true,
+                owner: true
+            }
         });
+
+        // Notify the appropriate party
+        if (role === 'owner') {
+            await createNotification(
+                lease.customerId,
+                'Lease Accepted by Owner',
+                `The owner has accepted the lease for ${lease.property.title}`,
+                'LEASE',
+                `/dashboard/customer`
+            );
+        } else if (role === 'customer') {
+            await createNotification(
+                lease.ownerId,
+                'Lease Accepted by Customer',
+                `${lease.customer.name} has accepted the lease for ${lease.property.title}`,
+                'LEASE',
+                `/dashboard/owner?tab=leases`
+            );
+        }
+
+        // Notify parties if activated
+        if (lease.status === 'ACTIVE') {
+            const message = `Lease for ${lease.property.title} is now ACTIVE!`;
+            await createNotification(lease.customerId, 'Lease Activated', message, 'LEASE', `/dashboard/customer`);
+            await createNotification(lease.ownerId, 'Lease Activated', message, 'LEASE', `/dashboard/owner?tab=leases`);
+
+            // Notify Agent if they were the ones who listed it
+            if (lease.property.listedById !== lease.ownerId) {
+                await createNotification(
+                    lease.property.listedById,
+                    'Lease Successfully Activated',
+                    `The lease for your listing "${lease.property.title}" has been accepted by both parties and is now ACTIVE.`,
+                    'LEASE',
+                    `/dashboard/agent`
+                );
+            }
+        }
 
         res.json(lease);
     } catch (error: any) {

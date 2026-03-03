@@ -34,6 +34,7 @@ import { usePropertyStore } from '@/store/usePropertyStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useApplicationStore } from '@/store/useApplicationStore';
 import { getListingMainImage, cn } from '@/lib/utils';
+import { differenceInDays } from 'date-fns';
 import {
     Popover,
     PopoverContent,
@@ -136,10 +137,9 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                 const start = new Date(startDate);
                 const end = new Date(endDate);
 
-                // Calculate months difference
-                const yearDiff = end.getFullYear() - start.getFullYear();
-                const monthDiff = end.getMonth() - start.getMonth();
-                const totalMonths = Math.max(1, yearDiff * 12 + monthDiff);
+                // Calculate months difference based on fixed 30-day periods
+                const diffInDays = differenceInDays(end, start);
+                const totalMonths = Math.max(1, Math.floor(diffInDays / 30));
 
                 if (paymentModel === 'Recurring') {
                     setValue('totalPrice', (price * totalMonths).toString());

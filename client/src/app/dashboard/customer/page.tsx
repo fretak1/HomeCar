@@ -66,7 +66,7 @@ import { useChatStore } from '@/store/useChatStore';
 import { useFavoriteStore } from '@/store/useFavoriteStore';
 import { useLeaseStore } from '@/store/useLeaseStore';
 
-import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth } from 'date-fns';
+import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth, addDays, isWithinInterval } from 'date-fns';
 
 
 export default function CustomerDashboardPage() {
@@ -349,7 +349,7 @@ export default function CustomerDashboardPage() {
                                         <p className="text-sm text-muted-foreground mb-1">Total Spent</p>
                                         <p className="text-3xl text-foreground font-bold">
                                             ETB {transactions
-                                                .filter(t => t.status === 'completed')
+                                                .filter(t => t.status === 'COMPLETED')
                                                 .reduce((sum, t) => sum + t.amount, 0)
                                                 .toLocaleString()}
                                         </p>
@@ -512,9 +512,10 @@ export default function CustomerDashboardPage() {
 
                                                 const leaseStartDate = new Date(lease.startDate);
                                                 const leaseEndDate = new Date(lease.endDate);
-                                                const totalLeaseMonths = differenceInMonths(leaseEndDate, leaseStartDate);
-                                                const currentMonthIndex = differenceInMonths(new Date(), leaseStartDate);
-                                                const leaseProgressValue = Math.min(100, (currentMonthIndex / totalLeaseMonths) * 100);
+                                                const totalLeaseDays = differenceInDays(leaseEndDate, leaseStartDate);
+                                                const totalLeaseMonths = Math.max(1, Math.floor(totalLeaseDays / 30));
+                                                const elapsedDays = differenceInDays(new Date(), leaseStartDate);
+                                                const leaseProgressValue = Math.min(100, Math.max(0, (elapsedDays / totalLeaseDays) * 100));
 
 
                                                 return (
@@ -590,32 +591,32 @@ export default function CustomerDashboardPage() {
                                                                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                                                         {(() => {
                                                                             const startDate = new Date(lease.startDate);
-                                                                            const endDate = new Date(lease.endDate);
-                                                                            const totalMonths = Math.max(1, differenceInMonths(endDate, startDate));
                                                                             const now = new Date();
 
                                                                             return (
                                                                                 <div className="space-y-4">
-                                                                                    {Array.from({ length: totalMonths }).map((_, i) => {
-                                                                                        const monthDate = addMonths(startDate, i);
-                                                                                        const isMonthPast = isBefore(endOfMonth(monthDate), now);
-                                                                                        const isCurrentMonth = isSameMonth(monthDate, now);
-
-                                                                                        const daysInThisMonth = differenceInDays(endOfMonth(monthDate), startOfMonth(monthDate)) + 1;
-                                                                                        const daysPassedThisMonth = isMonthPast ? daysInThisMonth : isCurrentMonth ? differenceInDays(now, startOfMonth(monthDate)) : 0;
-                                                                                        const daysFilled = Math.min(daysInThisMonth, Math.max(0, daysPassedThisMonth));
-
-                                                                                        const monthLabel = format(monthDate, 'MMM-yyyy');
-                                                                                        const isPaid = transactions.some(t =>
+                                                                                    {Array.from({ length: totalLeaseMonths }).map((_, i) => {
+                                                                                        const periodStart = addDays(startDate, i * 30);
+                                                                                        const periodEnd = addDays(periodStart, 30);
+                                                                                        const isMonthPast = isBefore(periodEnd, now);
+                                                                                        const isCurrentMonth = isWithinInterval(now, { start: periodStart, end: periodEnd });
+                                                                                        const monthLabel = format(periodStart, 'MMM-yyyy');
+                                                                                        const transaction = transactions.find(t =>
                                                                                             t.leaseId === lease.id &&
-                                                                                            t.status === 'COMPLETED' &&
+                                                                                            (t.status === 'COMPLETED' || t.status === 'PENDING') &&
                                                                                             (t.metadata as any)?.month === monthLabel
                                                                                         );
+                                                                                        const isPaid = transaction?.status === 'COMPLETED';
+                                                                                        const isPending = transaction?.status === 'PENDING';
+
+                                                                                        const daysInThisMonth = 30;
+                                                                                        const daysPassedThisMonth = isMonthPast ? 30 : isCurrentMonth ? Math.max(0, differenceInDays(now, periodStart)) : 0;
+                                                                                        const daysFilled = Math.min(30, Math.max(0, daysPassedThisMonth));
 
                                                                                         return (
                                                                                             <div
                                                                                                 key={i}
-                                                                                                className={`p-5 rounded-2xl border transition-all ${isMonthPast || isPaid
+                                                                                                className={`p-5 rounded-2xl border transition-all ${isMonthPast
                                                                                                     ? 'bg-green-50/20 border-green-100'
                                                                                                     : isCurrentMonth
                                                                                                         ? 'bg-white border-primary shadow-lg ring-1 ring-primary/10'
@@ -623,14 +624,13 @@ export default function CustomerDashboardPage() {
                                                                                                     }`}
                                                                                             >
                                                                                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                                                                                    {/* Month Info */}
                                                                                                     <div className="min-w-[140px]">
                                                                                                         <div className="flex items-center space-x-2 mb-1">
                                                                                                             <h5 className={`font-bold text-sm ${isCurrentMonth ? 'text-primary' : 'text-foreground'}`}>
-                                                                                                                {format(monthDate, 'MMM yyyy')}
+                                                                                                                {format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd')}
                                                                                                             </h5>
                                                                                                             {isCurrentMonth && (
-                                                                                                                <Badge className="bg-primary text-white text-[8px] h-4 px-1 border-none shadow-sm">ACTIVE</Badge>
+                                                                                                                <Badge className="bg-primary text-white text-[8px] h-4 px-1 border-none shadow-sm">CURRENT</Badge>
                                                                                                             )}
                                                                                                         </div>
                                                                                                         <p className="text-2xl font-black text-foreground">
@@ -638,20 +638,19 @@ export default function CustomerDashboardPage() {
                                                                                                         </p>
                                                                                                     </div>
 
-                                                                                                    {/* Days Horizontal Bar */}
                                                                                                     <div className="flex-1 space-y-2">
                                                                                                         <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
-                                                                                                            <span>Monthly progress </span>
-                                                                                                            <span className={isMonthPast || isPaid ? 'text-green-600' : isCurrentMonth ? 'text-primary' : ''}>
-                                                                                                                {daysFilled}/{daysInThisMonth} Days
+                                                                                                            <span>Billing Progress (Fixed 30 Days)</span>
+                                                                                                            <span className={isMonthPast ? 'text-green-600' : isCurrentMonth ? 'text-primary' : ''}>
+                                                                                                                {daysFilled}/30 Days
                                                                                                             </span>
                                                                                                         </div>
                                                                                                         <div className="flex gap-0.5 h-3">
-                                                                                                            {Array.from({ length: daysInThisMonth }).map((_, d) => (
+                                                                                                            {Array.from({ length: 30 }).map((_, d) => (
                                                                                                                 <div
                                                                                                                     key={d}
                                                                                                                     className={`h-full w-full rounded-[1px] transition-all duration-700 ${d < daysFilled
-                                                                                                                        ? (isMonthPast || isPaid ? 'bg-green-500 shadow-[0_0_2px_rgba(34,197,94,0.3)]' : 'bg-primary shadow-[0_0_3px_rgba(var(--primary),0.2)] animate-pulse')
+                                                                                                                        ? (isMonthPast ? 'bg-green-500 shadow-[0_0_2px_rgba(34,197,94,0.3)]' : 'bg-primary shadow-[0_0_3px_rgba(0,128,0,0.2)] animate-pulse')
                                                                                                                         : 'bg-muted-foreground/20'
                                                                                                                         }`}
                                                                                                                 />
@@ -659,33 +658,31 @@ export default function CustomerDashboardPage() {
                                                                                                         </div>
                                                                                                     </div>
 
-                                                                                                    {/* Status */}
-                                                                                                    <div className="flex flex-col items-end min-w-[100px]">
-                                                                                                        {isPaid || isMonthPast ? (
-                                                                                                            <div className="flex items-center space-x-1.5 text-green-600">
-                                                                                                                <CheckCircle className="h-5 w-5" />
-                                                                                                                <span className="text-xs font-bold tracking-wide uppercase">Paid</span>
+                                                                                                    <div className="md:w-56 flex justify-end">
+                                                                                                        {isPaid ? (
+                                                                                                            <div className="flex items-center text-green-600 font-bold text-xs bg-green-50 py-2.5 rounded-xl border border-green-100 w-full md:w-auto justify-center px-4">
+                                                                                                                <CheckCircle className="h-4 w-4 mr-2" />
+                                                                                                                Collected
                                                                                                             </div>
-                                                                                                        ) : isCurrentMonth ? (
-                                                                                                            <Button
-                                                                                                                size="sm"
-                                                                                                                disabled={isPaymentLoading}
-                                                                                                                onClick={() => handleRentPayment(lease, monthDate)}
-                                                                                                                className="bg-amber-500 hover:bg-amber-600 text-white font-bold h-7 px-3 text-[10px] rounded-lg shadow-sm transition-all active:scale-95"
-                                                                                                            >
-                                                                                                                {isPaymentLoading ? (
-                                                                                                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                                                                                                ) : (
-                                                                                                                    <DollarSign className="h-3 w-3 mr-1" />
-                                                                                                                )}
-                                                                                                                Pay Rent
-                                                                                                            </Button>
+                                                                                                        ) : isPending ? (
+                                                                                                            <div className="flex items-center text-amber-600 font-bold text-xs bg-amber-50 py-2.5 rounded-xl border border-amber-100 w-full md:w-auto justify-center px-4">
+                                                                                                                <Clock className="h-4 w-4 mr-2" />
+                                                                                                                Pending
+                                                                                                            </div>
+                                                                                                        ) : (isCurrentMonth || isMonthPast) ? (
+                                                                                                            <div className="flex flex-col gap-2 w-full md:w-auto">
+                                                                                                                <Button
+                                                                                                                    size="sm"
+                                                                                                                    className="bg-primary hover:bg-primary/90 text-white font-bold w-full rounded-xl"
+                                                                                                                    onClick={() => handleRentPayment(lease, periodStart)}
+                                                                                                                >
+                                                                                                                    Pay Rent
+                                                                                                                </Button>
+                                                                                                            </div>
                                                                                                         ) : (
-                                                                                                            <div className="flex items-center space-x-1.5 text-muted-foreground/50">
-                                                                                                                <div className="h-5 w-5 rounded-full border-2 border-dashed border-current flex items-center justify-center">
-                                                                                                                    <div className="w-1.5 h-1.5 rounded-full bg-current opacity-30"></div>
-                                                                                                                </div>
-                                                                                                                <span className="text-xs font-bold tracking-wide uppercase">Upcoming</span>
+                                                                                                            <div className="flex items-center text-muted-foreground font-bold text-xs bg-muted/30 py-2.5 rounded-xl border border-border/10 w-full md:w-auto justify-center px-4">
+                                                                                                                <Clock className="h-4 w-4 mr-2" />
+                                                                                                                Upcoming
                                                                                                             </div>
                                                                                                         )}
                                                                                                     </div>
@@ -702,7 +699,7 @@ export default function CustomerDashboardPage() {
                                                                 <div className="mt-4 pt-4 border-t border-border">
                                                                     <div className="flex justify-between items-center mb-2">
                                                                         <span className="text-sm text-muted-foreground">Lease Progress</span>
-                                                                        <span className="text-sm text-foreground">{Math.min(currentMonthIndex + 1, totalLeaseMonths)} of {totalLeaseMonths} months</span>
+                                                                        <span className="text-sm text-foreground">{Math.min(Math.floor(elapsedDays / 30) + 1, totalLeaseMonths)} of {totalLeaseMonths} months</span>
                                                                     </div>
                                                                     <Progress value={leaseProgressValue} className="h-2" />
                                                                 </div>

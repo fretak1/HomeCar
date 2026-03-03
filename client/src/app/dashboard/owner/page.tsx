@@ -58,7 +58,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { formatLocation, getListingMainImage } from '@/lib/utils';
 import Link from 'next/link';
-import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth } from 'date-fns';
+import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth, addDays, isWithinInterval } from 'date-fns';
 
 import DashboardTabs from '@/components/DashboardTabs';
 import { PropertyCard } from '@/components/PropertyCard';
@@ -69,6 +69,7 @@ import { useApplicationStore } from '@/store/useApplicationStore';
 import { useMaintenanceStore } from '@/store/useMaintenanceStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useLeaseStore } from '@/store/useLeaseStore';
+import { useTransactionStore } from '@/store/useTransactionStore';
 
 export default function OwnerDashboardPage() {
     const router = useRouter();
@@ -84,6 +85,7 @@ export default function OwnerDashboardPage() {
     const { applications, fetchApplications, updateApplicationStatus, isLoading: isAppLoading } = useApplicationStore();
     const { requests: maintenanceRequests, fetchRequests: fetchMaintenanceRequests, updateRequestStatus, isLoading: isMaintenanceLoading } = useMaintenanceStore();
     const { leases, fetchLeases, acceptLease, isLoading: isLeaseLoading } = useLeaseStore();
+    const { transactions, fetchTransactions, isLoading: isTransactionLoading } = useTransactionStore();
 
     useEffect(() => {
         if (currentUser?.id) {
@@ -91,8 +93,9 @@ export default function OwnerDashboardPage() {
             fetchApplications({ managerId: currentUser.id });
             fetchMaintenanceRequests(currentUser.id);
             fetchLeases(currentUser.id);
+            fetchTransactions();
         }
-    }, [fetchPropertiesByOwnerId, fetchApplications, fetchMaintenanceRequests, fetchLeases, currentUser]);
+    }, [fetchPropertiesByOwnerId, fetchApplications, fetchMaintenanceRequests, fetchLeases, fetchTransactions, currentUser]);
 
     const toggleSchedule = (id: string) => {
         setExpandedSchedules(prev =>
@@ -109,9 +112,13 @@ export default function OwnerDashboardPage() {
         { value: 'payout', label: 'Payout' },
     ];
 
+    const ownerTransactions = transactions.filter(t => t.payeeId === currentUser?.id);
+    const completedTransactions = ownerTransactions.filter(t => t.status === 'COMPLETED');
+    const totalRevenue = completedTransactions.reduce((sum, t) => sum + t.amount, 0);
+
     const stats = [
         { label: 'My Properties', value: properties.length.toString(), icon: Building2 },
-        { label: 'Monthly Revenue', value: 'ETB 125K', icon: Wallet },
+        { label: 'Total Revenue', value: `ETB ${totalRevenue.toLocaleString()}`, icon: Wallet },
         { label: 'Applications', value: applications.length.toString(), icon: FileText },
         { label: 'Maintenance', value: maintenanceRequests.length.toString(), icon: Wrench },
     ];
@@ -306,85 +313,103 @@ export default function OwnerDashboardPage() {
                                                                     {(() => {
                                                                         const startDate = new Date(lease.startDate);
                                                                         const endDate = new Date(lease.endDate);
-                                                                        const totalMonths = Math.max(1, differenceInMonths(endDate, startDate));
+                                                                        const totalLeaseDays = differenceInDays(endDate, startDate);
+                                                                        const totalLeaseMonths = Math.max(1, Math.floor(totalLeaseDays / 30));
                                                                         const now = new Date();
 
-                                                                        return Array.from({ length: totalMonths }).map((_, i) => {
-                                                                            const monthDate = addMonths(startDate, i);
-                                                                            const isMonthPast = isBefore(endOfMonth(monthDate), now);
-                                                                            const isCurrentMonth = isSameMonth(monthDate, now);
+                                                                        return (
+                                                                            <div className="space-y-4">
+                                                                                {Array.from({ length: totalLeaseMonths }).map((_, i) => {
+                                                                                    const periodStart = addDays(startDate, i * 30);
+                                                                                    const periodEnd = addDays(periodStart, 30);
+                                                                                    const isMonthPast = isBefore(periodEnd, now);
+                                                                                    const isCurrentMonth = isWithinInterval(now, { start: periodStart, end: periodEnd });
+                                                                                    const monthLabel = format(periodStart, 'MMM-yyyy');
+                                                                                    const transaction = transactions.find(t =>
+                                                                                        t.leaseId === lease.id &&
+                                                                                        (t.status === 'COMPLETED' || t.status === 'PENDING') &&
+                                                                                        (t.metadata as any)?.month === monthLabel
+                                                                                    );
+                                                                                    const isPaid = transaction?.status === 'COMPLETED';
+                                                                                    const isPending = transaction?.status === 'PENDING';
 
-                                                                            const daysInThisMonth = differenceInDays(endOfMonth(monthDate), startOfMonth(monthDate)) + 1;
-                                                                            const daysPassedThisMonth = isMonthPast ? daysInThisMonth : isCurrentMonth ? differenceInDays(now, startOfMonth(monthDate)) : 0;
-                                                                            const daysFilled = Math.min(daysInThisMonth, Math.max(0, daysPassedThisMonth));
+                                                                                    const daysPassedThisMonth = isMonthPast ? 30 : isCurrentMonth ? Math.max(0, differenceInDays(now, periodStart)) : 0;
+                                                                                    const daysFilled = Math.min(30, Math.max(0, daysPassedThisMonth));
 
-                                                                            return (
-                                                                                <div
-                                                                                    key={i}
-                                                                                    className={`p-5 rounded-2xl border transition-all ${isMonthPast
-                                                                                        ? 'bg-green-50/20 border-green-100'
-                                                                                        : isCurrentMonth
-                                                                                            ? 'bg-white border-[#005a41] shadow-lg ring-1 ring-[#005a41]/10'
-                                                                                            : 'bg-muted/5 border-border opacity-70'
-                                                                                        }`}
-                                                                                >
-                                                                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                                                                        <div className="min-w-[140px]">
-                                                                                            <div className="flex items-center space-x-2 mb-1">
-                                                                                                <h5 className={`font-bold text-sm ${isCurrentMonth ? 'text-[#005a41]' : 'text-foreground'}`}>
-                                                                                                    {format(monthDate, 'MMM yyyy')}
-                                                                                                </h5>
-                                                                                                {isCurrentMonth && (
-                                                                                                    <Badge className="bg-[#005a41] text-white text-[8px] h-4 px-1 border-none shadow-sm">PROCESSING</Badge>
-                                                                                                )}
-                                                                                            </div>
-                                                                                            <p className="text-2xl font-black text-foreground">
-                                                                                                ETB {(lease.recurringAmount || property.price).toLocaleString()}
-                                                                                            </p>
-                                                                                        </div>
-
-                                                                                        <div className="flex-1 space-y-2">
-                                                                                            <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
-                                                                                                <span>Payment progress </span>
-                                                                                                <span className={isMonthPast ? 'text-green-600' : isCurrentMonth ? 'text-[#005a41]' : ''}>
-                                                                                                    {daysFilled}/{daysInThisMonth} Days
-                                                                                                </span>
-                                                                                            </div>
-                                                                                            <div className="flex gap-0.5 h-3">
-                                                                                                {Array.from({ length: daysInThisMonth }).map((_, d) => (
-                                                                                                    <div
-                                                                                                        key={d}
-                                                                                                        className={`h-full w-full rounded-[1px] transition-all duration-700 ${d < daysFilled
-                                                                                                            ? (isMonthPast ? 'bg-green-500 shadow-[0_0_2px_rgba(34,197,94,0.3)]' : 'bg-[#005a41] shadow-[0_0_3px_rgba(0,90,65,0.2)] animate-pulse')
-                                                                                                            : 'bg-muted-foreground/20'
-                                                                                                            }`}
-                                                                                                    />
-                                                                                                ))}
-                                                                                            </div>
-                                                                                        </div>
-
-                                                                                        <div className="md:w-56 flex justify-end">
-                                                                                            {isMonthPast ? (
-                                                                                                <div className="flex items-center text-green-600 font-bold text-xs bg-green-50 py-2.5 rounded-xl border border-green-100 w-full md:w-auto justify-center px-4">
-                                                                                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                                                                                    Received
+                                                                                    return (
+                                                                                        <div
+                                                                                            key={i}
+                                                                                            className={`p-5 rounded-2xl border transition-all ${isMonthPast
+                                                                                                ? 'bg-green-50/20 border-green-100'
+                                                                                                : isCurrentMonth
+                                                                                                    ? 'bg-white border-[#005a41] shadow-lg ring-1 ring-[#005a41]/10'
+                                                                                                    : 'bg-muted/5 border-border opacity-70'
+                                                                                                }`}
+                                                                                        >
+                                                                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                                                                                <div className="min-w-[140px]">
+                                                                                                    <div className="flex items-center space-x-2 mb-1">
+                                                                                                        <h5 className={`font-bold text-sm ${isCurrentMonth ? 'text-[#005a41]' : 'text-foreground'}`}>
+                                                                                                            {format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd')}
+                                                                                                        </h5>
+                                                                                                        {isCurrentMonth && (
+                                                                                                            <Badge className="bg-[#005a41] text-white text-[8px] h-4 px-1 border-none shadow-sm">PROCESSING</Badge>
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                    <p className="text-2xl font-black text-foreground">
+                                                                                                        ETB {(lease.recurringAmount || property.price).toLocaleString()}
+                                                                                                    </p>
                                                                                                 </div>
-                                                                                            ) : isCurrentMonth ? (
-                                                                                                <div className="flex items-center text-[#005a41] font-bold text-xs bg-[#005a41]/5 py-2.5 rounded-xl border border-[#005a41]/20 w-full md:w-auto justify-center px-4">
-                                                                                                    <Clock className="h-4 w-4 mr-2" />
-                                                                                                    Expected soon
+
+                                                                                                <div className="flex-1 space-y-2">
+                                                                                                    <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
+                                                                                                        <span>Payment progress (Fixed 30 Days)</span>
+                                                                                                        <span className={isMonthPast ? 'text-green-600' : isCurrentMonth ? 'text-[#005a41]' : ''}>
+                                                                                                            {daysFilled}/30 Days
+                                                                                                        </span>
+                                                                                                    </div>
+                                                                                                    <div className="flex gap-0.5 h-3">
+                                                                                                        {Array.from({ length: 30 }).map((_, d) => (
+                                                                                                            <div
+                                                                                                                key={d}
+                                                                                                                className={`h-full w-full rounded-[1px] transition-all duration-700 ${d < daysFilled
+                                                                                                                    ? (isMonthPast ? 'bg-green-500 shadow-[0_0_2px_rgba(34,197,94,0.3)]' : 'bg-[#005a41] shadow-[0_0_3px_rgba(0,90,65,0.2)] animate-pulse')
+                                                                                                                    : 'bg-muted-foreground/20'
+                                                                                                                    }`}
+                                                                                                            />
+                                                                                                        ))}
+                                                                                                    </div>
                                                                                                 </div>
-                                                                                            ) : (
-                                                                                                <div className="flex items-center text-muted-foreground font-bold text-xs bg-muted/30 py-2.5 rounded-xl border border-border/10 w-full md:w-auto justify-center px-4">
-                                                                                                    <Clock className="h-4 w-4 mr-2" />
-                                                                                                    Upcoming
+
+                                                                                                <div className="md:w-56 flex justify-end">
+                                                                                                    {isPaid ? (
+                                                                                                        <div className="flex items-center text-green-600 font-bold text-xs bg-green-50 py-2.5 rounded-xl border border-green-100 w-full md:w-auto justify-center px-4">
+                                                                                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                                                                                            Received
+                                                                                                        </div>
+                                                                                                    ) : isPending ? (
+                                                                                                        <div className="flex items-center text-amber-600 font-bold text-xs bg-amber-50 py-2.5 rounded-xl border border-amber-100 w-full md:w-auto justify-center px-4">
+                                                                                                            <Clock className="h-4 w-4 mr-2" />
+                                                                                                            Pending
+                                                                                                        </div>
+                                                                                                    ) : isCurrentMonth ? (
+                                                                                                        <div className="flex items-center text-[#005a41] font-bold text-xs bg-[#005a41]/5 py-2.5 rounded-xl border border-[#005a41]/20 w-full md:w-auto justify-center px-4">
+                                                                                                            <Clock className="h-4 w-4 mr-2" />
+                                                                                                            Expected soon
+                                                                                                        </div>
+                                                                                                    ) : (
+                                                                                                        <div className="flex items-center text-muted-foreground font-bold text-xs bg-muted/30 py-2.5 rounded-xl border border-border/10 w-full md:w-auto justify-center px-4">
+                                                                                                            <Clock className="h-4 w-4 mr-2" />
+                                                                                                            Upcoming
+                                                                                                        </div>
+                                                                                                    )}
                                                                                                 </div>
-                                                                                            )}
+                                                                                            </div>
                                                                                         </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            );
-                                                                        });
+                                                                                    );
+                                                                                })}
+                                                                            </div>
+                                                                        );
                                                                     })()}
                                                                 </div>
                                                             )}
@@ -393,15 +418,17 @@ export default function OwnerDashboardPage() {
                                                             {(() => {
                                                                 const startDate = new Date(lease.startDate);
                                                                 const endDate = new Date(lease.endDate);
-                                                                const totalMonths = Math.max(1, differenceInMonths(endDate, startDate));
-                                                                const currentMonthIndex = differenceInMonths(new Date(), startDate);
-                                                                const leaseProgressValue = Math.min(100, Math.max(0, (currentMonthIndex / totalMonths) * 100));
+                                                                const totalLeaseDays = differenceInDays(endDate, startDate);
+                                                                const totalLeaseMonths = Math.max(1, Math.floor(totalLeaseDays / 30));
+                                                                const elapsedDays = differenceInDays(new Date(), startDate);
+                                                                const currentMonthIndex = Math.floor(elapsedDays / 30);
+                                                                const leaseProgressValue = Math.min(100, Math.max(0, (elapsedDays / totalLeaseDays) * 100));
 
                                                                 return (
                                                                     <>
                                                                         <div className="flex justify-between items-center mb-2">
-                                                                            <span className="text-sm text-muted-foreground">Lease Completion</span>
-                                                                            <span className="text-sm text-foreground font-bold">{Math.max(0, Math.min(currentMonthIndex + 1, totalMonths))} of {totalMonths} months</span>
+                                                                            <span className="text-sm text-muted-foreground">Lease Completion (Fixed 30 Days)</span>
+                                                                            <span className="text-sm text-foreground font-bold">{Math.max(0, Math.min(currentMonthIndex + 1, totalLeaseMonths))} of {totalLeaseMonths} months</span>
                                                                         </div>
                                                                         <Progress value={leaseProgressValue} className="h-2" />
                                                                     </>
@@ -685,9 +712,8 @@ export default function OwnerDashboardPage() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <Card className="p-4 border-border bg-[#005a41]/5">
                                     <p className="text-xs text-[#005a41] font-bold uppercase mb-1">Total Received</p>
-                                    <p className="text-2xl font-bold">ETB 450,200</p>
+                                    <p className="text-2xl font-bold">ETB {totalRevenue.toLocaleString()}</p>
                                 </Card>
-
                             </div>
 
                             <Card className="border-border">
@@ -723,34 +749,39 @@ export default function OwnerDashboardPage() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="divide-y divide-border/50">
-                                        {mockTransactions
-                                            .filter(t =>
-                                                (transactionStatus === 'all' || t.status === transactionStatus) &&
-                                                (t.itemTitle.toLowerCase().includes(transactionSearch.toLowerCase()))
-                                            )
+                                        {isTransactionLoading ? (
+                                            <div className="p-10 text-center text-muted-foreground">Loading transactions...</div>
+                                        ) : ownerTransactions
+                                            .filter(t => {
+                                                const searchStr = (t.property?.title || 'Rent Payment').toLowerCase();
+                                                return (transactionStatus === 'all' || t.status.toLowerCase() === transactionStatus.toLowerCase()) &&
+                                                    searchStr.includes(transactionSearch.toLowerCase());
+                                            })
                                             .map((transaction) => (
                                                 <div key={transaction.id} className="p-4 hover:bg-muted/30 transition-colors group">
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center space-x-4">
                                                             <div className={cn(
                                                                 "p-3 rounded-2xl transition-all duration-300",
-                                                                transaction.status === 'completed' ? 'bg-green-50 text-green-600 group-hover:bg-green-100' :
-                                                                    transaction.status === 'pending' ? 'bg-yellow-50 text-yellow-600 group-hover:bg-yellow-100' :
+                                                                transaction.status === 'COMPLETED' ? 'bg-green-50 text-green-600 group-hover:bg-green-100' :
+                                                                    transaction.status === 'PENDING' ? 'bg-yellow-50 text-yellow-600 group-hover:bg-yellow-100' :
                                                                         'bg-red-50 text-red-600 group-hover:bg-red-100'
                                                             )}>
-                                                                {transaction.status === 'completed' ? <CheckCircle className="h-5 w-5" /> :
-                                                                    transaction.status === 'pending' ? <Clock className="h-5 w-5" /> :
+                                                                {transaction.status === 'COMPLETED' ? <CheckCircle className="h-5 w-5" /> :
+                                                                    transaction.status === 'PENDING' ? <Clock className="h-5 w-5" /> :
                                                                         <AlertCircle className="h-5 w-5" />}
                                                             </div>
                                                             <div>
-                                                                <h4 className="font-bold text-foreground group-hover:text-[#005a41] transition-colors">{transaction.itemTitle}</h4>
+                                                                <h4 className="font-bold text-foreground group-hover:text-[#005a41] transition-colors">
+                                                                    {transaction.property?.title || 'Rent Payment'}
+                                                                </h4>
                                                                 <div className="flex items-center gap-3">
                                                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">
-                                                                        ID: TX-{transaction.id.toUpperCase()}
+                                                                        ID: TX-{transaction.id.substring(0, 8).toUpperCase()}
                                                                     </p>
                                                                     <span className="w-1 h-1 bg-muted-foreground/30 rounded-full" />
                                                                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">
-                                                                        {transaction.date}
+                                                                        {format(new Date(transaction.createdAt), 'MMM dd, yyyy')}
                                                                     </p>
                                                                 </div>
                                                             </div>
@@ -764,15 +795,15 @@ export default function OwnerDashboardPage() {
                                                                     variant="outline"
                                                                     className={cn(
                                                                         "px-2 py-0 border-none text-[8px] font-black uppercase",
-                                                                        transaction.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                                                            transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                                                        transaction.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                                                            transaction.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
                                                                                 'bg-red-100 text-red-700'
                                                                     )}
                                                                 >
                                                                     {transaction.status}
                                                                 </Badge>
                                                             </div>
-                                                            {transaction.status === 'completed' && (
+                                                            {transaction.status === 'COMPLETED' && (
                                                                 <Link href={`/dashboard/owner/documents/receipt/${transaction.id}`} target="_blank">
                                                                     <Button
                                                                         variant="outline"
@@ -789,10 +820,11 @@ export default function OwnerDashboardPage() {
                                                 </div>
                                             ))}
                                     </div>
-                                    {mockTransactions.filter(t =>
-                                        (transactionStatus === 'all' || t.status === transactionStatus) &&
-                                        (t.itemTitle.toLowerCase().includes(transactionSearch.toLowerCase()))
-                                    ).length === 0 && (
+                                    {ownerTransactions.filter(t => {
+                                        const searchStr = (t.property?.title || 'Rent Payment').toLowerCase();
+                                        return (transactionStatus === 'all' || t.status.toLowerCase() === transactionStatus.toLowerCase()) &&
+                                            searchStr.includes(transactionSearch.toLowerCase());
+                                    }).length === 0 && (
                                             <div className="p-12 text-center space-y-3">
                                                 <div className="bg-muted p-4 rounded-full w-12 h-12 flex items-center justify-center mx-auto opacity-50">
                                                     <Search className="h-6 w-6 text-muted-foreground" />

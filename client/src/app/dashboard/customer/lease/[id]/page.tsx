@@ -26,7 +26,7 @@ import { useLeaseStore } from '@/store/useLeaseStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useChatStore } from '@/store/useChatStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
-import { format, differenceInMonths, isBefore, startOfMonth, endOfMonth, isSameMonth, addMonths } from 'date-fns';
+import { format, differenceInMonths, isBefore, startOfMonth, endOfMonth, isSameMonth, addMonths, differenceInDays, addDays, isWithinInterval } from 'date-fns';
 
 export default function LeaseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
@@ -56,12 +56,9 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
     const ownerId = lease?.owner?.id;
 
     const handleMessageManager = async () => {
-        console.log(ownerId);
         if (ownerId) {
-            const chatId = await initiateChat(ownerId);
-            if (chatId) {
-                router.push(`/chat?partnerId=${ownerId}`);
-            }
+            await initiateChat(ownerId);
+            router.push(`/chat?partnerId=${ownerId}`);
         }
     };
 
@@ -186,8 +183,9 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                         TERM: {(() => {
                                             const start = new Date(lease.startDate);
                                             const end = new Date(lease.endDate);
-                                            const months = differenceInMonths(end, start);
-                                            return `${months} MONTH${months > 1 ? 'S' : ''}`;
+                                            const days = differenceInDays(end, start);
+                                            const months = Math.floor(days / 30);
+                                            return `${months} MONTH${months !== 1 ? 'S' : ''} (${days} DAYS)`;
                                         })()}
                                     </Badge>
                                 </div>
@@ -198,10 +196,10 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                         const start = new Date(lease.startDate);
                                         const end = new Date(lease.endDate);
                                         const now = new Date();
-                                        const totalMonths = differenceInMonths(end, start);
-                                        const elapsedMonths = differenceInMonths(now, start);
-                                        const progress = Math.min(100, Math.max(0, (elapsedMonths / totalMonths) * 100));
-                                        const remainingMonths = Math.max(0, totalMonths - elapsedMonths);
+                                        const totalDays = differenceInDays(end, start);
+                                        const elapsedDays = differenceInDays(now, start);
+                                        const progress = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
+                                        const remainingMonths = Math.max(0, Math.floor((totalDays - elapsedDays) / 30));
 
                                         return (
                                             <div className="space-y-2">
@@ -209,7 +207,7 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                                     <div className="space-y-1">
                                                         <p className="text-[10px] uppercase font-bold text-muted-foreground">Term Progress</p>
                                                         <p className="text-2xl font-black text-foreground">
-                                                            {Math.round(progress)}% <span className="text-sm font-medium text-muted-foreground">Elapsed</span>
+                                                            {Math.round(progress)}% <span className="text-sm font-medium text-muted-foreground">Elapsed ({elapsedDays} days)</span>
                                                         </p>
                                                     </div>
                                                     <div className="text-right">
@@ -256,13 +254,14 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                                 const start = new Date(lease.startDate);
                                                 const end = new Date(lease.endDate);
                                                 const now = new Date();
-                                                const totalMonths = Math.max(1, differenceInMonths(end, start));
+                                                const totalMonths = Math.max(1, Math.floor(differenceInDays(end, start) / 30));
 
                                                 return Array.from({ length: totalMonths }).map((_, i) => {
-                                                    const monthDate = addMonths(start, i);
-                                                    const isMonthPast = isBefore(endOfMonth(monthDate), now);
-                                                    const isCurrentMonth = isSameMonth(monthDate, now);
-                                                    const monthLabel = format(monthDate, 'MMM-yyyy');
+                                                    const periodStart = addDays(start, i * 30);
+                                                    const periodEnd = addDays(periodStart, 30);
+                                                    const isMonthPast = isBefore(periodEnd, now);
+                                                    const isCurrentMonth = isWithinInterval(now, { start: periodStart, end: periodEnd });
+                                                    const monthLabel = format(periodStart, 'MMM-yyyy');
                                                     const transaction = transactions.find(t =>
                                                         t.leaseId === lease.id &&
                                                         (t.status === 'COMPLETED' || t.status === 'PENDING') &&
@@ -274,8 +273,8 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                                     return (
                                                         <tr key={i} className={cn("hover:bg-muted/10 transition-colors", isCurrentMonth ? "bg-primary/5" : "")}>
                                                             <td className="px-6 py-4">
-                                                                <p className="text-sm font-bold text-foreground">{format(monthDate, 'MMM yyyy')}</p>
-                                                                <p className="text-[10px] text-muted-foreground">Standard Rent Collection</p>
+                                                                <p className="text-sm font-bold text-foreground">{format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd, yyyy')}</p>
+                                                                <p className="text-[10px] text-muted-foreground">Fixed 30-Day Billing Cycle</p>
                                                             </td>
                                                             <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
                                                                 {isPaid ? format(new Date(transaction.updatedAt), 'MMM dd, yyyy') : '—'}
@@ -359,6 +358,6 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

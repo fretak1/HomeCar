@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
 import { emitNewMessage } from '../socket.js';
+import { createNotification } from './notificationController.js';
 // GET /api/chats/conversations
 // Returns unique conversation partners with the latest message per partner
 export const getConversations = async (req: Request, res: Response) => {
@@ -135,6 +136,15 @@ export const sendMessage = async (req: Request, res: Response) => {
         // Notify receiving user in real-time
         emitNewMessage(receiverId, message);
 
+        // Create persistent notification
+        await createNotification(
+            receiverId,
+            'New Message',
+            `You have a new message from ${message.sender.name}`,
+            'MESSAGE',
+            `/dashboard/chat?partnerId=${senderId}`
+        );
+
         res.status(201).json(message);
     } catch (error) {
         console.error('Error sending message:', error);
@@ -166,13 +176,25 @@ export const initiateChat = async (req: Request, res: Response) => {
 
         if (!existing && content?.trim()) {
             // Create the opening message only if content is provided
-            await prisma.chat.create({
+            const message = await prisma.chat.create({
                 data: {
                     senderId,
                     receiverId,
                     content: content.trim(),
+                },
+                include: {
+                    sender: { select: { name: true } }
                 }
             });
+
+            // Create persistent notification for initiated chat
+            await createNotification(
+                receiverId,
+                'New Conversation',
+                `${message.sender.name} started a new conversation with you.`,
+                'MESSAGE',
+                `/dashboard/chat?partnerId=${senderId}`
+            );
         }
 
         res.json({ partnerId: receiverId, initiated: !existing });

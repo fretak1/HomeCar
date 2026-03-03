@@ -161,13 +161,48 @@ export const verifyPayment = async (req: Request, res: Response) => {
         const verificationData = chapaRes.data;
 
         if (verificationData.status === 'success' && verificationData.data.status === 'success') {
-            // 2. Update our database
+            // 2. Fetch existing transaction to preserve its metadata (like the 'month' field)
+            const existingTx = await prisma.transaction.findUnique({
+                where: { chapaReference: txRef }
+            });
+
+            const mergedMetadata = {
+                ...(typeof existingTx?.metadata === 'object' && existingTx?.metadata != null ? existingTx.metadata : {}),
+                ...verificationData.data
+            };
+
+            // 3. Update our database with merged metadata
             const transaction = await prisma.transaction.update({
                 where: { chapaReference: txRef },
                 data: {
                     status: 'COMPLETED',
+                    metadata: mergedMetadata as any, // Store full Chapa response + existing custom meta
                 },
+                include: {
+                    payee: true,
+                    payer: true,
+                    property: true
+                }
             });
+
+            // 4. Notify Owner via Email
+            const subject = `Payment Received: ${transaction.amount} ETB for ${transaction.property?.title || 'Property'}`;
+            const html = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                    <h2 style="color: #10b981;">Payment Received!</h2>
+                    <p>Hello ${transaction.payee.name},</p>
+                    <p>You have successfully received a payment of <strong>${transaction.amount} ${transaction.currency}</strong> from <strong>${transaction.payer.name}</strong>.</p>
+                    <p><strong>Property:</strong> ${transaction.property?.title || 'Lease/Purchase'}</p>
+                    <p><strong>Transaction ID:</strong> ${transaction.id}</p>
+                    <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+                    <p style="margin-top: 20px;">The funds have been split according to your subaccount settings and will be settled by Chapa shortly.</p>
+                    <p style="margin-top: 20px;">Best regards,<br/>HomeCar Team</p>
+                </div>
+            `;
+
+            import('../services/emailService.js').then(module => {
+                module.sendEmail(transaction.payee.email, subject, html);
+            }).catch(err => console.error('Delayed email import failed:', err));
 
             // 3. If it's a lease payment, we could do more here (e.g., auto-advance month)
             // But for now, just marking it as completed is enough to reflect in the UI
@@ -202,12 +237,47 @@ export const verifyWebhook = async (req: Request, res: Response) => {
         const { tx_ref, status } = req.body;
 
         if (status === 'success') {
-            await prisma.transaction.update({
+            // Fetch existing transaction to preserve its metadata
+            const existingTx = await prisma.transaction.findUnique({
+                where: { chapaReference: tx_ref }
+            });
+
+            const mergedMetadata = {
+                ...(typeof existingTx?.metadata === 'object' && existingTx?.metadata != null ? existingTx.metadata : {}),
+                ...req.body
+            };
+
+            const transaction = await prisma.transaction.update({
                 where: { chapaReference: tx_ref },
                 data: {
-                    status: 'COMPLETED', // In split payments, it's settled directly
+                    status: 'COMPLETED',
+                    metadata: mergedMetadata as any, // Store webhook payload + existing custom meta
                 },
+                include: {
+                    payee: true,
+                    payer: true,
+                    property: true
+                }
             });
+
+            // Notify Owner via Email
+            const subject = `Payment Received: ${transaction.amount} ETB for ${transaction.property?.title || 'Property'}`;
+            const html = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                    <h2 style="color: #10b981;">Payment Received!</h2>
+                    <p>Hello ${transaction.payee.name},</p>
+                    <p>You have successfully received a payment of <strong>${transaction.amount} ${transaction.currency}</strong> from <strong>${transaction.payer.name}</strong>.</p>
+                    <p>Property: ${transaction.property?.title || 'Lease/Purchase'}</p>
+                    <p>Transaction ID: ${transaction.id}</p>
+                    <p>Date: ${new Date().toLocaleString()}</p>
+                    <p style="margin-top: 20px;">The funds have been split according to your subaccount settings and will be settled by Chapa shortly.</p>
+                    <p style="margin-top: 20px;">Best regards,<br/>HomeCar Team</p>
+                </div>
+            `;
+
+            import('../services/emailService.js').then(module => {
+                module.sendEmail(transaction.payee.email, subject, html);
+            }).catch(err => console.error('Webhook email sending failed:', err));
 
             // If it's a lease payment, we might want to update the lease last payment date here
         }

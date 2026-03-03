@@ -6,9 +6,13 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer } from 'http';
 import { initSocket } from './socket.js';
+import { initCronJobs } from './services/cronService.js';
 import fs from 'fs';
 
 dotenv.config();
+
+// Initialize Cron Jobs
+initCronJobs();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,6 +63,7 @@ import favoriteRoutes from './routes/favoriteRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 app.use('/api/user', userRoutes);
 app.use('/api/properties', propertyRoutes);
@@ -71,6 +76,7 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/health', (req: Request, res: Response) => {
     res.json({ status: 'OK', service: 'HomeCar Backend' });

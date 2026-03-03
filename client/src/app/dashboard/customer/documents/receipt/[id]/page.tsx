@@ -1,34 +1,33 @@
 "use client";
 
-import { use, useEffect } from 'react';
+import { useEffect, useRef, useState, use } from 'react';
 import Link from 'next/link';
 import {
-    ChevronLeft,
-    Printer,
-    Download,
-    CheckCircle,
     FileText,
+    Download,
+    Printer,
+    ChevronLeft,
+    CheckCircle,
     Building2,
-    Calendar,
-    User,
-    ShieldCheck,
+    Loader2,
     Mail,
     Phone,
     MapPin,
-    Loader2
+    ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useTransactionStore } from '@/store/useTransactionStore';
-import { useUserStore } from '@/store/useUserStore';
-import { cn, formatLocation } from '@/lib/utils';
+import { cn, getListingMainImage } from '@/lib/utils';
 import { format } from 'date-fns';
+import { API_ROUTES } from '@/lib/api';
 
 export default function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const { transactions, fetchTransactions, isLoading: isTxLoading } = useTransactionStore();
-    const { currentUser } = useUserStore();
+    const receiptRef = useRef<HTMLDivElement>(null);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     useEffect(() => {
         if (transactions.length === 0) {
@@ -68,8 +67,38 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
         window.print();
     };
 
+    const handleDownloadPdf = async () => {
+        if (!transaction) return;
+
+        setIsDownloading(true);
+        try {
+            const token = localStorage.getItem('auth_token');
+            const response = await fetch(`${API_ROUTES.TRANSACTIONS}/${transaction.id}/download`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) throw new Error('Failed to download receipt');
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Receipt-${transaction.chapaReference || transaction.id}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('PDF Download Error:', error);
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-muted/20 pb-20 print:bg-white print:pb-0">
+        <div className="min-h-screen bg-muted/20 pb-20 print:bg-white print:pb-0 font-sans">
             {/* Action Bar (Hidden on print) */}
             <div className="bg-white border-b border-border sticky top-0 z-50 py-4 print:hidden">
                 <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
@@ -80,20 +109,25 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                         </Button>
                     </Link>
                     <div className="flex gap-2">
-                        <Button variant="outline" size="sm" onClick={handlePrint} className="gap-2 border-primary/20 text-primary hover:bg-primary/5">
-                            <Printer className="h-4 w-4" />
-                            Print Receipt
-                        </Button>
-                        <Button size="sm" onClick={handlePrint} className="gap-2 bg-[#005a41] hover:bg-[#004a35] text-white">
-                            <Download className="h-4 w-4" />
-                            Download PDF
+                        <Button
+                            size="sm"
+                            onClick={handleDownloadPdf}
+                            disabled={isDownloading}
+                            className="gap-2 bg-[#005a41] hover:bg-[#004a35] text-white"
+                        >
+                            {isDownloading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Download className="h-4 w-4" />
+                            )}
+                            {isDownloading ? 'Generating...' : 'Download PDF'}
                         </Button>
                     </div>
                 </div>
             </div>
 
             {/* Receipt Content */}
-            <div className="max-w-4xl mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto px-4 py-8" ref={receiptRef} id="receipt-content">
                 <Card className="border-none shadow-2xl shadow-black/5 ring-1 ring-border bg-white print:shadow-none print:ring-0">
                     <CardContent className="p-12 sm:p-20">
                         {/* Header */}
@@ -135,11 +169,11 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                             <div className="space-y-4">
                                 <p className="text-xs font-bold text-muted-foreground tracking-widest uppercase">Billed To</p>
                                 <div className="space-y-2">
-                                    <p className="text-2xl font-black text-foreground">{currentUser?.name || transaction.payer?.name || 'Customer'}</p>
+                                    <p className="text-2xl font-black text-foreground text-[#005a41]">{transaction.payer?.name || 'Customer'}</p>
                                     <div className="text-sm text-muted-foreground font-medium space-y-1.5">
-                                        <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5" /> {currentUser?.email || 'N/A'}</p>
-                                        <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> {currentUser?.phoneNumber || 'N/A'}</p>
-                                        <p className="flex items-center gap-2 pt-2"><MapPin className="h-3.5 w-3.5" /> Site Location: {transaction.property?.title || 'Unknown Property'}</p>
+                                        <p className="flex items-center gap-2"><Mail className="h-3.5 w-3.5" /> {(transaction as any).payer?.email || 'N/A'}</p>
+                                        <p className="flex items-center gap-2"><Phone className="h-3.5 w-3.5" /> {(transaction as any).payer?.phoneNumber || 'N/A'}</p>
+                                        <p className="flex items-center gap-2 pt-2"><MapPin className="h-3.5 w-3.5" /> Unit: {transaction.property?.title || 'Unknown Property'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -178,7 +212,7 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                                         <td className="py-8">
                                             <p className="font-black text-lg text-foreground">{transaction.property?.title || 'Payment'}</p>
                                             <p className="text-sm text-muted-foreground font-medium">
-                                                {transaction.type === 'RENT' ? `Monthly rent for ${(transaction.metadata as any)?.month || 'specified period'}` : 'Property purchase payment'}
+                                                {transaction.type === 'RENT' ? `Monthly rent collection` : 'Property payment'}
                                             </p>
                                         </td>
                                         <td className="py-8 text-center font-bold">1</td>
@@ -213,8 +247,8 @@ export default function ReceiptPage({ params }: { params: Promise<{ id: string }
                         {/* Footer */}
                         <div className="pt-20 border-t border-border flex flex-col md:flex-row justify-between items-center gap-8">
                             <div className="flex items-center gap-4">
-                                <div className="bg-primary/5 p-3 rounded-full">
-                                    <ShieldCheck className="h-6 w-6 text-primary" />
+                                <div className="bg-[#005a41]/5 p-3 rounded-full">
+                                    <ShieldCheck className="h-6 w-6 text-[#005a41]" />
                                 </div>
                                 <div>
                                     <p className="text-xs font-black uppercase text-foreground">Secure Payment Gateway</p>

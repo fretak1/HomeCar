@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
+import { createNotification } from './notificationController.js';
 
 export const getMaintenanceRequests = async (req: Request, res: Response) => {
     try {
@@ -77,8 +78,22 @@ export const addMaintenanceRequest = async (req: Request, res: Response) => {
                 ...data,
                 images: imagesArray,
                 customerId: (req as any).user.id // Assign to current user
+            },
+            include: {
+                property: true,
+                customer: true
             }
         });
+
+        // Notify property owner
+        await createNotification(
+            request.property.ownerId,
+            'New Maintenance Request',
+            `${request.customer.name} submitted a ${request.category} request for ${request.property.title}`,
+            'MAINTENANCE',
+            `/dashboard/owner?tab=maintenance`
+        );
+
         res.status(201).json(request);
     } catch (error: any) {
         console.error('Error creating maintenance request:', error);
@@ -93,8 +108,35 @@ export const updateMaintenanceStatus = async (req: Request, res: Response) => {
 
         const request = await prisma.maintenanceRequest.update({
             where: { id },
-            data: { status }
+            data: { status },
+            include: {
+                property: true,
+                customer: true
+            }
         });
+
+        // Refined notification logic:
+        const normalizedStatus = status.toLowerCase();
+
+        if (normalizedStatus === 'inprogress') {
+            // Notify customer that it's being worked on
+            await createNotification(
+                request.customerId,
+                'Maintenance In Progress',
+                `Your maintenance request for ${request.property.title} is now being worked on.`,
+                'MAINTENANCE',
+                `/dashboard/customer`
+            );
+        } else if (normalizedStatus === 'completed') {
+            // Notify owner that customer marked it as fixed
+            await createNotification(
+                request.property.ownerId,
+                'Maintenance Completed',
+                `${request.customer.name} marked the maintenance request for ${request.property.title} as completed.`,
+                'MAINTENANCE',
+                `/dashboard/owner?tab=maintenance`
+            );
+        }
 
         res.json(request);
     } catch (error: any) {
