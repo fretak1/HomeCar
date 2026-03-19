@@ -1,29 +1,49 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 class PredictionRequest(BaseModel):
     brand: str
     model: str
     year: int
     mileage: float
-    condition: Optional[str] = "Good"
+    fuelType: str
+    transmission: str
+    listingType: str  # This is RENT/BUY in the form
+    city: str
+    subcity: str
+    region: str
+    village: str
+    amenities: Optional[List[str]] = []
 
 class HousePredictionRequest(BaseModel):
-    location: str
+    city: str
+    subcity: str
+    region: str
+    village: str
+    listingType: str  # This is RENT/BUY in the form
     propertyType: str
     area: float
     bedrooms: int
     bathrooms: Optional[int] = 1
+    amenities: Optional[List[str]] = []
+
+class ChatRequest(BaseModel):
+    message: str
+    history: Optional[List[Dict[str, str]]] = []
 
 class PredictionResponse(BaseModel):
     predicted_price: float
     currency: str
     confidence: float
+    method: str
+    reasoning: Optional[str] = None
 
 class HousePredictionResponse(BaseModel):
     predicted_price: float
     currency: str
     confidence: float
+    method: str
+    reasoning: Optional[str] = None
 
 class InteractionHistory(BaseModel):
     propertyId: str
@@ -36,6 +56,6 @@ class InteractionHistory(BaseModel):
     price: Optional[float] = None
 
 class RecommendationRequest(BaseModel):
-    userId: str
-    history: List[InteractionHistory]
+    userId: Optional[str] = None
+    history: Optional[List[InteractionHistory]] = None
     limit: Optional[int] = 10

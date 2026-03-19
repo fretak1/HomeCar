@@ -34,7 +34,6 @@ model User {
   requests            MaintenanceRequest[]
   listings            Property[]           @relation("ListedBy")
   ownedProperties     Property[]           @relation("PropertyOwner")
-  reviews             Review[]
   chapaSubaccountId   String?
   payoutBankCode      String?
   payoutAccountNumber String?
@@ -42,6 +41,10 @@ model User {
   transactionsAsPayer Transaction[]        @relation("PayerTransactions")
   transactionsAsPayee Transaction[]        @relation("PayeeTransactions")
   notifications       Notification[]
+  reviews             Review[]
+  propertyViews       PropertyView[]
+  filterLogs          SearchFilterLog[]
+  mapInteractions     MapInteraction[]
 }
 
 model Notification {
@@ -93,6 +96,7 @@ model Property {
   owner               User                 @relation("PropertyOwner", fields: [ownerId], references: [id])
   images              PropertyImage[]
   reviews             Review[]
+  views               PropertyView[]
 }
 
 model Location {
@@ -226,6 +230,41 @@ model Document {
   propertyId String?
   property   Property? @relation("PropertyDocuments", fields: [propertyId], references: [id])
   user       User      @relation(fields: [userId], references: [id])
+}
+
+model PropertyView {
+  id         String   @id @default(cuid())
+  userId     String
+  propertyId String
+  viewedAt   DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([propertyId])
+}
+
+model SearchFilterLog {
+  id        String    @id @default(cuid())
+  userId    String
+  searchType String   // 'property' or 'vehicle'
+  filters   Json
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model MapInteraction {
+  id        String   @id @default(cuid())
+  userId    String
+  lat       Float
+  lng       Float
+  zoom      Float
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum Role {

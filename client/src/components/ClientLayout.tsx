@@ -7,7 +7,7 @@ import { useFavoriteStore } from "@/store/useFavoriteStore";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { AIChatWidget } from "@/components/AIChatWidget";
+import { AskAIAssistant } from "@/components/ai/AskAIAssistant";
 import { Toaster } from "sonner";
 
 export function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -34,7 +34,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                     {children}
                 </main>
                 {!isAuthPage && <div className="print:hidden"><Footer /></div>}
-                {!isAuthPage && <div className="print:hidden"><AIChatWidget /></div>}
+                {!isAuthPage && <div className="print:hidden"><AskAIAssistant /></div>}
             </div>
             <Toaster position="top-right" expand={true} richColors />
         </AuthProvider>

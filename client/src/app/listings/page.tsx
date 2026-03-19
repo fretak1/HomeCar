@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/select';
 import { useGlobalStore } from '@/store/useGlobalStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
+import { useUserStore } from '@/store/useUserStore';
+import { useInteractionStore } from '@/store/useInteractionStore';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import FiltersFull from '../search/components/FiltersFull';
@@ -30,6 +32,8 @@ export default function PropertyListingsPage() {
     } = useGlobalStore();
 
     const { properties, isLoading, fetchProperties } = usePropertyStore();
+    const { currentUser } = useUserStore();
+    const { logSearchFilter } = useInteractionStore();
 
     const [showFilters, setShowFilters] = useState(true);
     const [isOpen, setIsOpen] = useState(false);
@@ -92,7 +96,12 @@ export default function PropertyListingsPage() {
         }
 
         fetchProperties(params);
-    }, [filters, searchType, sortBy, fetchProperties]);
+
+        // Log search intent
+        if (currentUser?.id) {
+            logSearchFilter(currentUser.id, searchType, filters);
+        }
+    }, [filters, searchType, sortBy, fetchProperties, currentUser?.id, logSearchFilter]);
 
     const items = properties;
 

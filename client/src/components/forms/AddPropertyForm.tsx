@@ -2,10 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
-import { usePropertyStore } from '@/store/usePropertyStore';
+import { usePropertyStore, Property } from '@/store/usePropertyStore';
 import { useUserStore } from '@/store/useUserStore';
+import { useAIStore } from '@/store/useAIStore';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Loader2 } from 'lucide-react';
 import {
     Form,
     FormControl,
@@ -129,8 +131,10 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
     const [imageFiles, setImageFiles] = useState<(File | null)[]>(() => {
         return new Array(Math.max(4, initialData?.images?.length || 0)).fill(null);
     });
+    const [aiReasoning, setAiReasoning] = useState<string | null>(null);
     const { addProperty, updateProperty, isLoading: isSubmitting } = usePropertyStore();
     const { currentUser } = useUserStore();
+    const { predictCarPrice, predictHousePrice, isPredicting } = useAIStore();
     const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const docInputRef = useRef<HTMLInputElement>(null);
     const isEditMode = !!(initialData as any)?.id;
@@ -232,6 +236,14 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
             setOwnerPhoto(currentUser.verificationPhoto);
         }
     }, [currentUser, isEditMode, ownerPhoto]);
+    
+    // 3. Studio Auto-Lock Logic
+    const category = form.watch('category');
+    useEffect(() => {
+        if (category === 'studio') {
+            form.setValue('bedrooms', '0');
+        }
+    }, [category, form.setValue]);
 
 
 
@@ -383,6 +395,68 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
         }
     };
 
+    const handleAIEstimate = async () => {
+        const values = form.getValues();
+
+        if (activeType === 'Car') {
+            if (!values.brand || !values.model || !values.year || !values.mileage || !values.fuelType || !values.transmission || !values.city || !values.subCity || !values.region || !values.village) {
+                toast.error("Please fill in Brand, Model, Year, Mileage, Fuel, Transmission, and Location details first!");
+                return;
+            }
+
+            const result = await predictCarPrice({
+                brand: values.brand,
+                model: values.model,
+                year: parseInt(values.year),
+                mileage: parseFloat(values.mileage),
+                fuelType: values.fuelType,
+                transmission: values.transmission,
+                listingType: values.listingType === 'rent' ? 'RENT' : 'BUY',
+                city: values.city,
+                subcity: values.subCity,
+                region: values.region,
+                village: values.village
+            });
+
+            if (result && (result as any).error) {
+                toast.error((result as any).error);
+            } else if (result && (result as any).predicted_price !== undefined) {
+                form.setValue('price', (result as any).predicted_price.toString());
+                setAiReasoning((result as any).reasoning || null);
+                toast.success(`AI Estimate: ETB ${(result as any).predicted_price.toLocaleString()} (Confidence: ${Math.round((result as any).confidence * 100)}%)`);
+            } else {
+                toast.error("AI service is currently unavailable. Please try again later.");
+            }
+        } else {
+            if (!values.city || !values.subCity || !values.region || !values.village || !values.category || !values.area || !values.bedrooms) {
+                toast.error("Please fill in City, Sub-city, Region, Village, Type, Area, and Bedrooms first!");
+                return;
+            }
+
+            const result = await predictHousePrice({
+                city: values.city,
+                subcity: values.subCity,
+                region: values.region,
+                village: values.village,
+                listingType: values.listingType === 'rent' ? 'RENT' : 'BUY',
+                propertyType: values.category,
+                area: parseFloat(values.area),
+                bedrooms: parseInt(values.bedrooms),
+                bathrooms: parseInt(values.bathrooms || '1')
+            });
+
+            if (result && (result as any).error) {
+                toast.error((result as any).error);
+            } else if (result && (result as any).predicted_price !== undefined) {
+                form.setValue('price', (result as any).predicted_price.toString());
+                setAiReasoning((result as any).reasoning || null);
+                toast.success(`AI Estimate: ETB ${(result as any).predicted_price.toLocaleString()} (Confidence: ${Math.round((result as any).confidence * 100)}%)`);
+            } else {
+                toast.error("AI service is currently unavailable. Please try again later.");
+            }
+        }
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Tabs value={activeType} onValueChange={(v) => setActiveType(v as any)} className="w-full">
@@ -490,84 +564,76 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                 )}
                             />
 
-                            {activeType === 'Home' && (
-                                <FormField
-                                    control={form.control}
-                                    name="city"
-                                    rules={{ required: activeType === 'Home' ? 'City is required' : false }}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>City</FormLabel>
-                                            <FormControl>
-                                                <div className="relative group">
-                                                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                    <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Addis Ababa" {...field} />
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
+                            <FormField
+                                control={form.control}
+                                name="city"
+                                rules={{ required: 'City is required' }}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>City</FormLabel>
+                                        <FormControl>
+                                            <div className="relative group">
+                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Addis Ababa" {...field} />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                            {activeType === 'Home' && (
-                                <FormField
-                                    control={form.control}
-                                    name="subCity"
-                                    rules={{ required: activeType === 'Home' ? 'Sub-city is required' : false }}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Sub City</FormLabel>
-                                            <FormControl>
-                                                <div className="relative group">
-                                                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                    <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Bole" {...field} />
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
+                            <FormField
+                                control={form.control}
+                                name="subCity"
+                                rules={{ required: 'Sub-city is required' }}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Sub City</FormLabel>
+                                        <FormControl>
+                                            <div className="relative group">
+                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Bole" {...field} />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                            {activeType === 'Home' && (
-                                <FormField
-                                    control={form.control}
-                                    name="region"
-                                    rules={{ required: activeType === 'Home' ? 'Region is required' : false }}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Region</FormLabel>
-                                            <FormControl>
-                                                <div className="relative group">
-                                                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                    <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Addis Ababa" {...field} />
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
+                            <FormField
+                                control={form.control}
+                                name="region"
+                                rules={{ required: 'Region is required' }}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Region</FormLabel>
+                                        <FormControl>
+                                            <div className="relative group">
+                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Addis Ababa" {...field} />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-                            {activeType === 'Home' && (
-                                <FormField
-                                    control={form.control}
-                                    name="village"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Village / Specific Area</FormLabel>
-                                            <FormControl>
-                                                <div className="relative group">
-                                                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                    <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Hayat / CMC" {...field} />
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
+                            <FormField
+                                control={form.control}
+                                name="village"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Village / Specific Area</FormLabel>
+                                        <FormControl>
+                                            <div className="relative group">
+                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Hayat / CMC" {...field} />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
                             <FormField
                                 control={form.control}
@@ -610,6 +676,16 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                     <SelectItem value="apartment">Apartment</SelectItem>
                                                     <SelectItem value="condominium">Condominium</SelectItem>
                                                     <SelectItem value="villa">Villa</SelectItem>
+                                                    <SelectItem value="studio">Studio</SelectItem>
+                                                    <SelectItem value="building">Building</SelectItem>
+                                                    <SelectItem value="3*3">3*3</SelectItem>
+                                                    <SelectItem value="3*4">3*4</SelectItem>
+                                                    <SelectItem value="4*4">4*4</SelectItem>
+                                                    <SelectItem value="4*5">4*5</SelectItem>
+                                                    <SelectItem value="5*5">5*5</SelectItem>
+                                                    <SelectItem value="5*6">5*6</SelectItem>
+                                                    <SelectItem value="6*6">6*6</SelectItem>
+                                                    <SelectItem value="6*7">6*7</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
@@ -661,7 +737,16 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                             <FormControl>
                                                 <div className="relative group">
                                                     <Bed className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                    <Input type="number" className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl" placeholder="3" {...field} />
+                                                    <Input 
+                                                        type="number" 
+                                                        className={cn(
+                                                            "pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl transition-all",
+                                                            category === 'studio' && "bg-muted/30 cursor-not-allowed opacity-70"
+                                                        )}
+                                                        placeholder={category === 'studio' ? "0 (Studio)" : "3"} 
+                                                        disabled={category === 'studio'}
+                                                        {...field} 
+                                                    />
                                                 </div>
                                             </FormControl>
                                         </FormItem>
@@ -1062,7 +1147,17 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                     <p className="text-sm text-muted-foreground">The final step to getting your listing live.</p>
                                 </div>
 
-
+                                <Button
+                                    type="button"
+                                    onClick={handleAIEstimate}
+                                    disabled={isPredicting}
+                                    className="bg-black hover:bg-black/90 text-white rounded-2xl px-6 py-6 h-auto font-bold border-2 border-white/20 shadow-2xl transition-all hover:scale-105"
+                                >
+                                    {isPredicting && (
+                                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                                    )}
+                                    Get AI Price Estimate
+                                </Button>
                             </div>
 
                             <FormField
@@ -1091,6 +1186,23 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                 </div>
                                             </div>
                                         </FormControl>
+
+                                        {aiReasoning && (
+                                            <div className="mt-4 p-4 bg-primary/5 border border-primary/10 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-500">
+                                                <div className="flex items-start space-x-3">
+                                                    <div className="mt-0.5 p-1 bg-primary/20 rounded-full">
+                                                        <Zap className="h-3 w-3 text-primary" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="text-xs font-bold text-primary uppercase tracking-widest mb-1">AI Reasoning</p>
+                                                        <p className="text-sm text-foreground/80 leading-relaxed italic">
+                                                            "{aiReasoning}"
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <FormDescription className="text-center md:text-left mt-2 font-medium">
                                         </FormDescription>
                                         <FormMessage />

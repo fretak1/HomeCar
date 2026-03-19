@@ -15,7 +15,8 @@ import {
   MessageSquare,
   FileText,
   Wrench,
-  CheckCircle2
+  CheckCircle2,
+  Brain
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -204,6 +205,14 @@ export function Navbar() {
                     >
                       <User className="h-4 w-4 text-muted-foreground group-focus:text-white transition-colors" />
                       <span className="text-sm font-semibold">My Profile</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      className="cursor-pointer py-2.5 px-3 rounded-lg focus:bg-primary focus:text-white group flex items-center gap-3 transition-all duration-200"
+                      onClick={() => router.push('/dashboard/ai-insights')}
+                    >
+                      <Brain className="h-4 w-4 text-muted-foreground group-focus:text-white transition-colors" />
+                      <span className="text-sm font-semibold">AI Insights</span>
                     </DropdownMenuItem>
 
 

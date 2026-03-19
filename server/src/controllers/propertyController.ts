@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
+import axios from 'axios';
+
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000/api/v1';
 
 export const createProperty = async (req: any, res: Response) => {
     try {
-
-
         const userId = req.user?.id;
 
         if (!userId) {
@@ -119,8 +120,6 @@ export const createProperty = async (req: any, res: Response) => {
 
             console.log("Ownership Doc:", ownershipDocs[0]);
 
-
-
             // Handle Owner Photo (Identification Photo for Verification)
             const ownerPhotos = files['ownerPhoto'] || [];
             if (ownerPhotos.length > 0) {
@@ -130,6 +129,20 @@ export const createProperty = async (req: any, res: Response) => {
                     data: { verificationPhoto: photo.path } as any
                 });
             }
+        }
+
+        // --- AI Retrain Trigger (Every 5 Rule) ---
+        try {
+            const count = await prisma.property.count();
+            if (count % 5 === 0) {
+                console.log(`[AI] Reached ${count} properties. Triggering background retraining...`);
+                // Non-blocking trigger
+                axios.post(`${AI_SERVICE_URL}/retrain`).catch(err => {
+                    console.error('[AI] Retrain trigger failed:', err.message);
+                });
+            }
+        } catch (err) {
+            console.error('[AI] Error checking property count for retrain:', err);
         }
 
         const updatedProperty = await prisma.property.findUnique({

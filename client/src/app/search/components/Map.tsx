@@ -5,6 +5,8 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useGlobalStore } from "@/store/useGlobalStore";
 import { usePropertyStore } from "@/store/usePropertyStore";
+import { useUserStore } from "@/store/useUserStore";
+import { useInteractionStore } from "@/store/useInteractionStore";
 import { formatLocation, getListingMainImage } from "@/lib/utils";
 
 // Fix for Mapbox token
@@ -17,6 +19,8 @@ const Map = () => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<mapboxgl.Map | null>(null);
     const { filters, searchType } = useGlobalStore();
+    const { currentUser } = useUserStore();
+    const { logMapInteraction } = useInteractionStore();
 
     const { properties, isLoading, error } = usePropertyStore();
 
@@ -35,6 +39,15 @@ const Map = () => {
             });
             mapRef.current = map;
             map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+            // Log map interactions
+            map.on('moveend', () => {
+                if (currentUser?.id) {
+                    const center = map.getCenter();
+                    const zoom = map.getZoom();
+                    logMapInteraction(currentUser.id, center.lat, center.lng, zoom);
+                }
+            });
         } else {
             if (filters.coordinates && filters.coordinates[0] !== null) {
                 mapRef.current.flyTo({

@@ -48,8 +48,7 @@ import { ReviewForm } from '@/components/ReviewForm';
 import { AIRecommendations } from '@/components/AIRecommendations';
 import { usePaymentStore } from '@/store/usePaymentStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
-
-
+import { useInteractionStore } from '@/store/useInteractionStore';
 
 export default function PropertyDetailPage() {
     const params = useParams();
@@ -61,6 +60,7 @@ export default function PropertyDetailPage() {
     const { applications, fetchApplications, addApplication, isLoading: isApplying } = useApplicationStore();
     const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
     const { transactions, fetchTransactions } = useTransactionStore();
+    const { logPropertyView } = useInteractionStore();
 
     const [property, setProperty] = useState<Property | null>(null);
     const [selectedImage, setSelectedImage] = useState(0);
@@ -97,6 +97,12 @@ export default function PropertyDetailPage() {
             fetchReviews(id);
         }
     }, [id, fetchPropertyById, fetchReviews]);
+
+    useEffect(() => {
+        if (id && currentUser?.id) {
+            logPropertyView(id, currentUser.id);
+        }
+    }, [id, currentUser?.id, logPropertyView]);
 
     useEffect(() => {
         if (currentUser?.id && currentUser?.role === 'CUSTOMER') {

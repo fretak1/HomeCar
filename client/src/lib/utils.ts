@@ -50,6 +50,7 @@ export function formatLocation(location: any) {
 }
 
 export function getListingMainImage(item: any) {
+    if (item.mainImage) return item.mainImage;
     if (item.image) return item.image;
     if (item.images && item.images.length > 0) {
         const mainImage = item.images.find((img: any) => img.isMain);

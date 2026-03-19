@@ -1,0 +1,5 @@
+[MARKET DATA]
+• CAR (SALE): 18 listings. Avg: 1,435,575 ETB (Range: 350 - 2,480,000 ETB)
+• CAR (RENT): 34 listings. Avg: 1,446,015 ETB (Range: 4,500 - 2,440,000 ETB)
+• HOME (SALE): 19 listings. Avg: 163,651 ETB (Range: 5,000 - 2,000,000 ETB)
+• HOME (RENT): 36 listings. Avg: 55,380 ETB (Range: 450 - 191,890 ETB)

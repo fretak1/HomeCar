@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @source "../../**/*.{js,ts,jsx,tsx}";
 
@@ -9,4 +10,25 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Explicit AI Link Styling */
+.ai-link {
+  color: #0066ff !important;
+  font-weight: 700 !important;
+  text-decoration: underline !important;
+  cursor: pointer !important;
+  display: inline-block;
+}
+
+.ai-link:hover {
+  color: #0044cc !important;
+  text-decoration: none !important;
+}
+
+.markdown-container a {
+  color: #0066ff !important;
+  font-weight: 700 !important;
+  text-decoration: underline !important;
+  cursor: pointer !important;
 }

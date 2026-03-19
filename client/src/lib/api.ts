@@ -25,7 +25,8 @@ export const API_ROUTES = {
     DOCUMENTS: `${API_BASE_URL}/api/documents`,
     TRANSACTIONS: `${API_BASE_URL}/api/transactions`,
     CHATS: `${API_BASE_URL}/api/chats`,
-    UPLOAD: `${API_BASE_URL}/api/upload`
+    UPLOAD: `${API_BASE_URL}/api/upload`,
+    INTERACTIONS: `${API_BASE_URL}/api/interactions`
 };
 
 export const createApi = (baseURL: string = API_BASE_URL || '') => {

@@ -14,7 +14,8 @@ import {
     Key,
     Navigation,
     Truck,
-    Check
+    Check,
+    Map
 } from "lucide-react";
 
 export const NAVBAR_HEIGHT = 64;
@@ -25,6 +26,15 @@ export const PropertyTypeIcons = {
     Condominium: Building,
     Villa: Castle,
     Compound: Building,
+    Building: Building,
+    "3*3": Map,
+    "3*4": Map,
+    "4*4": Map,
+    "4*5": Map,
+    "5*5": Map,
+    "5*6": Map,
+    "6*6": Map,
+    "6*7": Map,
 } as const;
 
 export const VehicleTypeIcons = {

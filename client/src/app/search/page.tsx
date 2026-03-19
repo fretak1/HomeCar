@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavoriteStore } from "@/store/useFavoriteStore";
 import { useGlobalStore } from "@/store/useGlobalStore";
+import { useInteractionStore } from "@/store/useInteractionStore";
 import { Toaster } from "@/components/ui/sonner";
 
 export default function SearchPage() {
@@ -46,6 +47,8 @@ export default function SearchPage() {
         }
     }, [user?.id, fetchFavorites]);
 
+    const { logSearchFilter } = useInteractionStore();
+
     useEffect(() => {
         // Force search type to property for this dedicated search page
         if (searchType !== 'property') return;
@@ -67,7 +70,12 @@ export default function SearchPage() {
         };
 
         fetchProperties(queryParams);
-    }, [filters, fetchProperties, searchType]);
+
+        // Log search intent
+        if (user?.id) {
+            logSearchFilter(user.id, 'property', filters);
+        }
+    }, [filters, fetchProperties, searchType, user?.id, logSearchFilter]);
 
 
 

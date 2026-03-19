@@ -146,7 +146,7 @@ export default function Home() {
 
             {/* AI Recommendations */}
             <section className="border-b border-border">
-                <AIRecommendations type="property" title="Recommended Properties for You" />
+                <AIRecommendations title="Recommended for You" />
             </section>
 
             {/* Featured Properties */}
