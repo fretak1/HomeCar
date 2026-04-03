@@ -2,8 +2,28 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
+import { auth } from '../lib/auth.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret_key';
+
+export const checkEmail = async (req: Request, res: Response) => {
+    try {
+        const { email } = req.query;
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { email: String(email).toLowerCase() },
+            select: { id: true }
+        });
+
+        res.json({ exists: !!user });
+    } catch (error: any) {
+        console.error('Check email error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
 
 export const registerUser = async (req: Request, res: Response) => {
     try {

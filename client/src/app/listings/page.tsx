@@ -1,8 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Filter, SlidersHorizontal, Search, MapPin, ChevronDown } from 'lucide-react';
+import { 
+    Filter, 
+    SlidersHorizontal, 
+    Search, 
+    MapPin, 
+    ChevronDown, 
+    Loader2 
+} from 'lucide-react';
 import { PropertyCard } from '@/components/PropertyCard';
 import { CarCard } from '@/components/CarCard';
 import { Button } from '@/components/ui/button';
@@ -24,12 +32,25 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import FiltersFull from '../search/components/FiltersFull';
 
 export default function PropertyListingsPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-primary opacity-20" />
+            </div>
+        }>
+            <ListingContent />
+        </Suspense>
+    );
+}
+
+function ListingContent() {
     const {
         filters,
         searchType,
         setFilters,
         setSearchType
     } = useGlobalStore();
+    const searchParams = useSearchParams();
 
     const { properties, isLoading, fetchProperties } = usePropertyStore();
     const { currentUser } = useUserStore();
@@ -37,10 +58,9 @@ export default function PropertyListingsPage() {
 
     const [showFilters, setShowFilters] = useState(true);
     const [isOpen, setIsOpen] = useState(false);
-
-    const displayLocation = [filters.region, filters.city].filter(Boolean).join(", ") || "Location";
-
     const [sortBy, setSortBy] = useState("newest");
+
+    const displayLocation = [filters.region, filters.city].filter(Boolean).join(", ") || (filters.location ? filters.location : "Location");
 
     const resetFilters = () => {
         setFilters({
@@ -63,10 +83,37 @@ export default function PropertyListingsPage() {
         });
     };
 
-    // Reset filters on mount
+    // Sync URL parameters to Store on mount
     useEffect(() => {
-        resetFilters();
-    }, [setFilters]);
+        const type = searchParams.get('searchType') as 'property' | 'vehicle';
+        const location = searchParams.get('location');
+        const listingType = searchParams.get('listingType');
+        const priceMin = searchParams.get('priceMin');
+        const priceMax = searchParams.get('priceMax');
+
+        const newFilters: any = {};
+
+        if (type && (type === 'property' || type === 'vehicle')) {
+            setSearchType(type);
+        }
+
+        if (location) newFilters.location = location;
+        if (listingType) newFilters.listingType = listingType;
+
+        if (priceMin || priceMax) {
+            newFilters.priceRange = [
+                priceMin ? parseFloat(priceMin) : null,
+                priceMax ? parseFloat(priceMax) : null
+            ];
+        }
+
+        if (Object.keys(newFilters).length > 0) {
+            setFilters(newFilters);
+        } else {
+            resetFilters();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams, setSearchType]);
 
     useEffect(() => {
         const params: any = {
@@ -75,6 +122,7 @@ export default function PropertyListingsPage() {
             region: filters.region,
             city: filters.city,
             subCity: filters.subCity,
+            location: filters.location,
             sort: sortBy
         };
 
@@ -97,7 +145,6 @@ export default function PropertyListingsPage() {
 
         fetchProperties(params);
 
-        // Log search intent
         if (currentUser?.id) {
             logSearchFilter(currentUser.id, searchType, filters);
         }
@@ -107,7 +154,6 @@ export default function PropertyListingsPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            {/* Hero Section */}
             <div className="bg-gradient-to-br from-primary via-primary to-secondary py-12 lg:py-16 shadow-inner text-center md:text-left">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4">
@@ -142,11 +188,11 @@ export default function PropertyListingsPage() {
                                         variant="outline"
                                         className={cn(
                                             "h-10 px-4 rounded-full border shadow-sm flex items-center gap-2 transition-all min-w-[160px] justify-between",
-                                            (filters.region || filters.city || filters.subCity) ? "bg-primary/5 border-primary/30 text-primary hover:bg-primary/10" : "bg-background border-border hover:bg-muted/50"
+                                            (filters.region || filters.city || filters.subCity || filters.location) ? "bg-primary/5 border-primary/30 text-primary hover:bg-primary/10" : "bg-background border-border hover:bg-muted/50"
                                         )}
                                     >
                                         <div className="flex items-center gap-2 truncate">
-                                            <MapPin className={cn("w-4 h-4 shrink-0", (filters.region || filters.city || filters.subCity) ? "text-primary" : "text-muted-foreground")} />
+                                            <MapPin className={cn("w-4 h-4 shrink-0", (filters.region || filters.city || filters.subCity || filters.location) ? "text-primary" : "text-muted-foreground")} />
                                             <span className="truncate">{displayLocation}</span>
                                         </div>
                                         <ChevronDown className={cn("w-3 h-3 shrink-0 transition-transform duration-200", isOpen && "rotate-180")} />
@@ -181,6 +227,15 @@ export default function PropertyListingsPage() {
                                                 className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
                                             />
                                         </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-sm font-semibold text-foreground ml-1">Universal Location</Label>
+                                            <Input
+                                                placeholder="Search location..."
+                                                value={filters.location}
+                                                onChange={(e) => setFilters({ location: e.target.value })}
+                                                className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
+                                            />
+                                        </div>
                                     </div>
                                 </PopoverContent>
                             </Popover>
@@ -211,14 +266,12 @@ export default function PropertyListingsPage() {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                        {/* Filters Sidebar */}
                         {showFilters && (
                             <div className="lg:col-span-1 border rounded-2xl shadow-sm h-[calc(100vh-140px)] sticky top-24 overflow-hidden">
                                 <FiltersFull />
                             </div>
                         )}
 
-                        {/* Listings Grid */}
                         <div className={showFilters ? 'lg:col-span-3' : 'lg:col-span-4'}>
                             <div className="flex justify-between items-center mb-6 px-1">
                                 <p className="text-muted-foreground font-medium">
@@ -226,10 +279,7 @@ export default function PropertyListingsPage() {
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-muted-foreground hidden sm:inline">Sort By</span>
-                                    <Select
-                                        value={sortBy}
-                                        onValueChange={(v) => setSortBy(v)}
-                                    >
+                                    <Select value={sortBy} onValueChange={(v) => setSortBy(v)}>
                                         <SelectTrigger className="w-40 h-9 bg-card">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -243,7 +293,7 @@ export default function PropertyListingsPage() {
                             </div>
 
                             {isLoading ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {[1, 2, 3, 4, 5, 6].map(i => (
                                         <div key={i} className="aspect-[4/5] bg-muted/20 animate-pulse rounded-2xl" />
                                     ))}
@@ -258,7 +308,7 @@ export default function PropertyListingsPage() {
                                     <Button onClick={resetFilters} variant="default">Reset All Filters</Button>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {searchType === 'property'
                                         ? items.map(p => <PropertyCard key={p.id} property={p as any} />)
                                         : items.map(c => <CarCard key={c.id} car={c as any} />)

@@ -23,16 +23,16 @@ export function SearchBar({ onSearch }: SearchBarProps) {
   const [location, setLocation] = useState('');
   const [listingType, setListingType] = useState('rent');
   const [priceRange, setPriceRange] = useState('');
-  const [activeTab, setActiveTab] = useState('property');
+  const [activeTab, setActiveTab] = useState<'property' | 'vehicle'>('property');
 
   const onTabChange = (value: string) => {
-    setActiveTab(value);
+    setActiveTab(value as 'property' | 'vehicle');
     setListingType('rent'); // Reset to rent when switching tabs
   };
 
   const listingTypes = [
     { value: 'rent', label: 'For Rent' },
-    { value: 'sale', label: 'For Sale' },
+    { value: 'buy', label: 'For Sale' },
   ];
 
   const CategoryIcon = activeTab === 'property' ? Home : Car;
@@ -59,7 +59,7 @@ export function SearchBar({ onSearch }: SearchBarProps) {
 
     if (location) params.set('location', location);
     if (listingType) params.set('listingType', listingType);
-    if (activeTab) params.set('type', activeTab);
+    params.set('searchType', activeTab);
 
     // Parse price range simple mapping
     if (priceRange && priceRange !== 'all') {
@@ -71,11 +71,11 @@ export function SearchBar({ onSearch }: SearchBarProps) {
       };
 
       if (priceRange.includes('+')) {
-        const minVal = parseValue(priceRange);
-        params.set('priceRange', `${minVal},`);
+        params.set('priceMin', parseValue(priceRange).toString());
       } else {
         const [min, max] = priceRange.split('-');
-        params.set('priceRange', `${parseValue(min)},${parseValue(max)}`);
+        params.set('priceMin', parseValue(min).toString());
+        params.set('priceMax', parseValue(max).toString());
       }
     }
 
@@ -91,7 +91,7 @@ export function SearchBar({ onSearch }: SearchBarProps) {
       <Tabs defaultValue="property" className="w-full" onValueChange={onTabChange}>
         <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-6">
           <TabsTrigger value="property">Properties</TabsTrigger>
-          <TabsTrigger value="car">Cars</TabsTrigger>
+          <TabsTrigger value="vehicle">Cars</TabsTrigger>
         </TabsList>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

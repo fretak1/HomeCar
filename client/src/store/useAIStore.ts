@@ -3,11 +3,20 @@ import axios from 'axios';
 
 const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8000/api/v1';
 
+interface SimilarListing {
+    id: string;
+    title: string;
+    price: number;
+    image: string | null;
+    reason: string;
+}
+
 interface PredictionResponse {
     predicted_price: number;
     currency: string;
     confidence: number;
     reasoning?: string;
+    similar_listings?: SimilarListing[];
 }
 
 interface AIState {

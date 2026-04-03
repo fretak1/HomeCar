@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { User } from '@/data/mockData';
 import { createApi, API_ROUTES } from '@/lib/api';
+import { authClient } from '@/lib/auth-client';
 
 const api = createApi();
 
@@ -22,23 +23,20 @@ interface UserState {
 export const useUserStore = create<UserState>((set) => ({
     users: [],
     currentUser: null,
-    isLoading: false,
+    isLoading: true,
     error: null,
     // ... other actions
     getMe: async () => {
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
-            set({ isLoading: false });
-            return;
-        }
-
         set({ isLoading: true });
         try {
-            const response = await api.get(`${API_ROUTES.USER}/me`);
-            set({ currentUser: response.data, isLoading: false });
+            const { data: session, error } = await authClient.getSession();
+            if (error || !session) {
+                set({ currentUser: null, isLoading: false });
+                return;
+            }
+            set({ currentUser: session.user as any, isLoading: false });
         } catch (error) {
             console.error('Failed to fetch user profile:', error);
-            localStorage.removeItem('auth_token');
             set({ currentUser: null, isLoading: false });
         }
     },
@@ -74,18 +72,16 @@ export const useUserStore = create<UserState>((set) => ({
     login: async (email, password) => {
         set({ isLoading: true, error: null });
         try {
-            const response = await api.post(`${API_ROUTES.USER}/login`, { email, password });
-            const { user, token } = response.data;
+            const { data, error } = await authClient.signIn.email({
+                email,
+                password,
+            });
 
-            console.log(user)
+            if (error) throw new Error(error.message || 'Login failed');
 
-            if (token) {
-                localStorage.setItem('auth_token', token);
-            }
-
-            set({ currentUser: user, isLoading: false });
+            set({ currentUser: data.user as any, isLoading: false });
         } catch (error: any) {
-            const message = error.response?.data?.error || 'Login failed';
+            const message = error.message || 'Login failed';
             set({ error: message, isLoading: false });
             throw new Error(message);
         }
@@ -93,26 +89,44 @@ export const useUserStore = create<UserState>((set) => ({
     register: async (userData) => {
         set({ isLoading: true, error: null });
         try {
-            const response = await api.post(API_ROUTES.USER, userData);
-            const { user, token } = response.data;
-
-            if (token) {
-                localStorage.setItem('auth_token', token);
+            // Proactive Check: See if user exists before attempting BetterAuth signup
+            // This bypasses any potential DB constraint issues
+            try {
+                const checkRes = await api.get(`${API_ROUTES.USER}/check-email?email=${userData.email}`);
+                if (checkRes.data.exists) {
+                    throw new Error('This email is already registered. Please go to Login.');
+                }
+            } catch (err: any) {
+                // If the check endpoint fails (e.g. 404), we proceed to signup 
+                // unless it's a 400 with a specific "exists" message
+                if (err.message?.includes('already registered')) throw err;
             }
 
+            const { data, error } = await authClient.signUp.email({
+                email: userData.email,
+                password: userData.password,
+                name: userData.name,
+                image: userData.profileImage,
+                role: userData.role,
+                callbackURL: window.location.origin + "/login",
+            });
+
+            if (error) throw new Error(error.message || 'Registration failed');
+
             set((state) => ({
-                users: [...state.users, user],
-                currentUser: user,
+                users: [...state.users, data.user as any],
+                currentUser: data.user as any,
                 isLoading: false
             }));
         } catch (error: any) {
-            const message = error.response?.data?.error || 'Registration failed';
+            console.error('Registration API Error:', error);
+            const message = error.message || 'Registration failed';
             set({ error: message, isLoading: false });
             throw new Error(message);
         }
     },
-    logout: () => {
-        localStorage.removeItem('auth_token');
+    logout: async () => {
+        await authClient.signOut();
         set({ currentUser: null });
     },
     updateUser: async (formData) => {

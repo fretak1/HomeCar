@@ -1,6 +1,9 @@
 import nodeCron from 'node-cron';
 import prisma from '../lib/prisma.js';
 import { sendEmail } from './emailService.js';
+import axios from 'axios';
+
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000/api/v1';
 
 /**
  * Checks for upcoming lease payments and sends reminders to customers 2 days before the due date.
@@ -125,12 +128,30 @@ export const checkOverduePayments = async () => {
     }
 };
 
+/**
+ * Triggers the AI model retraining process.
+ */
+export const triggerAiRetrain = async () => {
+    console.log('Running cron: Triggering AI model retraining...');
+    try {
+        await axios.post(`${AI_SERVICE_URL}/retrain`);
+        console.log('[AI] Successfully triggered retraining task on AI Service.');
+    } catch (error: any) {
+        console.error('[AI] Error triggering AI Retraining:', error.message);
+    }
+};
+
 // Clear cron jobs at midnight every day
 export const initCronJobs = () => {
     // Run at 00:00 every day
     nodeCron.schedule('0 0 * * *', () => {
         checkUpcomingPayments();
         checkOverduePayments();
+    });
+
+    // Run at 03:00 every day
+    nodeCron.schedule('0 3 * * *', () => {
+        triggerAiRetrain();
     });
 
     console.log('Cron jobs initialized');

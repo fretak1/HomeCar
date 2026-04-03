@@ -1,57 +1,63 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret_key';
+import { auth } from "../lib/auth.js";
 
 export interface AuthRequest extends Request {
     user?: {
         id: string;
         email: string;
         role: string;
+        name: string;
     };
+    session?: any;
 }
 
-export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Unauthorized: No token provided' });
-    }
-
-    const token = authHeader.split(' ')[1];
-
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
-        console.log("Token verified. Decoded user ID:", decoded.id);
-        req.user = decoded;
+        const session = await auth.api.getSession({
+            headers: req.headers
+        });
+
+        if (!session) {
+            return res.status(401).json({ error: 'Unauthorized: No active session' });
+        }
+
+        req.session = session.session;
+        req.user = {
+            id: session.user.id,
+            email: session.user.email,
+            role: session.user.role as string,
+            name: session.user.name
+        };
         next();
     } catch (error) {
-        console.error("Token verification FAILED:", error);
-        return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+        console.error("Auth middleware FAILED:", error);
+        return res.status(500).json({ error: 'Authentication internal error' });
     }
 };
 
-export const optionalAuthenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return next();
-    }
-
-    const token = authHeader.split(' ')[1];
-
+export const optionalAuthenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: string; email: string; role: string };
-        req.user = decoded;
+        const session = await auth.api.getSession({
+            headers: req.headers
+        });
+
+        if (session) {
+            req.session = session.session;
+            req.user = {
+                id: session.user.id,
+                email: session.user.email,
+                role: session.user.role as string,
+                name: session.user.name
+            };
+        }
         next();
     } catch (error) {
-        // Just proceed without setting req.user if token is invalid
         next();
     }
 };
 
 export const isAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (req.user?.role !== 'ADMIN') {
+    if (req.user?.role?.toUpperCase() !== 'ADMIN') {
         return res.status(403).json({ error: 'Forbidden: Admin access only' });
     }
     next();

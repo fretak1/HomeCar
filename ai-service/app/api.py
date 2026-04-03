@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
+import asyncio
+import train_model
 from app.schemas.prediction import (
     PredictionRequest, PredictionResponse,
     HousePredictionRequest, HousePredictionResponse,
@@ -26,7 +28,8 @@ async def predict_price(request: PredictionRequest):
         "currency": "ETB",
         "confidence": result["confidence"],
         "method": "PURE_XGBOOST_ML",
-        "reasoning": result["reasoning"]
+        "reasoning": result["reasoning"],
+        "similar_listings": result.get("similar_listings", [])
     }
 
 @router.post("/predict-house-price", response_model=HousePredictionResponse)
@@ -42,7 +45,8 @@ async def predict_house_price(request: HousePredictionRequest):
         "currency": "ETB",
         "confidence": result["confidence"],
         "method": "PURE_XGBOOST_ML",
-        "reasoning": result["reasoning"]
+        "reasoning": result["reasoning"],
+        "similar_listings": result.get("similar_listings", [])
     }
 
 @router.post("/recommendations")
@@ -68,3 +72,26 @@ async def chat_with_assistant(request: ChatRequest):
         return {"response": response}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+is_training = False
+
+@router.post("/retrain")
+async def trigger_retrain(background_tasks: BackgroundTasks):
+    global is_training
+    if is_training:
+        return {"status": "busy", "message": "Training is already in progress."}
+    
+    def run_training_task():
+        global is_training
+        try:
+            is_training = True
+            train_model.train_and_save()
+            prediction_service.reload_models()
+            print("[AI] Retraining completed and models reloaded.")
+        except Exception as e:
+            print(f"[AI] Error during background training: {e}")
+        finally:
+            is_training = False
+
+    background_tasks.add_task(run_training_task)
+    return {"status": "success", "message": "Retraining task started in background."}

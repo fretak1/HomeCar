@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useUserStore } from '@/store/useUserStore';
 
 type UserRole = 'customer' | 'owner' | 'agent' | 'admin';
 
@@ -21,44 +22,23 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const { currentUser, login: storeLogin, logout: storeLogout, isLoading } = useUserStore();
 
-  // Load user from localStorage on mount
-  useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
-      }
-    } catch (e) {
-      console.error('Failed to parse user from localStorage', e);
-      localStorage.removeItem('user');
-    }
-  }, []);
-
-  const login = (email: string, _password: string, role: UserRole = 'customer') => {
-    const newUser: User = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: email.split('@')[0],
-      email,
-      role,
-    };
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
+  const login = async (email: string, password: string) => {
+    await storeLogin(email, password);
   };
 
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+    storeLogout();
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: currentUser as any,
         login,
         logout,
-        isAuthenticated: !!user,
+        isAuthenticated: !!currentUser,
       }}
     >
       {children}

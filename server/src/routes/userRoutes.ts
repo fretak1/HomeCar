@@ -5,6 +5,13 @@ import { Router } from 'express';
 
 const router = Router();
 
+router.get('/check-email', (req, res, next) => {
+    const { email } = req.query;
+    import('../controllers/userController.js').then(ctrl => {
+        ctrl.checkEmail(req as any, res as any);
+    }).catch(next);
+});
+
 router.post('/', registerUser);
 router.post('/login', loginUser);
 router.post('/logout', logoutUser);

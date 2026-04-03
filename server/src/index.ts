@@ -45,6 +45,11 @@ app.use(
         credentials: true
     })
 );
+
+// BetterAuth must be before express.json() to handle its own body parsing if needed
+import authRouter from './routes/authRoutes.js';
+app.use('/api/auth', authRouter);
+
 app.use(express.json());
 app.use(morgan('dev'));
 

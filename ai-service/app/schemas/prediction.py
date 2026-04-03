@@ -31,12 +31,20 @@ class ChatRequest(BaseModel):
     message: str
     history: Optional[List[Dict[str, str]]] = []
 
+class SimilarListing(BaseModel):
+    id: str
+    title: str
+    price: float
+    image: Optional[str] = None
+    reason: str
+
 class PredictionResponse(BaseModel):
     predicted_price: float
     currency: str
     confidence: float
     method: str
     reasoning: Optional[str] = None
+    similar_listings: Optional[List[SimilarListing]] = []
 
 class HousePredictionResponse(BaseModel):
     predicted_price: float
@@ -44,6 +52,7 @@ class HousePredictionResponse(BaseModel):
     confidence: float
     method: str
     reasoning: Optional[str] = None
+    similar_listings: Optional[List[SimilarListing]] = []
 
 class InteractionHistory(BaseModel):
     propertyId: str

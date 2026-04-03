@@ -59,7 +59,7 @@ def train_segment(df, features, categorical_cols, target_col, model_prefix):
 def train_and_save():
     print(f"[{datetime.datetime.now()}] --- STARTING ML RETRAINING (SPLIT SCALES) ---")
     
-    df = get_all_properties()
+    df = get_all_properties(include_images=False)
     if df.empty:
         print("No data found for training.")
         return

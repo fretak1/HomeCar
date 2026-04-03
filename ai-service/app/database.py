@@ -187,19 +187,46 @@ def get_user_map_history(user_id):
     """
     return query_to_dataframe(query, (user_id,))
 
-def get_all_properties():
-    """Fetch all properties with location data and ALL images for recommendations."""
-    query = """
-    SELECT 
-        p.*, 
-        l.city, l.subcity, l.region, l.village, l.lat, l.lng,
+def get_all_properties(include_images=True):
+    """Fetch all properties with location data. Uses chunking to stay stable on remote DBs."""
+    image_subquery = ""
+    if include_images:
+        image_subquery = """,
         (
             SELECT json_agg(json_build_object('url', url, 'isMain', "isMain"))
             FROM "PropertyImage"
             WHERE "propertyId" = p.id
-        ) as images
-    FROM "Property" p
-    LEFT JOIN "Location" l ON p."locationId" = l.id
-    WHERE p.status = 'AVAILABLE'
-    """
-    return query_to_dataframe(query)
+        ) as images"""
+
+    all_dfs = []
+    chunk_size = 1000
+    offset = 0
+    
+    while True:
+        query = f"""
+        SELECT 
+            p.*, 
+            l.city, l.subcity, l.region, l.village, l.lat, l.lng
+            {image_subquery}
+        FROM "Property" p
+        LEFT JOIN "Location" l ON p."locationId" = l.id
+        WHERE p.status = 'AVAILABLE'
+        ORDER BY p.id ASC
+        LIMIT {chunk_size} OFFSET {offset}
+        """
+        
+        df_chunk = query_to_dataframe(query)
+        if df_chunk.empty:
+            break
+            
+        all_dfs.append(df_chunk)
+        if len(df_chunk) < chunk_size:
+            break
+            
+        offset += chunk_size
+        print(f"Ingested {offset} items from DB...")
+
+    if not all_dfs:
+        return pd.DataFrame()
+        
+    return pd.concat(all_dfs, ignore_index=True)

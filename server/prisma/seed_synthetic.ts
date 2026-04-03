@@ -1,317 +1,504 @@
-import { PrismaClient, AssetType, PropertyStatus, ListingType } from '@prisma/client';
-
+import { PrismaClient, AssetType, ListingType, PropertyStatus, Role } from '@prisma/client';
 const prisma = new PrismaClient();
 
-const generateBaseImage = (seed: string, type: 'house' | 'car') => {
-  return `https://picsum.photos/seed/${seed}/800/600`;
-};
-
-const parseEthPrice = (raw: string): [number, number] => {
-  const parts = raw.split('–').map(p => p.trim());
-  
-  const parsePart = (val: string) => {
-    let multiplier = 1;
-    if (val.toLowerCase().includes('m')) multiplier = 1000000;
-    else if (val.toLowerCase().includes('k')) multiplier = 1000;
-    return parseFloat(val.replace(/[^0-9.]/g, '')) * multiplier;
-  };
-
-  const min = parsePart(parts[0]);
-  const max = parts.length > 1 ? parsePart(parts[1]) : min;
-  
-  return [min, max];
-};
-
-const randomInRange = (min: number, max: number) => {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-};
-
-const GEOGRAPHY_MAP: Record<string, { subcities: string[], villages: string[] }> = {
-  'Addis Ababa': {
-    subcities: ['Bole', 'Yeka', 'Kirkos', 'Nifas Silk Lafto', 'Arada', 'Lideta', 'Lemi Kura'],
-    villages: ['Bulbula', 'Gerji', 'Rwanda', 'Atlas', 'Ayat', 'Meri', 'Sarbet', 'Kazanchis', 'Piassa']
+const MARKET_DATA: any = {
+  "Addis Ababa": {
+    city: "Addis Ababa",
+    lat: 9.032, lng: 38.748,
+    subcities: ["Bole", "Yeka", "Arada", "Kirkos", "Lideta", "Akaky Kaliti", "Nifas Silk-Lafto", "Kolfe Keranio", "Gullele", "Addis Ketema", "Lemi Kura"],
+    villages: ["Kazanchis", "Piassa", "Saris", "Ayat", "CMC", "Gerji", "Bole Bulbula", "Old Airport", "Summit", "Jackros", "Gurd Shola", "Megenagna", "22 Mazoria", "Sarbet", "Mekanisa", "Jemo", "Kaliti", "Akaki", "Kotebe", "Ferensay", "Arat Kilo", "Merkato", "Cherkos", "Gotera", "Lebu", "Lafto"],
+    homes: {
+      "compound": { sale: [18e6, 140e6], rent: [60000, 250000] },
+      "apartment": { sale: [3e6, 18e6], rent: [15000, 75000] },
+      "condominium": { sale: [2.5e6, 8e6], rent: [12000, 35000] },
+      "villa": { sale: [40e6, 200e6], rent: [80000, 450000] },
+      "studio": { sale: [1.8e6, 4.5e6], rent: [10000, 25000] },
+      "building": { sale: [120e6, 800e6], rent: [300000, 2e6] }
+    },
+    cars: {
+      "Toyota Corolla": { price: [1.5e6, 4e6] },
+      "Toyota Hilux": { price: [4.5e6, 12e6] },
+      "Hyundai Tucson": { price: [2.5e6, 7e6] },
+      "Suzuki Alto": { price: [900000, 2.2e6] }
+    }
   },
-  'Oromia': {
-    subcities: ['Adama District 01', 'Adama District 02', 'Bishoftu Central', 'Jimma Downtown'],
-    villages: ['Kebele 02', 'Kebele 04', 'Kuriftu', 'Babogaya Sefer', 'Ginjo Sefer']
+  "Tigray": {
+    city: "Mekelle",
+    lat: 13.496, lng: 39.475,
+    subcities: ["Hawelti", "Kedamay Weyane", "Quiha", "Adi Haki", "Hadnet"],
+    villages: ["Quiha Center", "Adi-Haqi Area", "Hadnet Kebele", "Semen", "Romanat Square"],
+    homes: {
+      "compound": { sale: [10e6, 50e6], rent: [30000, 100000] },
+      "villa": { sale: [15e6, 60e6], rent: [35000, 120000] }
+    },
+    cars: {
+      "Toyota Corolla": { price: [1.2e6, 3.2e6] }
+    }
   },
-  'Amhara': {
-    subcities: ['Bahir Dar Tana', 'Bahir Dar Belay Zeleke', 'Gondar Downtown'],
-    villages: ['Diaspora Sefer', 'Tana Shore', 'Fasilo Sefer', 'Azezo Sefer']
+  "Afar": {
+    city: "Semera",
+    lat: 11.792, lng: 40.958,
+    subcities: ["Main Center"],
+    villages: ["Logia", "Dubti", "Asayita Center", "Semera Town"],
+    homes: {
+      "compound": { sale: [6e6, 30e6], rent: [18000, 65000] },
+      "villa": { sale: [10e6, 40e6], rent: [20000, 75000] }
+    },
+    cars: {
+      "Toyota Hilux": { price: [3.5e6, 7.5e6] }
+    }
   },
-  'Sidama': {
-    subcities: ['Hawassa Tabor', 'Hawassa Misrak', 'Hawassa Hayek Dar'],
-    villages: ['Philadelphia Sefer', 'Mobile Sefer', 'Lakeside Sefer', 'Menehariya']
+  "Amhara": {
+    city: "Bahir Dar",
+    lat: 11.593, lng: 37.390,
+    subcities: ["Belay Zeleke", "Shum Abo", "Hidar 11", "Tana", "Fasilo"],
+    villages: ["Tana Lake Side", "Abay Bridge Area", "Fasilo Garden", "Hidar 11 Center", "Ginnit Area"],
+    homes: {
+      "compound": { sale: [12e6, 85e6], rent: [35000, 140000] },
+      "apartment": { sale: [2.8e6, 12e6], rent: [12000, 45000] },
+      "villa": { sale: [22e6, 95e6], rent: [42000, 160000] }
+    },
+    cars: {
+      "Toyota Corolla": { price: [1.3e6, 3.8e6] }
+    }
   },
-  'Tigray': {
-    subcities: ['Mekelle Ayder', 'Mekelle Hadnet', 'Mekelle Kedamay Woyane'],
-    villages: ['University Sefer', 'Romanat Sefer', 'Ayder Sefer', 'New Villa Hub']
+  "Oromia": {
+    city: "Adama",
+    lat: 8.541, lng: 39.270,
+    subcities: ["Bole", "Ganda Gara", "Dambala", "Adama Ketema"],
+    villages: ["Kuriftu Resort Area", "Melka Adama", "Industrial Zone Area", "Ganda Gara Center", "Bole Neighborhood"],
+    homes: {
+      "compound": { sale: [11e6, 65e6], rent: [32000, 125000] },
+      "villa": { sale: [16e6, 75e6], rent: [32000, 125000] }
+    },
+    cars: {
+      "Toyota Hilux": { price: [3.8e6, 8.5e6] }
+    }
   },
-  'Afar': {
-    subcities: ['Semera Center', 'Logia Town'],
-    villages: ['Airport Road', 'Logia Market', 'Downtown Semera']
+  "Somali": {
+    city: "Jigjiga",
+    lat: 9.350, lng: 42.800,
+    subcities: ["Jigjiga Yar", "Shebele", "Karamara"],
+    villages: ["Shebele Area", "Karamara Hill Side", "Kebele 01 Center", "Kebele 05 Area"],
+    homes: {
+      "compound": { sale: [8e6, 40e6], rent: [20000, 75000] }
+    },
+    cars: {
+      "Toyota Land Cruiser": { price: [6e6, 16e6] }
+    }
   },
-  'Somali': {
-    subcities: ['Jijiga District 01', 'Jijiga District 02'],
-    villages: ['Xaawo Taako', 'Farahgoon Sefer', 'Kebele 06']
+  "Benishangul-Gumuz": {
+    city: "Asosa",
+    lat: 10.066, lng: 34.533,
+    subcities: ["1st Kebele Area", "2nd Kebele Area"],
+    villages: ["Asosa Center", "Bambasi Residential", "Rural Kebele 08"],
+    homes: {
+      "compound": { sale: [7e6, 35e6], rent: [18000, 65000] }
+    },
+    cars: {
+      "Toyota Corolla": { price: [1.1e6, 2.8e6] }
+    }
   },
-  'Benishangul-Gumuz': {
-    subcities: ['Assosa Center', 'Assosa North'],
-    villages: ['Airport Sefer', 'Kebele 02', 'Market Square']
+  "Gambela": {
+    city: "Gambela",
+    lat: 8.250, lng: 34.583,
+    subcities: ["Addis Ketema", "Urban Center"],
+    villages: ["Newland Kebele", "Baro River Side", "Kebele 01 Center", "Kebele 02 Area"],
+    homes: {
+      "compound": { sale: [6.5e6, 35e6], rent: [16000, 65000] }
+    },
+    cars: {
+      "Toyota Hilux": { price: [3.2e6, 7e6] }
+    }
   },
-  'South West Ethiopia': {
-    subcities: ['Bonga Center', 'Mizan Aman Downtown'],
-    villages: ['Central Sefer', 'Expansion Zone']
+  "Harari": {
+    city: "Harar",
+    lat: 9.312, lng: 42.124,
+    subcities: ["Abadir", "Amir Nur", "Shenkor", "Jinela"],
+    villages: ["Harar Old Town", "Amir Nur Kebele", "Shenkor Residential", "Jinela Area"],
+    homes: {
+      "villa": { sale: [12e6, 50e6], rent: [22000, 85000] }
+    },
+    cars: {
+      "Toyota Vitz": { price: [700000, 1.5e6] }
+    }
   },
-  'Gambela': {
-    subcities: ['Gambela Center', 'Newland District'],
-    villages: ['Itang Sefer', 'Kebele 01', 'Riverside Sefer']
+  "Sidama": {
+    city: "Hawassa",
+    lat: 7.050, lng: 38.467,
+    subcities: ["Tabor", "Haik Dar", "Misrak", "Menaharia", "Datto"],
+    villages: ["Millennium Area", "Haik Dar Garden", "Gudumale Lake Front", "Menaheria Commercial", "Tabor Hill View"],
+    homes: {
+      "compound": { sale: [11e6, 75e6], rent: [35000, 120000] },
+      "apartment": { sale: [2.5e6, 10e6], rent: [10000, 35000] },
+      "villa": { sale: [18e6, 85e6], rent: [35000, 120000] }
+    },
+    cars: {
+      "Toyota Land Cruiser": { price: [7e6, 22e6] }
+    }
   },
-  'Harari': {
-    subcities: ['Harar Jugol', 'Harar Shenkor'],
-    villages: ['Abadir Sefer', 'JinEala Sefer', 'Hamaressa Market']
+  "South Ethiopia": {
+    city: "Wolaita Sodo",
+    lat: 6.860, lng: 37.760,
+    subcities: ["Arada", "Mehal", "Merkato"],
+    villages: ["Arada Center", "Mehal Village", "Merkato Residential", "Wolaita Sodo University Area"],
+    homes: {
+      "compound": { sale: [8e6, 40e6], rent: [20000, 80000] }
+    },
+    cars: {
+      "Toyota Corolla": { price: [1.1e6, 3e6] }
+    }
   },
-  'South Ethiopia': {
-    subcities: ['Wolaita Sodo Arada', 'Arba Minch Downtown'],
-    villages: ['Mehal Sefer', 'Sodo University Area', 'Lake View']
+  "Central Ethiopia": {
+    city: "Hosaena",
+    lat: 7.550, lng: 37.850,
+    subcities: ["Gofer Meda", "Addis Ketema"],
+    villages: ["Gofer Meda Kebele", "Addis Ketema Area", "Bobicho Square"],
+    homes: {
+      "compound": { sale: [9e6, 45e6], rent: [28000, 90000] }
+    },
+    cars: {
+      "Toyota Hilux": { price: [3.5e6, 8e6] }
+    }
   },
-  'Central Ethiopia': {
-    subcities: ['Hosaina Center', 'Butajira North'],
-    villages: ['Sech-Duna', 'Bobicho Sefer', 'Central Market']
+  "South West Ethiopia": {
+    city: "Bonga",
+    lat: 7.266, lng: 36.233,
+    subcities: ["Kebele-based Division"],
+    villages: ["Bonga Center", "Kaffa Zone Residential", "Tepi Area Kebele 01"],
+    homes: {
+      "compound": { sale: [8.5e6, 40e6], rent: [22000, 85000] }
+    },
+    cars: {
+      "Toyota Corolla": { price: [1.2e6, 2.5e6] }
+    }
   },
-  'Dire Dawa': {
-    subcities: ['Gende Tesfa District', 'Shinile District'],
-    villages: ['Kebele 02', 'Shinile Market Sefer', 'Gende Sefer']
+  "Dire Dawa": {
+    city: "Dire Dawa",
+    lat: 9.600, lng: 41.866,
+    subcities: ["Urban Area"],
+    villages: ["Kezira", "Megala", "Sabian", "Gende Kore", "Legehare", "Gurgura"],
+    homes: {
+      "villa": { sale: [15e6, 60e6], rent: [28000, 110000] }
+    },
+    cars: {
+      "Toyota Corolla": { price: [1.2e6, 3.5e6] }
+    }
   }
 };
 
-// --- DATA DEFINITION EXACTLY AS PROVIDED ---
-const MARKET_DATA = [
-  {
-    region: 'Addis Ababa', city: 'Addis Ababa',
-    properties: [
-      { type: 'compound', name: 'Compound', sale: '12M – 60M', rent: '40k – 150k', beds: [4,10] },
-      { type: 'apartment', name: 'Apartment', sale: '4M – 18M', rent: '15k – 50k', beds: [1,4] },
-      { type: 'condominium', name: 'Condominium', sale: '2.5M – 8M', rent: '8k – 25k', beds: [1,3] },
-      { type: 'villa', name: 'Villa', sale: '25M – 160M', rent: '70k – 300k', beds: [3,8] },
-      { type: 'studio', name: 'Studio', sale: '1.2M – 3.5M', rent: '5k – 15k', beds: [0,0] },
-      { type: 'building', name: 'Building', sale: '50M – 350M', rent: '150k – 800k', beds: [10,100] }
-    ],
-    cars: [
-      { brand: 'Toyota', model: 'Corolla', years: [2010, 2025], fuel: 'Petrol', price: '1.5M – 3.2M' },
-      { brand: 'Toyota', model: 'Hilux', years: [2012, 2025], fuel: 'Diesel', price: '4M – 15M' },
-      { brand: 'Toyota', model: 'Land Cruiser', years: [2008, 2025], fuel: 'Diesel', price: '8M – 35M' },
-      { brand: 'Hyundai', model: 'Tucson', years: [2012, 2025], fuel: 'Petrol', price: '2.5M – 8M' },
-      { brand: 'Hyundai', model: 'Ioniq 5', years: [2021, 2025], fuel: 'Electric', price: '6M – 12M' },
-      { brand: 'Tesla', model: 'Model 3', years: [2019, 2025], fuel: 'Electric', price: '7M – 14M' }
-    ]
-  },
-  {
-    region: 'Central Ethiopia', city: 'Hosaina',
-    properties: [
-      { type: 'compound', name: 'Compound', sale: '9M – 40M', rent: '25k – 85k', beds: [4,8] },
-      { type: 'apartment', name: 'Apartment', sale: '1.8M – 6M', rent: '6k – 20k', beds: [1,4] },
-      { type: 'condominium', name: 'Condominium', sale: '1.2M – 3.5M', rent: '4k – 15k', beds: [1,3] },
-      { type: 'villa', name: 'Villa', sale: '14M – 55M', rent: '30k – 100k', beds: [3,6] },
-      { type: 'studio', name: 'Studio', sale: '700k – 2M', rent: '3k – 8k', beds: [0,0] },
-      { type: 'building', name: 'Building', sale: '35M – 160M', rent: '90k – 350k', beds: [10,50] }
-    ],
-    cars: [
-      { brand: 'Toyota', model: 'Corolla', years: [2010, 2022], fuel: 'Petrol', price: '800k – 2.2M' },
-      { brand: 'Toyota', model: 'Hilux', years: [2012, 2023], fuel: 'Diesel', price: '3M – 8M' },
-      { brand: 'Toyota', model: 'Land Cruiser', years: [2008, 2022], fuel: 'Diesel', price: '6M – 18M' },
-      { brand: 'Toyota', model: 'Vitz', years: [2010, 2019], fuel: 'Petrol', price: '700k – 1.5M' },
-      { brand: 'Hyundai', model: 'Tucson', years: [2012, 2022], fuel: 'Petrol', price: '1.5M – 4M' },
-      { brand: 'Hyundai', model: 'Elantra', years: [2012, 2020], fuel: 'Petrol', price: '1.2M – 2.5M' },
-      { brand: 'Hyundai', model: 'Accent', years: [2010, 2020], fuel: 'Petrol', price: '900k – 2M' },
-      { brand: 'Kia', model: 'Sportage', years: [2013, 2021], fuel: 'Petrol', price: '1.5M – 3.5M' },
-      { brand: 'Nissan', model: 'Patrol', years: [2005, 2020], fuel: 'Diesel', price: '5M – 12M' },
-      { brand: 'Hyundai', model: 'Accent', years: [2010, 2020], fuel: 'Petrol', price: '900k – 2M' },
-      { brand: 'Kia', model: 'Sportage', years: [2013, 2021], fuel: 'Petrol', price: '1.5M – 3.5M' },
-      { brand: 'Nissan', model: 'Patrol', years: [2005, 2020], fuel: 'Diesel', price: '5M – 12M' },
-      { brand: 'Nissan', model: 'Sunny', years: [2010, 2020], fuel: 'Petrol', price: '900k – 1.8M' },
-      { brand: 'Suzuki', model: 'Alto', years: [2015, 2022], fuel: 'Petrol', price: '600k – 1.3M' }
-    ]
-  },
-  {
-    region: 'Dire Dawa', city: 'Dire Dawa',
-    properties: [
-      { type: 'compound', name: 'Compound', sale: '9M – 40M', rent: '25k – 85k', beds: [4,8] },
-      { type: 'apartment', name: 'Apartment', sale: '1.5M – 6M', rent: '6k – 20k', beds: [1,4] },
-      { type: 'condominium', name: 'Condominium', sale: '1M – 3M', rent: '4k – 12k', beds: [1,3] },
-      { type: 'villa', name: 'Villa', sale: '12M – 50M', rent: '25k – 90k', beds: [3,6] },
-      { type: 'studio', name: 'Studio', sale: '700k – 2M', rent: '3k – 8k', beds: [0,0] },
-      { type: 'building', name: 'Building', sale: '35M – 160M', rent: '90k – 350k', beds: [10,50] }
-    ],
-    cars: [
-      { brand: 'Toyota', model: 'Corolla', years: [2010, 2022], fuel: 'Petrol', price: '800k – 2.2M' },
-      { brand: 'Toyota', model: 'Hilux', years: [2012, 2023], fuel: 'Diesel', price: '3M – 8M' },
-      { brand: 'Toyota', model: 'Land Cruiser', years: [2008, 2022], fuel: 'Diesel', price: '6M – 18M' },
-      { brand: 'Toyota', model: 'Vitz', years: [2010, 2019], fuel: 'Petrol', price: '700k – 1.5M' },
-      { brand: 'Hyundai', model: 'Tucson', years: [2012, 2022], fuel: 'Petrol', price: '1.5M – 4M' },
-      { brand: 'Hyundai', model: 'Elantra', years: [2012, 2020], fuel: 'Petrol', price: '1.2M – 2.5M' },
-      { brand: 'Hyundai', model: 'Accent', years: [2010, 2020], fuel: 'Petrol', price: '900k – 2M' },
-      { brand: 'Kia', model: 'Sportage', years: [2013, 2021], fuel: 'Petrol', price: '1.5M – 3.5M' },
-      { brand: 'Nissan', model: 'Patrol', years: [2005, 2020], fuel: 'Diesel', price: '5M – 12M' },
-      { brand: 'Nissan', model: 'Sunny', years: [2010, 2020], fuel: 'Petrol', price: '900k – 1.8M' },
-      { brand: 'Suzuki', model: 'Alto', years: [2015, 2022], fuel: 'Petrol', price: '600k – 1.3M' }
-    ]
-  }
+const CAR_TEMPLATES = [
+  { brand: "Toyota", models: ["Corolla", "Hilux", "Land Cruiser", "Vitz"], fuel: "Petrol" },
+  { brand: "Toyota", models: ["Prius"], fuel: "Hybrid" },
+  { brand: "Toyota", models: ["bZ4X"], fuel: "Electric" },
+  { brand: "Hyundai", models: ["Tucson", "Elantra", "Accent"], fuel: "Petrol" },
+  { brand: "Kia", models: ["Sportage"], fuel: "Petrol" },
+  { brand: "Nissan", models: ["Patrol", "Sunny"], fuel: "Diesel" },
+  { brand: "Suzuki", models: ["Alto"], fuel: "Petrol" },
+  { brand: "BYD", models: ["Song Plus", "Seagull", "Han"], fuel: "Electric" },
+  { brand: "Volkswagen", models: ["ID.4", "ID.6"], fuel: "Electric" }
 ];
 
-async function main() {
-  console.log("RESUMING Seeding for REMAINING regions (Central Ethiopia & Dire Dawa)...");
+const AMENITIES_HOME = ["Swimming Pool", "Garden", "Garage", "Elevator", "G+2", "Fully Furnished", "High Security", "Backup Generator"];
+const AMENITIES_CAR = ["Sunroof", "Multimedia Screen", "Leather Seats", "Alloy Rims", "Rear Camera", "ABS", "Airbags", "Keyless Entry"];
 
-  let user = await prisma.user.findFirst({ where: { email: 'marketbot@homecar.com' } });
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        name: 'Official Market Bot',
-        email: 'marketbot@homecar.com',
-        passwordHash: 'market123',
-        verified: true,
-        role: 'AGENT'
+const HOUSE_IMAGES = [
+  "https://images.unsplash.com/photo-1570129477492-45c003edd2be?q=80&w=800",
+  "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?q=80&w=800",
+  "https://images.unsplash.com/photo-1518780664697-55e3ad937233?q=80&w=800",
+  "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=800",
+  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800",
+  "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=800",
+  "https://images.unsplash.com/photo-1600607687940-477a66d39270?q=80&w=800"
+];
+
+const CAR_IMAGES = [
+  "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=800",
+  "https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=800",
+  "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=800",
+  "https://images.unsplash.com/photo-1525609004556-c46c7d6cf023?q=80&w=800",
+  "https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=800",
+  "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=800"
+];
+
+function getRandom(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function getRandomFrom(arr: any[]) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+async function main() {
+  console.log("--- Resetting Database & Starting Balanced Seeding (2000 Items) ---");
+
+  // Helper for retrying DB operations on remote connections
+  const withRetry = async <T>(fn: () => Promise<T>, retries = 3): Promise<T> => {
+    try {
+      return await fn();
+    } catch (e) {
+      if (retries > 0) {
+        console.log(`Connection weak, retrying... (${retries} left)`);
+        await new Promise(r => setTimeout(r, 1000));
+        return withRetry(fn, retries - 1);
       }
-    });
-    console.log("Created Official Market Bot.");
+      throw e;
+    }
+  };
+
+  // 0. Cleanup existing data to start fresh
+  const deleteTable = async (name: string) => {
+    try {
+      await (prisma as any)[name].deleteMany({});
+      console.log(`Cleared ${name} table.`);
+    } catch (e) {
+      console.log(`Skip clearing ${name} (might not exist).`);
+    }
+  };
+
+  await deleteTable('propertyImage');
+  await deleteTable('propertyView');
+  await deleteTable('favorite');
+  await deleteTable('application');
+  await deleteTable('transaction');
+  await deleteTable('review');
+  await deleteTable('property');
+  await deleteTable('location');
+
+  // 1. Ensure Owner exists
+  let owner = await withRetry(() => prisma.user.findFirst({ where: { role: 'OWNER' } }));
+  if (!owner) {
+    owner = await withRetry(() => prisma.user.create({
+      data: {
+        name: "Synthetic Seeder",
+        email: "seeder@homecar.et",
+        role: Role.OWNER,
+        verified: true,
+      }
+    }));
   }
 
-  const LISTINGS_PER_PROPERTY_TYPE = 10; 
-  const LISTINGS_PER_CAR_MODEL = 8;     
+  // --- Intelligent Valuation Model ---
 
-  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  // Base rates per SQM by city (in ETB)
+  const HOME_RATE: any = {
+    "Addis Ababa": 45000,
+    "Mekelle": 22000,
+    "Bahir Dar": 25000,
+    "Adama": 20000,
+    "Hawassa": 24000,
+    "Jigjiga": 16000,
+    "Dire Dawa": 24000,
+    "Harar": 18000,
+    "Asosa": 15000,
+    "Gambela": 14000,
+    "Wolaita Sodo": 15000,
+    "Hosaena": 16000,
+    "Bonga": 14000,
+    "Semera": 14000
+  };
 
-  let totalHomes = 0;
-  let totalCars = 0;
-  let skipped = 0;
-
-  for (const regionData of MARKET_DATA) {
-    console.log(`Processing Exact Data for: ${regionData.region} (${regionData.city})...`);
+  const calculateHousePrice = (type: string, area: number, beds: number, baths: number, city: string, isRent: boolean) => {
+    const rate = HOME_RATE[city] || 15000;
     
-    // Process Properties
-    for (const p of regionData.properties) {
-      for (let i = 0; i < LISTINGS_PER_PROPERTY_TYPE; i++) {
-        const title = `Premium ${p.name} in ${regionData.city} (Batch ${i})`;
-        
-        const existing = await prisma.property.findFirst({ where: { title: title, ownerId: user.id } });
-        if (existing) {
-          skipped++;
-          continue;
-        }
+    // Type Multipliers
+    const typeMult: any = {
+      villa: 1.8,
+      compound: 1.2,
+      apartment: 1.0,
+      condominium: 0.8,
+      studio: 0.7,
+      building: 2.5
+    };
+    
+    let basePrice = area * rate * (typeMult[type] || 1.0);
+    
+    // Feature Premiums
+    const bedPremium = beds * 1500000;
+    const bathPremium = baths * 800000;
+    
+    let total = basePrice + bedPremium + bathPremium;
+    
+    // Rent is approx 0.4% - 0.6% of sale price per month
+    if (isRent) {
+      return Math.floor((total * 0.005) / 1000) * 1000;
+    }
+    return Math.floor(total / 10000) * 10000;
+  };
 
-        const isRent = Math.random() > 0.4;
-        const priceRange = isRent ? parseEthPrice(p.rent) : parseEthPrice(p.sale);
-        const finalPrice = randomInRange(priceRange[0], priceRange[1]);
-        const beds = randomInRange(p.beds[0], p.beds[1]);
+  const calculateCarPrice = (brand: string, model: string, year: number, trans: string, region: string, fuel: string) => {
+    const carKey = `${brand} ${model}`;
+    const basePrices: any = {
+      "Toyota Corolla": 3000000,
+      "Toyota Hilux": 8000000,
+      "Hyundai Tucson": 6000000,
+      "Suzuki Alto": 1800000,
+      "Toyota Land Cruiser": 15000000,
+      "Toyota Vitz": 1200000,
+      "Toyota Prius": 4500000,
+      "Toyota bZ4X": 7500000,
+      "BYD Song Plus": 6500000,
+      "BYD Seagull": 2500000,
+      "BYD Han": 9000000,
+      "Volkswagen ID.4": 7000000,
+      "Volkswagen ID.6": 8500000
+    };
+    
+    const base = basePrices[carKey] || 2500000;
+    
+    // 7% Annual Depreciation (compounded)
+    const age = Math.max(0, 2025 - year);
+    let finalPrice = base * Math.pow(0.93, age);
+    
+    // Transmission Premium
+    if (trans === "Automatic") finalPrice *= 1.12;
+    
+    // Regional/City adjustment (high variance to impact AI model)
+    const regionMult: any = {
+      "Addis Ababa": 1.5,
+      "Oromia": 1.2,
+      "Sidama": 1.15,
+      "Amhara": 1.1,
+      "Dire Dawa": 1.05,
+      "Harari": 1.0,
+      "Tigray": 0.95,
+      "Somali": 0.85,
+      "South Ethiopia": 0.8,
+      "Central Ethiopia": 0.8,
+      "Afar": 0.75,
+      "Benishangul-Gumuz": 0.6,
+      "South West Ethiopia": 0.6,
+      "Gambela": 0.5
+    };
+    finalPrice *= (regionMult[region] || 1.0);
+    
+    // Fuel Type adjustment (Massive variance for Electric)
+    const fuelMult: any = {
+      "Electric": 1.20,
+      "Hybrid": 1.15,
+      "Petrol": 1.00,
+      "Diesel": 0.90
+    };
+    finalPrice *= (fuelMult[fuel] || 1.0);
+    
+    return Math.floor(finalPrice / 5000) * 5000;
+  };
 
-        const geo = GEOGRAPHY_MAP[regionData.region] || { subcities: ['Central'], villages: ['Main Sefer'] };
-        const subcity = geo.subcities[randomInRange(0, geo.subcities.length - 1)];
-        const village = geo.villages[randomInRange(0, geo.villages.length - 1)];
+  const regions = Object.keys(MARKET_DATA);
+  const otherRegions = regions.filter(r => r !== "Addis Ababa");
 
-        const loc = await prisma.location.create({
-          data: {
-            city: regionData.city,
-            region: regionData.region,
-            subcity: subcity,
-            village: village
-          }
-        });
+  const totalToSeed = 2000;
+  const addisTarget = 1000;
 
-        const home: any = {
-          title: `Premium ${p.name} in ${regionData.city}`,
-          description: `Exact market data listing conforming to ${regionData.region} defined market parameters.`,
+  console.log(`Target: 1000 in Addis Ababa, 1000 in other regions.`);
+
+  for (let i = 0; i < totalToSeed; i++) {
+    const isAddisPhase = i < addisTarget;
+    const assetType = Math.random() > 0.5 ? AssetType.HOME : AssetType.CAR;
+    const regionName = isAddisPhase ? "Addis Ababa" : getRandomFrom(otherRegions);
+    
+    const regionData = MARKET_DATA[regionName];
+    const subcity = regionData.subcities ? getRandomFrom(regionData.subcities) : null;
+    const village = regionData.villages ? getRandomFrom(regionData.villages) : null;
+
+    // Phase 1: Create Location
+    const location = await withRetry(() => prisma.location.create({
+      data: {
+        region: regionName,
+        city: regionData.city,
+        subcity,
+        village,
+        lat: (regionData.lat || 9.0) + (Math.random() - 0.5) * 0.05,
+        lng: (regionData.lng || 38.7) + (Math.random() - 0.5) * 0.05
+      }
+    }));
+
+    if (assetType === AssetType.HOME) {
+      const types = Object.keys(regionData.homes);
+      const pType = getRandomFrom(types);
+      const isRent = Math.random() > 0.7;
+      
+      const area = pType === 'studio' ? getRandom(30, 50) : getRandom(100, 500);
+      const beds = getRandom(1, 6);
+      const baths = getRandom(1, 4);
+
+      const finalPrice = calculateHousePrice(pType, area, beds, baths, regionData.city, isRent);
+
+      const property = await withRetry(() => prisma.property.create({
+        data: {
+          title: `${pType.toUpperCase()} in ${village || regionData.city}`,
+          description: `A professionally valued ${pType} in ${village || regionData.city}. Features ${beds} bedrooms and ${baths} bathrooms.`,
           assetType: AssetType.HOME,
           listingType: [isRent ? ListingType.RENT : ListingType.BUY],
           price: finalPrice,
-          status: PropertyStatus.AVAILABLE,
-          propertyType: p.type,
+          propertyType: pType,
           bedrooms: beds,
-          bathrooms: Math.max(1, beds > 0 ? beds - 1 : 1),
-          area: randomInRange(40, 500),
-          ownerId: user.id,
-          listedById: user.id,
+          bathrooms: baths,
+          area: area,
+          ownerId: owner.id,
+          listedById: owner.id,
+          locationId: location.id,
+          status: PropertyStatus.AVAILABLE,
           isVerified: true,
-          amenities: ['wifi', 'parking'].filter(() => Math.random() > 0.5),
-          locationId: loc.id,
-          images: {
-            create: [
-              { url: generateBaseImage(`home_${regionData.city}_${p.type}_${i}_1`, 'house'), isMain: true },
-              { url: generateBaseImage(`home_${regionData.city}_${p.type}_${i}_2`, 'house') },
-              { url: generateBaseImage(`home_${regionData.city}_${p.type}_${i}_3`, 'house') }
-            ]
-          }
-        };
-        await prisma.property.create({ data: home });
-        await sleep(20); // Breathe for PG connection
-        totalHomes++;
-      }
+          amenities: Array.from({ length: 3 }, () => getRandomFrom(AMENITIES_HOME))
+        }
+      }));
+
+      await withRetry(() => prisma.propertyImage.create({
+        data: {
+          url: getRandomFrom(HOUSE_IMAGES),
+          isMain: true,
+          propertyId: property.id
+        }
+      }));
+
+    } else {
+      const brandData = getRandomFrom(CAR_TEMPLATES);
+      const model = getRandomFrom(brandData.models);
+      const year = getRandom(2010, 2024);
+      const trans = Math.random() > 0.5 ? "Automatic" : "Manual";
+
+      const finalPrice = calculateCarPrice(brandData.brand, model, year, trans, regionName, brandData.fuel);
+
+      const property = await withRetry(() => prisma.property.create({
+        data: {
+          title: `${year} ${brandData.brand} ${model} (${trans})`,
+          description: `Professionally valued ${brandData.brand} ${model} from ${year}. Condition: Excellent.`,
+          assetType: AssetType.CAR,
+          listingType: [ListingType.BUY],
+          price: finalPrice,
+          brand: brandData.brand,
+          model,
+          year,
+          fuelType: brandData.fuel,
+          transmission: trans,
+          mileage: getRandom(5000, 150000),
+          ownerId: owner.id,
+          listedById: owner.id,
+          locationId: location.id,
+          status: PropertyStatus.AVAILABLE,
+          isVerified: true,
+          amenities: Array.from({ length: 3 }, () => getRandomFrom(AMENITIES_CAR))
+        }
+      }));
+
+      await withRetry(() => prisma.propertyImage.create({
+        data: {
+          url: getRandomFrom(CAR_IMAGES),
+          isMain: true,
+          propertyId: property.id
+        }
+      }));
     }
 
-    // Process Cars
-    for (const c of regionData.cars) {
-      for (let i = 0; i < LISTINGS_PER_CAR_MODEL; i++) {
-        const isRent = Math.random() > 0.8;
-        const priceRange = parseEthPrice(c.price);
-        
-        // Exact range for sale
-        let baseMin = priceRange[0];
-        let baseMax = priceRange[1];
-        if (isRent) {
-           baseMin = baseMin / 100; // rough rental estimate from sale
-           baseMax = baseMax / 100;
-        }
-        
-        const finalPrice = randomInRange(baseMin, baseMax);
-        const year = randomInRange(c.years[0], c.years[1]);
-        const mileage = randomInRange(10000, 250000);
-
-        const geo = GEOGRAPHY_MAP[regionData.region] || { subcities: ['Central'] };
-        const subcity = geo.subcities[randomInRange(0, geo.subcities.length - 1)];
-
-        const loc = await prisma.location.create({
-          data: {
-            city: regionData.city,
-            region: regionData.region,
-            subcity: subcity
-          }
-        });
-
-        const car: any = {
-          title: `${year} ${c.brand} ${c.model}`,
-          description: `Exact market data vehicle conforming to ${regionData.region} defined market parameters.`,
-          assetType: AssetType.CAR,
-          listingType: [isRent ? ListingType.RENT : ListingType.BUY],
-          price: finalPrice,
-          status: PropertyStatus.AVAILABLE,
-          brand: c.brand,
-          model: c.model,
-          year: year,
-          mileage: mileage,
-          fuelType: c.fuel.toLowerCase(),
-          transmission: Math.random() > 0.3 ? 'automatic' : 'manual',
-          ownerId: user.id,
-          listedById: user.id,
-          isVerified: true,
-          amenities: ['ac', 'bluetooth'].filter(() => Math.random() > 0.5),
-          locationId: loc.id,
-          images: {
-            create: [
-              { url: generateBaseImage(`car_${regionData.city}_${c.model}_${i}_1`, 'car'), isMain: true },
-              { url: generateBaseImage(`car_${regionData.city}_${c.model}_${i}_2`, 'car') }
-            ]
-          }
-        };
-        await prisma.property.create({ data: car });
-        await sleep(20); // Breathe for PG connection
-        totalCars++;
-      }
+    if (i % 50 === 0) {
+      console.log(`Seeded ${i} items...`);
+      // Stability pause
+      await new Promise(r => setTimeout(r, 100));
     }
   }
 
-  console.log(`\nSuccessfully populated Exact Market Data!`);
-  console.log(`- ${totalHomes} Homes generated`);
-  console.log(`- ${totalCars} Cars generated`);
-  console.log(`Total: ${totalHomes + totalCars} listings securely injected into database.`);
+  console.log("--- Balanced Seeding Complete! (All have images) ---");
 }
 
 main()

@@ -164,7 +164,7 @@ export const createProperty = async (req: any, res: Response) => {
     }
 };
 
-export const getProperties = async (req: Request, res: Response) => {
+export const getProperties = async (req: any, res: Response) => {
     try {
         const {
             assetType,
@@ -185,6 +185,7 @@ export const getProperties = async (req: Request, res: Response) => {
             transmission,
             mileageMax,
             amenities,
+            location,
             ownerId,
             listedById,
             isVerified,
@@ -224,7 +225,7 @@ export const getProperties = async (req: Request, res: Response) => {
         if (listingType && listingType !== 'any') {
             const type = listingType.toUpperCase();
             // Handle mapping 'buy' to 'BUY' or 'FOR_SALE'
-            if (type === 'BUY') {
+            if (type === 'BUY' || type === 'SALE') {
                 where.listingType = { hasSome: ['BUY', 'FOR_SALE'] };
             } else {
                 where.listingType = { has: type };
@@ -280,11 +281,26 @@ export const getProperties = async (req: Request, res: Response) => {
         }
 
         // 6. Location Filter
-        if (region || city || subCity) {
-            where.location = {};
-            if (region) where.location.region = { contains: region.trim(), mode: 'insensitive' };
-            if (city) where.location.city = { contains: city.trim(), mode: 'insensitive' };
-            if (subCity) where.location.subcity = { contains: subCity.trim(), mode: 'insensitive' };
+        if (location || region || city || subCity) {
+            const locationConditions: any[] = [];
+            
+            if (region) locationConditions.push({ location: { region: { contains: region.trim(), mode: 'insensitive' } } });
+            if (city) locationConditions.push({ location: { city: { contains: city.trim(), mode: 'insensitive' } } });
+            if (subCity) locationConditions.push({ location: { subcity: { contains: subCity.trim(), mode: 'insensitive' } } });
+            
+            if (location) {
+                locationConditions.push({ title: { contains: location.trim(), mode: 'insensitive' } });
+                locationConditions.push({ description: { contains: location.trim(), mode: 'insensitive' } });
+                locationConditions.push({ location: { city: { contains: location.trim(), mode: 'insensitive' } } });
+                locationConditions.push({ location: { region: { contains: location.trim(), mode: 'insensitive' } } });
+                locationConditions.push({ location: { subcity: { contains: location.trim(), mode: 'insensitive' } } });
+                locationConditions.push({ location: { village: { contains: location.trim(), mode: 'insensitive' } } });
+            }
+
+            if (locationConditions.length > 0) {
+                if (!where.AND) where.AND = [];
+                where.AND.push({ OR: locationConditions });
+            }
         }
 
         // 7. Amenities Filter

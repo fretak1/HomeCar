@@ -132,6 +132,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
         return new Array(Math.max(4, initialData?.images?.length || 0)).fill(null);
     });
     const [aiReasoning, setAiReasoning] = useState<string | null>(null);
+    const [similarListings, setSimilarListings] = useState<any[]>([]);
     const { addProperty, updateProperty, isLoading: isSubmitting } = usePropertyStore();
     const { currentUser } = useUserStore();
     const { predictCarPrice, predictHousePrice, isPredicting } = useAIStore();
@@ -423,6 +424,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
             } else if (result && (result as any).predicted_price !== undefined) {
                 form.setValue('price', (result as any).predicted_price.toString());
                 setAiReasoning((result as any).reasoning || null);
+                setSimilarListings((result as any).similar_listings || []);
                 toast.success(`AI Estimate: ETB ${(result as any).predicted_price.toLocaleString()} (Confidence: ${Math.round((result as any).confidence * 100)}%)`);
             } else {
                 toast.error("AI service is currently unavailable. Please try again later.");
@@ -450,6 +452,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
             } else if (result && (result as any).predicted_price !== undefined) {
                 form.setValue('price', (result as any).predicted_price.toString());
                 setAiReasoning((result as any).reasoning || null);
+                setSimilarListings((result as any).similar_listings || []);
                 toast.success(`AI Estimate: ETB ${(result as any).predicted_price.toLocaleString()} (Confidence: ${Math.round((result as any).confidence * 100)}%)`);
             } else {
                 toast.error("AI service is currently unavailable. Please try again later.");
@@ -623,7 +626,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                 name="village"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Village / Specific Area</FormLabel>
+                                        <FormLabel>Village / Kebele</FormLabel>
                                         <FormControl>
                                             <div className="relative group">
                                                 <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
@@ -1188,18 +1191,69 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                         </FormControl>
 
                                         {aiReasoning && (
-                                            <div className="mt-4 p-4 bg-primary/5 border border-primary/10 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-500">
-                                                <div className="flex items-start space-x-3">
-                                                    <div className="mt-0.5 p-1 bg-primary/20 rounded-full">
-                                                        <Zap className="h-3 w-3 text-primary" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <p className="text-xs font-bold text-primary uppercase tracking-widest mb-1">AI Reasoning</p>
-                                                        <p className="text-sm text-foreground/80 leading-relaxed italic">
-                                                            "{aiReasoning}"
-                                                        </p>
+                                            <div className="mt-6 space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
+                                                <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl">
+                                                    <div className="flex items-start space-x-3">
+                                                        <div className="mt-0.5 p-1 bg-primary/20 rounded-full">
+                                                            <Zap className="h-3 w-3 text-primary" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-1">AI Valuation Strategy</p>
+                                                            <p className="text-sm text-foreground/90 leading-relaxed font-medium">
+                                                                {aiReasoning}
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                 </div>
+
+                                                {similarListings.length > 0 && (
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center">
+                                                                <Shield className="h-3 w-3 mr-2 text-primary" />
+                                                                Market Evidence Grounding
+                                                            </h4>
+                                                            <span className="text-[10px] font-medium text-primary/60">{similarListings.length} Matches Found</span>
+                                                        </div>
+                                                        
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                            {similarListings.map((listing, idx) => (
+                                                                <div 
+                                                                    key={listing.id || idx} 
+                                                                    className="group bg-white border border-border/40 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                                                                >
+                                                                    <div className="aspect-[4/3] relative overflow-hidden bg-muted">
+                                                                        {listing.image ? (
+                                                                            <img 
+                                                                                src={listing.image} 
+                                                                                alt={listing.title} 
+                                                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                                                                            />
+                                                                        ) : (
+                                                                            <div className="w-full h-full flex items-center justify-center">
+                                                                                <ImageIcon className="h-8 w-8 text-muted-foreground/20" />
+                                                                            </div>
+                                                                        )}
+                                                                        <div className="absolute top-2 left-2">
+                                                                            <Badge className="bg-black/60 backdrop-blur-md text-white border-none text-[10px] px-2 py-0.5">
+                                                                                ETB {listing.price?.toLocaleString()}
+                                                                            </Badge>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="p-3 space-y-2">
+                                                                        <p className="text-[11px] font-bold text-foreground line-clamp-1">{listing.title}</p>
+                                                                        <div className="flex items-start gap-1.5 p-2 bg-primary/5 rounded-lg border border-primary/10">
+                                                                            <Check className="h-2.5 w-2.5 text-primary mt-0.5 shrink-0" />
+                                                                            <p className="text-[10px] text-primary/80 font-medium leading-tight">
+                                                                                {listing.reason}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
 
