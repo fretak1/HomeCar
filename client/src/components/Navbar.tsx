@@ -7,7 +7,6 @@ import { useUserStore } from '@/store/useUserStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  Building2,
   Search,
   User,
   ChevronDown,
@@ -18,6 +17,8 @@ import {
   CheckCircle2,
   Brain
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Logo } from './common/Logo';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -31,23 +32,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { currentUser, logout } = useUserStore();
-  const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead } = useNotificationStore();
-  const [isOpen, setIsOpen] = useState(false);
+  const { currentUser, logout, isLoading: userLoading } = useUserStore();
+  const { notifications, unreadCount, fetchNotifications, markAllAsRead, connectSocket, disconnectSocket } = useNotificationStore();
   const [displayNotifications, setDisplayNotifications] = useState<any[]>([]);
 
   useEffect(() => {
     if (currentUser) {
       fetchNotifications();
-      // Poll for notifications every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
+      connectSocket();
+      
+      return () => {
+        disconnectSocket();
+      };
     }
-  }, [currentUser, fetchNotifications]);
+  }, [currentUser, fetchNotifications, connectSocket, disconnectSocket]);
 
   // Handle dropdown open/close
   const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
     if (open) {
       // Capture what was unread before marking as read
       const unread = notifications.filter(n => !n.read);
@@ -88,9 +89,12 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 bg-white border-b border-border shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center space-x-2">
-            <Building2 className="h-8 w-8 text-primary" />
-            <span className="text-xl font-semibold text-primary">HomeCar</span>
+          <Link href="/" className="flex items-center">
+            {userLoading ? (
+              <Skeleton className="h-10 w-28 rounded-lg" />
+            ) : (
+              <Logo className="h-10 w-auto" priority />
+            )}
           </Link>
 
           <div className="hidden md:flex items-center space-x-12 h-full">
@@ -99,8 +103,16 @@ export function Navbar() {
               { name: 'Search On Map', href: '/search' },
               { name: 'Properties', href: '/listings' },
               { name: getDashboardLabel(), href: '/dashboard' },
-              { name: 'Messages', href: '/chat' },
-            ].map((item) => (
+            ].filter((item) => {
+              // Hide all links while auth state is loading to prevent role-based glitch
+              if (userLoading) return false;
+              // Restricted roles (Admin, Owner, Agent) see NO links in the main navbar
+              const isRestrictedRole = currentUser && ['ADMIN', 'OWNER', 'AGENT'].includes(currentUser.role);
+              if (isRestrictedRole) {
+                return false;
+              }
+              return true;
+            }).map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -115,14 +127,29 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center space-x-3">
-            <Link href="/listings" className="md:hidden">
-              <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10">
-                <Search className="h-5 w-5" />
-              </Button>
-            </Link>
+            {userLoading ? null : !(currentUser && ['ADMIN', 'OWNER', 'AGENT'].includes(currentUser.role)) && (
+              <Link href="/listings" className="md:hidden">
+                <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10">
+                  <Search className="h-5 w-5" />
+                </Button>
+              </Link>
+            )}
 
-            {currentUser ? (
+            {userLoading ? (
               <div className="flex items-center space-x-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <Skeleton className="h-8 w-24 rounded-lg hidden md:block" />
+              </div>
+            ) : currentUser ? (
+              <div className="flex items-center space-x-3">
+                {currentUser && ['OWNER', 'AGENT', 'CUSTOMER'].includes(currentUser.role) && (
+                  <Link href="/chat">
+                    <Button variant="ghost" className="relative h-10 w-fit px-3 text-muted-foreground hover:bg-primary/5 rounded-xl transition-all active:scale-95 group flex items-center gap-2">
+                      <MessageSquare className="h-5 w-5 group-hover:text-primary transition-colors" />
+                      <span className="text-[13px] font-bold group-hover:text-primary hidden sm:block">Messages</span>
+                    </Button>
+                  </Link>
+                )}
                 <DropdownMenu onOpenChange={handleOpenChange}>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="relative h-10 w-10 text-muted-foreground hover:bg-primary/5 rounded-full transition-all active:scale-95 group">
@@ -221,8 +248,8 @@ export function Navbar() {
 
                     <DropdownMenuItem
                       className="cursor-pointer py-2 rounded-lg text-destructive focus:text-destructive focus:bg-destructive/5 flex items-center gap-2 transition-colors"
-                      onClick={() => {
-                        logout();
+                      onClick={async () => {
+                        await logout();
                         router.push('/');
                       }}
                     >

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { AddPropertyForm } from '@/components/forms/AddPropertyForm';
 import { usePropertyStore, Property } from '@/store/usePropertyStore';
+import { useUserStore } from '@/store/useUserStore';
 import { Loader2 } from 'lucide-react';
 
 export default function AddPropertyPage() {
@@ -10,6 +11,7 @@ export default function AddPropertyPage() {
     const searchParams = useSearchParams();
     const id = searchParams.get('id');
     const { fetchPropertyById } = usePropertyStore();
+    const currentUser = useUserStore((state) => state.currentUser);
     const [initialData, setInitialData] = useState<Property | null>(null);
     const [isFetching, setIsFetching] = useState(!!id);
 
@@ -50,9 +52,9 @@ export default function AddPropertyPage() {
 
                         <AddPropertyForm
                             initialData={initialData}
-                            onCancel={() => router.push('/dashboard/owner')}
+                            onCancel={() => router.push(currentUser?.role === 'AGENT' ? '/dashboard/agent' : '/dashboard/owner')}
                             onSuccess={() => {
-                                router.push('/dashboard/owner');
+                                router.push(currentUser?.role === 'AGENT' ? '/dashboard/agent' : '/dashboard/owner');
                             }}
                         />
                     </div>

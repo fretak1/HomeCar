@@ -64,28 +64,43 @@ interface PropertyState {
     properties: Property[];
     isLoading: boolean;
     error: string | null;
+    lastRequestId: number;
     fetchProperties: (filters?: any) => Promise<void>;
     fetchPropertyById: (id: string) => Promise<Property>;
     fetchPropertiesByOwnerId: (ownerId: string) => Promise<void>;
     addProperty: (formData: FormData) => Promise<void>;
     updateProperty: (id: string, formData: FormData) => Promise<void>;
-    verifyProperty: (id: string, isVerified: boolean) => Promise<void>;
+    verifyProperty: (id: string, isVerified: boolean, rejectionReason?: string) => Promise<void>;
     deleteProperty: (id: string) => Promise<void>;
+    getSignedUrl: (docId: string) => Promise<string>;
+    clearProperties: () => void;
 }
 
-export const usePropertyStore = create<PropertyState>((set) => ({
+export const usePropertyStore = create<PropertyState>((set, get) => ({
     properties: [],
     isLoading: false,
     error: null,
+    lastRequestId: 0,
     fetchProperties: async (filters = {}) => {
-        set({ isLoading: true, error: null });
+        const requestId = (get().lastRequestId || 0) + 1;
+        set({ lastRequestId: requestId, isLoading: true, error: null, properties: [] });
+
         try {
             const response = await api.get(API_ROUTES.PROPERTIES, { params: filters });
-            set({ properties: response.data, isLoading: false });
+            
+            // Only update if this was the latest request
+            if (get().lastRequestId === requestId) {
+                set({ properties: response.data, isLoading: false });
+            } else {
+                console.log(`[Store] Discarding stale fetch response (ID: ${requestId})`);
+            }
         } catch (error: any) {
-            set({ error: error.message || 'Failed to fetch properties', isLoading: false });
+            if (get().lastRequestId === requestId) {
+                set({ error: error.message || 'Failed to fetch properties', isLoading: false });
+            }
         }
     },
+    clearProperties: () => set({ properties: [], isLoading: false, error: null }),
     fetchPropertiesByOwnerId: async (ownerId: string) => {
         set({ isLoading: true, error: null });
         try {
@@ -145,10 +160,10 @@ export const usePropertyStore = create<PropertyState>((set) => ({
             throw error;
         }
     },
-    verifyProperty: async (id: string, isVerified: boolean) => {
+    verifyProperty: async (id: string, isVerified: boolean, rejectionReason?: string) => {
         set({ isLoading: true, error: null });
         try {
-            const response = await api.patch(`${API_ROUTES.PROPERTIES}/${id}/verify`, { isVerified });
+            const response = await api.patch(`${API_ROUTES.PROPERTIES}/${id}/verify`, { isVerified, rejectionReason });
             set((state) => ({
                 properties: state.properties.map(p => p.id === id ? response.data : p),
                 isLoading: false
@@ -168,6 +183,15 @@ export const usePropertyStore = create<PropertyState>((set) => ({
             }));
         } catch (error: any) {
             set({ error: error.message || 'Failed to delete property', isLoading: false });
+        }
+    },
+    getSignedUrl: async (docId: string) => {
+        try {
+            const response = await api.get(`${API_ROUTES.PROPERTIES}/document/${docId}/signed-url`);
+            return response.data.signedUrl;
+        } catch (error: any) {
+            console.error('[Store] Error getting signed URL:', error);
+            throw error;
         }
     },
 }));

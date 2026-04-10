@@ -52,15 +52,17 @@ function ListingContent() {
     } = useGlobalStore();
     const searchParams = useSearchParams();
 
-    const { properties, isLoading, fetchProperties } = usePropertyStore();
+    const { properties, isLoading, fetchProperties, clearProperties } = usePropertyStore();
     const { currentUser } = useUserStore();
     const { logSearchFilter } = useInteractionStore();
 
     const [showFilters, setShowFilters] = useState(true);
     const [isOpen, setIsOpen] = useState(false);
     const [sortBy, setSortBy] = useState("newest");
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [hasSyncedUrl, setHasSyncedUrl] = useState(false);
 
-    const displayLocation = [filters.region, filters.city].filter(Boolean).join(", ") || (filters.location ? filters.location : "Location");
+    const displayLocation = [filters.region, filters.city, filters.subCity].filter(Boolean).join(", ") || "Location";
 
     const resetFilters = () => {
         setFilters({
@@ -85,7 +87,11 @@ function ListingContent() {
 
     // Sync URL parameters to Store on mount
     useEffect(() => {
+        // Clear any stale properties from previous pages (like Home)
+        clearProperties();
+
         const type = searchParams.get('searchType') as 'property' | 'vehicle';
+        const city = searchParams.get('city');
         const location = searchParams.get('location');
         const listingType = searchParams.get('listingType');
         const priceMin = searchParams.get('priceMin');
@@ -97,6 +103,7 @@ function ListingContent() {
             setSearchType(type);
         }
 
+        if (city) newFilters.city = city;
         if (location) newFilters.location = location;
         if (listingType) newFilters.listingType = listingType;
 
@@ -112,10 +119,13 @@ function ListingContent() {
         } else {
             resetFilters();
         }
+        setHasSyncedUrl(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchParams, setSearchType]);
 
     useEffect(() => {
+        let shouldIgnore = false;
+        
         const params: any = {
             assetType: searchType === 'property' ? 'HOME' : 'CAR',
             listingType: filters.listingType,
@@ -143,12 +153,24 @@ function ListingContent() {
             if (filters.mileage !== null) params.mileageMax = filters.mileage;
         }
 
-        fetchProperties(params);
+        // --- Coordination Guard ---
+        // Don't trigger the fetch until we have finished syncing the URL parameters on mount
+        if (!hasSyncedUrl) return;
+
+        fetchProperties(params).then(() => {
+            if (!shouldIgnore) {
+                setIsInitialLoad(false);
+            }
+        });
 
         if (currentUser?.id) {
             logSearchFilter(currentUser.id, searchType, filters);
         }
-    }, [filters, searchType, sortBy, fetchProperties, currentUser?.id, logSearchFilter]);
+
+        return () => {
+            shouldIgnore = true;
+        };
+    }, [filters, searchType, sortBy, fetchProperties, currentUser?.id, logSearchFilter, hasSyncedUrl]);
 
     const items = properties;
 
@@ -188,11 +210,11 @@ function ListingContent() {
                                         variant="outline"
                                         className={cn(
                                             "h-10 px-4 rounded-full border shadow-sm flex items-center gap-2 transition-all min-w-[160px] justify-between",
-                                            (filters.region || filters.city || filters.subCity || filters.location) ? "bg-primary/5 border-primary/30 text-primary hover:bg-primary/10" : "bg-background border-border hover:bg-muted/50"
+                                            (filters.region || filters.city || filters.subCity) ? "bg-primary/5 border-primary/30 text-primary hover:bg-primary/10" : "bg-background border-border hover:bg-muted/50"
                                         )}
                                     >
                                         <div className="flex items-center gap-2 truncate">
-                                            <MapPin className={cn("w-4 h-4 shrink-0", (filters.region || filters.city || filters.subCity || filters.location) ? "text-primary" : "text-muted-foreground")} />
+                                            <MapPin className={cn("w-4 h-4 shrink-0", (filters.region || filters.city || filters.subCity) ? "text-primary" : "text-muted-foreground")} />
                                             <span className="truncate">{displayLocation}</span>
                                         </div>
                                         <ChevronDown className={cn("w-3 h-3 shrink-0 transition-transform duration-200", isOpen && "rotate-180")} />
@@ -224,15 +246,6 @@ function ListingContent() {
                                                 placeholder="Select Sub city ..."
                                                 value={filters.subCity}
                                                 onChange={(e) => setFilters({ subCity: e.target.value })}
-                                                className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-semibold text-foreground ml-1">Universal Location</Label>
-                                            <Input
-                                                placeholder="Search location..."
-                                                value={filters.location}
-                                                onChange={(e) => setFilters({ location: e.target.value })}
                                                 className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
                                             />
                                         </div>
@@ -292,10 +305,35 @@ function ListingContent() {
                                 </div>
                             </div>
 
-                            {isLoading ? (
+                            {(isLoading || isInitialLoad) ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {[1, 2, 3, 4, 5, 6].map(i => (
-                                        <div key={i} className="aspect-[4/5] bg-muted/20 animate-pulse rounded-2xl" />
+                                        <div key={i} className="bg-card border rounded-2xl overflow-hidden shadow-sm animate-pulse flex flex-col h-full">
+                                            {/* Image Area - Fixed to match h-56 of real cards */}
+                                            <div className="h-56 bg-muted/30 w-full" />
+                                            {/* Content Area */}
+                                            <div className="p-5 flex flex-col flex-1 space-y-4">
+                                                <div className="space-y-2">
+                                                    {/* Title bar */}
+                                                    <div className="h-5 bg-muted/30 rounded-md w-3/4" />
+                                                    {/* Subtitle/Location bar */}
+                                                    <div className="h-3 bg-muted/20 rounded-md w-1/2" />
+                                                </div>
+                                                
+                                                {/* Specs bar (Beds/Baths or Mileage/Fuel) */}
+                                                <div className="flex gap-4">
+                                                    <div className="h-3 bg-muted/20 rounded-md w-12" />
+                                                    <div className="h-3 bg-muted/20 rounded-md w-12" />
+                                                    <div className="h-3 bg-muted/20 rounded-md w-12" />
+                                                </div>
+                                                
+                                                {/* Footer (Price + Button) */}
+                                                <div className="mt-auto pt-4 flex justify-between items-center border-t border-muted/10">
+                                                    <div className="h-7 bg-primary/10 rounded-md w-1/3" />
+                                                    <div className="h-8 bg-muted/20 rounded-lg w-20" />
+                                                </div>
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
                             ) : items.length === 0 ? (

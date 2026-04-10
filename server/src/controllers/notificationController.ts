@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
+import { emitNotification } from '../socket.js';
 
 /**
  * Fetches notifications for the authenticated user.
@@ -59,7 +60,7 @@ export const markAllAsRead = async (req: any, res: Response) => {
  */
 export const createNotification = async (userId: string, title: string, message: string, type: string, link?: string) => {
     try {
-        return await prisma.notification.create({
+        const notification = await prisma.notification.create({
             data: {
                 userId,
                 title,
@@ -69,6 +70,11 @@ export const createNotification = async (userId: string, title: string, message:
                 read: false
             }
         });
+
+        // Emit real-time socket event
+        emitNotification(userId, notification);
+
+        return notification;
     } catch (error) {
         console.error('Error creating notification:', error);
     }

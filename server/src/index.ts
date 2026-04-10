@@ -22,6 +22,27 @@ const httpServer = createServer(app);
 initSocket(httpServer);
 
 const PORT = process.env.PORT || 5000;
+const allowedOrigins = (process.env.CORS_ORIGINS ||
+    'http://localhost:3000, http://127.0.0.1:3000,http://localhost:58967,http://127.0.0.1:58967')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean);
+
+const isLoopbackOrigin = (origin?: string) => {
+    if (!origin) return true;
+
+    try {
+        const parsed = new URL(origin);
+        return ['localhost', '127.0.0.1', '10.0.2.2'].includes(parsed.hostname);
+    } catch {
+        return false;
+    }
+};
+
+const isAllowedOrigin = (origin?: string) => {
+    if (!origin) return true;
+    return allowedOrigins.includes(origin) || isLoopbackOrigin(origin);
+};
 
 // Ensure uploads folder exists
 const uploadDir = path.join(process.cwd(), 'uploads');
@@ -33,7 +54,9 @@ if (!fs.existsSync(uploadDir)) {
 // Middleware
 app.use(
     cors({
-        origin: 'http://localhost:3000',
+        origin: (origin, callback) => {
+            callback(null, isAllowedOrigin(origin));
+        },
         methods: ['GET', 'POST', 'DELETE', 'PUT', 'PATCH', 'OPTIONS'],
         allowedHeaders: [
             "Content-Type",

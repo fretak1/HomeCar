@@ -8,6 +8,7 @@ import { useMaintenanceStore } from '@/store/useMaintenanceStore';
 import { useLeaseStore } from '@/store/useLeaseStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
     Users,
     Building2,
@@ -52,13 +53,140 @@ import {
 
 
 
+// ─── Skeleton Components ─────────────────────────────────────────────────────
+function StatCardSkeleton() {
+    return (
+        <Card className="border-border/50 shadow-sm">
+            <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                    <Skeleton className="h-3 w-28 rounded" />
+                    <Skeleton className="h-9 w-9 rounded-lg" />
+                </div>
+                <Skeleton className="h-8 w-20 rounded mb-2" />
+                <Skeleton className="h-3 w-32 rounded" />
+            </CardContent>
+        </Card>
+    );
+}
+
+function ChartCardSkeleton({ height = 350 }: { height?: number }) {
+    return (
+        <Card className="border-border/50 shadow-md bg-white">
+            <CardHeader className="pb-2">
+                <Skeleton className="h-5 w-40 rounded mb-1" />
+                <Skeleton className="h-3 w-28 rounded" />
+            </CardHeader>
+            <CardContent className="px-4 pb-6">
+                <Skeleton className="w-full rounded" style={{ height: height - 60 }} />
+            </CardContent>
+        </Card>
+    );
+}
+
+function PieCardSkeleton() {
+    return (
+        <Card className="border-border/50 shadow-md bg-white">
+            <CardHeader className="pb-2">
+                <Skeleton className="h-5 w-40 rounded mb-1" />
+                <Skeleton className="h-3 w-28 rounded" />
+            </CardHeader>
+            <CardContent className="h-[300px] flex flex-col items-center justify-center gap-4">
+                <Skeleton className="h-40 w-40 rounded-full" />
+                <div className="flex gap-4">
+                    {[1,2,3].map(i => <Skeleton key={i} className="h-3 w-16 rounded" />)}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+function TableRowSkeleton({ cols = 4 }: { cols?: number }) {
+    return (
+        <tr className="border-b">
+            {Array.from({ length: cols }).map((_, i) => (
+                <td key={i} className="p-4">
+                    <Skeleton className="h-4 w-full rounded" />
+                </td>
+            ))}
+        </tr>
+    );
+}
+
+function ListRowSkeleton() {
+    return (
+        <div className="p-4 flex items-center justify-between border-b">
+            <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-32 rounded" />
+                    <Skeleton className="h-3 w-44 rounded" />
+                </div>
+            </div>
+            <Skeleton className="h-5 w-16 rounded-full" />
+        </div>
+    );
+}
+
+// Full-page skeleton — exact visual replica of the admin dashboard layout
+function AdminDashboardSkeleton() {
+    return (
+        <div className="min-h-screen bg-background">
+            {/* Green Gradient Header Skeleton */}
+            <div className="bg-gradient-to-br from-[#005a41] via-[#005a41] to-[#1e3a8a] py-12">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <Skeleton className="h-10 w-64 bg-white/20 rounded-lg mb-3" />
+                    <Skeleton className="h-5 w-48 bg-white/10 rounded-md" />
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Stats Cards Skeleton */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    {[1,2,3,4].map(i => <StatCardSkeleton key={i} />)}
+                </div>
+
+                {/* Tabs Bar Skeleton */}
+                <div className="flex gap-2 mb-8 border-b border-border/50 pb-0">
+                    {[120, 100, 120, 90, 120].map((w, i) => (
+                        <Skeleton key={i} className="h-10 rounded-t-lg" style={{ width: w }} />
+                    ))}
+                </div>
+
+                {/* Content Skeleton — 2-col chart grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <ChartCardSkeleton height={350} />
+                    <PieCardSkeleton />
+                    <PieCardSkeleton />
+                    <ChartCardSkeleton height={350} />
+                </div>
+
+                {/* Recent Users List Skeleton */}
+                <div className="mt-8">
+                    <Card className="border-border/50 shadow-md bg-white">
+                        <CardHeader className="border-b border-border/50">
+                            <Skeleton className="h-5 w-32 rounded mb-1" />
+                            <Skeleton className="h-3 w-28 rounded" />
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {[1,2,3,4,5].map(i => <ListRowSkeleton key={i} />)}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </div>
+    );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function AdminDashboardPage() {
-    const { properties: allAssets, fetchProperties } = usePropertyStore();
+    const { properties: allAssets, fetchProperties, isLoading: propsLoading } = usePropertyStore();
     const { fetchApplications } = useApplicationStore();
     const { fetchRequests: fetchMaintenanceRequests } = useMaintenanceStore();
-    const { leases, fetchLeases } = useLeaseStore();
-    const { users, fetchUsers } = useUserStore();
-    const { transactions, fetchTransactions } = useTransactionStore();
+    const { leases, fetchLeases, isLoading: leasesLoading } = useLeaseStore();
+    const { users, fetchUsers, isLoading: usersLoading } = useUserStore();
+    const { transactions, fetchTransactions, isLoading: txLoading } = useTransactionStore();
+
+    const isLoading = propsLoading || usersLoading || leasesLoading || txLoading;
 
     useEffect(() => {
         fetchProperties();
@@ -75,6 +203,8 @@ export default function AdminDashboardPage() {
     const [leaseStatusFilter, setLeaseStatusFilter] = useState('all');
     const [leaseTermFilter, setLeaseTermFilter] = useState('all');
     const [verificationHistoryFilter, setVerificationHistoryFilter] = useState('all');
+    const [verificationCategoryFilter, setVerificationCategoryFilter] = useState('all');
+    const [verificationDateFilter, setVerificationDateFilter] = useState('all');
 
     // Property Tab Filter States
     const [propSearch, setPropSearch] = useState('');
@@ -143,8 +273,10 @@ export default function AdminDashboardPage() {
     const filteredAllAssets = allAssets.filter(p => {
         const matchesSearch = propSearch === '' ||
             p.title.toLowerCase().includes(propSearch.toLowerCase()) ||
-            (p.location?.city?.toLowerCase().includes(propSearch.toLowerCase())) ||
-            (p.location?.subcity?.toLowerCase().includes(propSearch.toLowerCase()));
+            p.location?.city?.toLowerCase().includes(propSearch.toLowerCase()) ||
+            p.location?.subcity?.toLowerCase().includes(propSearch.toLowerCase()) ||
+            p.location?.region?.toLowerCase().includes(propSearch.toLowerCase()) ||
+            p.location?.village?.toLowerCase().includes(propSearch.toLowerCase());
 
         const matchesType = propTypeFilter === 'all' || p.assetType === propTypeFilter;
         const matchesStatus = propStatusFilter === 'all' || p.status === propStatusFilter;
@@ -152,11 +284,44 @@ export default function AdminDashboardPage() {
         return matchesSearch && matchesType && matchesStatus;
     });
 
+    const calculateTrend = (data: any[], dateField: string = 'createdAt', valueField?: string) => {
+        const today = new Date();
+        const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
+
+        let currentSum = 0;
+        let lastSum = 0;
+
+        data.forEach(item => {
+            const itemDate = new Date(item[dateField]);
+            const val = valueField ? Number(item[valueField]) : 1;
+            
+            if (itemDate >= currentMonthStart) {
+                currentSum += val;
+            } else if (itemDate >= lastMonthStart && itemDate <= lastMonthEnd) {
+                lastSum += val;
+            }
+        });
+
+        if (lastSum === 0) return { trend: currentSum > 0 ? '+100%' : '0%', isUp: true };
+        const percentChange = ((currentSum - lastSum) / lastSum) * 100;
+        return {
+            trend: `${percentChange > 0 ? '+' : ''}${percentChange.toFixed(1)}%`,
+            isUp: percentChange >= 0
+        };
+    };
+
+    const userTrend = calculateTrend(users, 'createdAt');
+    const propertyTrend = calculateTrend(properties, 'createdAt');
+    const vehicleTrend = calculateTrend(vehicles, 'createdAt');
+    const transactionTrend = calculateTrend(transactions, 'date', 'amount');
+
     const stats = [
-        { label: 'Total Users', value: users.length.toString(), trend: '+18.2%', isUp: true, icon: Users, color: 'bg-blue-50 text-blue-600' },
-        { label: 'Total Homes', value: properties.length.toString(), trend: '+12.5%', isUp: true, icon: Building2, color: 'bg-indigo-50 text-indigo-600' },
-        { label: 'Total Cars', value: vehicles.length.toString(), trend: '+8.4%', isUp: true, icon: Car, color: 'bg-teal-50 text-teal-600' },
-        { label: 'Monthly Transactions', value: `ETB ${(transactions.reduce((sum, t) => sum + t.amount, 0) / 1000).toFixed(1)}K`, trend: '+21.6%', isUp: true, icon: DollarSign, color: 'bg-green-50 text-green-600' },
+        { label: 'Total Users', value: users.length.toString(), trend: userTrend.trend, isUp: userTrend.isUp, icon: Users, color: 'bg-blue-50 text-blue-600' },
+        { label: 'Total Homes', value: properties.length.toString(), trend: propertyTrend.trend, isUp: propertyTrend.isUp, icon: Building2, color: 'bg-indigo-50 text-indigo-600' },
+        { label: 'Total Cars', value: vehicles.length.toString(), trend: vehicleTrend.trend, isUp: vehicleTrend.isUp, icon: Car, color: 'bg-teal-50 text-teal-600' },
+        { label: 'Monthly Revenue', value: `ETB ${(transactions.reduce((sum, t) => sum + t.amount, 0) / 1000).toFixed(1)}K`, trend: transactionTrend.trend, isUp: transactionTrend.isUp, icon: CreditCard, color: 'bg-green-50 text-green-600' },
     ];
 
     // Real Data for Charts
@@ -165,32 +330,51 @@ export default function AdminDashboardPage() {
         Amount: t.amount
     }));
 
-    const propertyDistributionData = [
-        { name: 'Compounds', value: properties.filter(p => p.propertyType === 'Compound').length, color: '#004a35' },
-        { name: 'Apartments', value: properties.filter(p => p.propertyType === 'Apartment').length, color: '#1e40af' },
-        { name: 'Condos', value: properties.filter(p => p.propertyType === 'Condominium').length, color: '#0d9488' },
-        { name: 'Villas', value: properties.filter(p => p.propertyType === 'Villa').length, color: '#15803d' },
-    ].filter(d => d.value > 0);
+    const getPropertyDistribution = () => {
+        const typeCounts: Record<string, number> = {};
+        properties.forEach(p => {
+            let type = p.propertyType || (p as any).category || 'Other';
+            type = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+            typeCounts[type] = (typeCounts[type] || 0) + 1;
+        });
+        const colors = ['#004a35', '#1e40af', '#0d9488', '#15803d', '#f59e0b', '#7c3aed'];
+        return Object.entries(typeCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([name, value], idx) => ({ name, value, color: colors[idx % colors.length] }));
+    };
 
-    const carDistributionData = [
-        { name: 'Toyota', value: vehicles.filter(v => v.brand === 'Toyota').length, color: '#0891b2' },
-        { name: 'Mercedes', value: vehicles.filter(v => v.brand === 'Mercedes').length, color: '#4f46e5' },
-        { name: 'Tesla', value: vehicles.filter(v => v.brand === 'Tesla').length, color: '#ca8a04' },
-        { name: 'Suzuki', value: vehicles.filter(v => v.brand === 'Suzuki').length, color: '#16a34a' },
-    ].filter(d => d.value > 0);
+    const getCarDistribution = () => {
+        const brandCounts: Record<string, number> = {};
+        vehicles.forEach(v => {
+            let brand = v.brand || 'Other';
+            // capitalize properly
+            brand = brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase();
+            brandCounts[brand] = (brandCounts[brand] || 0) + 1;
+        });
+        const colors = ['#0891b2', '#4f46e5', '#ca8a04', '#16a34a', '#dc2626', '#db2777', '#059669', '#6366f1', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+        return Object.entries(brandCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([name, value], idx) => ({ name, value, color: colors[idx % colors.length] }));
+    };
 
-    const recentUsers = users.slice(0, 5).map(u => ({
-        name: u.name,
-        email: u.email,
-        role: u.role,
-        avatar: u.profileImage || ''
-    }));
+    const propertyDistributionData = getPropertyDistribution();
+    const carDistributionData = getCarDistribution();
+
+    const recentUsers = [...users]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5)
+        .map(u => ({
+            name: u.name,
+            email: u.email,
+            role: u.role,
+            avatar: u.profileImage || ''
+        }));
 
     const pendingProperties = allAssets.filter(p => !p.isVerified).map(p => ({
         id: p.id,
         title: p.title,
-        owner: p.ownerName || 'Unknown Owner',
-        type: p.assetType,
+        owner: (p as any).owner?.name || p.ownerName || 'Unknown Owner',
+        type: p.assetType === 'HOME' ? 'Home' : 'Car',
         location: p.location ? `${p.location.subcity}, ${p.location.city}` : 'Unknown Location',
         price: `ETB ${p.price.toLocaleString()}/mo`,
         submittedDate: new Date(p.createdAt).toLocaleDateString(),
@@ -263,20 +447,44 @@ export default function AdminDashboardPage() {
         ...allAssets.filter(p => p.isVerified).map(p => ({
             id: p.id,
             title: p.title,
-            type: 'Property',
-            owner: p.ownerName || 'Unknown',
+            type: p.assetType === 'HOME' ? 'Home' : 'Car',
+            owner: (p as any).owner?.name || p.ownerName || 'Unknown',
             date: new Date(p.updatedAt).toLocaleDateString(),
-            status: 'Approved'
+            rawDate: p.updatedAt,
+            status: 'Verified'
+        })),
+        ...allAssets.filter(p => !p.isVerified && p.updatedAt > p.createdAt).map(p => ({
+            id: p.id,
+            title: p.title,
+            type: p.assetType === 'HOME' ? 'Home' : 'Car',
+            owner: (p as any).owner?.name || p.ownerName || 'Unknown',
+            date: new Date(p.updatedAt).toLocaleDateString(),
+            rawDate: p.updatedAt,
+            status: 'Rejected'
         })),
         ...users.filter(u => u.verified).map(u => ({
             id: u.id,
             name: u.name,
             type: 'Agent',
             email: u.email,
+            owner: u.name,
             date: new Date(u.updatedAt).toLocaleDateString(),
-            status: 'Approved'
+            rawDate: u.updatedAt,
+            status: 'Verified'
+        })),
+        ...users.filter(u => u.role === 'AGENT' && !u.verified && u.updatedAt > u.createdAt).map(u => ({
+            id: u.id,
+            name: u.name,
+            type: 'Agent',
+            email: u.email,
+            owner: u.name,
+            date: new Date(u.updatedAt).toLocaleDateString(),
+            rawDate: u.updatedAt,
+            status: 'Rejected'
         }))
-    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    ].sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
+
+    if (isLoading) return <AdminDashboardSkeleton />;
 
     return (
         <div className="min-h-screen bg-background">
@@ -294,26 +502,29 @@ export default function AdminDashboardPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Admin Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {stats.map((stat, i) => (
-                        <Card key={i} className="border-border/50 shadow-sm hover:shadow-md transition-shadow">
-                            <CardContent className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">{stat.label}</p>
-                                    <div className={`p-2 rounded-lg ${stat.color}`}>
-                                        <stat.icon className="h-5 w-5" />
+                    {isLoading
+                        ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
+                        : stats.map((stat, i) => (
+                            <Card key={i} className="border-border/50 shadow-sm hover:shadow-md transition-shadow">
+                                <CardContent className="p-6">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">{stat.label}</p>
+                                        <div className={`p-2 rounded-lg ${stat.color}`}>
+                                            <stat.icon className="h-5 w-5" />
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-3xl font-black tracking-tight text-foreground">{stat.value}</p>
-                                    <div className={`flex items-center text-xs font-bold ${stat.isUp ? 'text-green-500' : 'text-red-500'}`}>
-                                        {stat.isUp ? <TrendingUp className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
-                                        <span className="mr-1">{stat.trend}</span>
-                                        <span className="text-muted-foreground font-medium">vs last month</span>
+                                    <div className="space-y-1">
+                                        <p className="text-3xl font-black tracking-tight text-foreground">{stat.value}</p>
+                                        <div className={`flex items-center text-xs font-bold ${stat.isUp ? 'text-green-500' : 'text-red-500'}`}>
+                                            {stat.isUp ? <TrendingUp className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
+                                            <span className="mr-1">{stat.trend}</span>
+                                            <span className="text-muted-foreground font-medium">vs last month</span>
+                                        </div>
                                     </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                </CardContent>
+                            </Card>
+                        ))
+                    }
                 </div>
 
                 <DashboardTabs
@@ -325,6 +536,7 @@ export default function AdminDashboardPage() {
                     <TabsContent value="overview" className="space-y-8 animate-in fade-in duration-500">
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             {/* Transaction History Chart */}
+                            {isLoading ? <ChartCardSkeleton height={350} /> : (
                             <Card className="border-border/50 shadow-md overflow-hidden bg-white">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-lg font-bold">Transaction History</CardTitle>
@@ -362,8 +574,10 @@ export default function AdminDashboardPage() {
                                     </ResponsiveContainer>
                                 </CardContent>
                             </Card>
+                            )}
 
                             {/* Property Distribution Donut Chart */}
+                            {isLoading ? <PieCardSkeleton /> : (
                             <Card className="border-border/50 shadow-md bg-white">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-lg font-bold">House Distribution</CardTitle>
@@ -391,8 +605,10 @@ export default function AdminDashboardPage() {
                                     </ResponsiveContainer>
                                 </CardContent>
                             </Card>
+                            )}
 
                             {/* Car Distribution Donut Chart */}
+                            {isLoading ? <PieCardSkeleton /> : (
                             <Card className="border-border/50 shadow-md bg-white">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-lg font-bold">Car Distribution</CardTitle>
@@ -420,8 +636,10 @@ export default function AdminDashboardPage() {
                                     </ResponsiveContainer>
                                 </CardContent>
                             </Card>
+                            )}
 
                             {/* Weekly Activity Bar Chart */}
+                            {isLoading ? <ChartCardSkeleton height={350} /> : (
                             <Card className="border-border/50 shadow-md bg-white">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-lg font-bold">Weekly Activity</CardTitle>
@@ -456,8 +674,10 @@ export default function AdminDashboardPage() {
                                     </ResponsiveContainer>
                                 </CardContent>
                             </Card>
+                            )}
 
                             {/* User Growth Area Chart */}
+                            {isLoading ? <ChartCardSkeleton height={350} /> : (
                             <Card className="border-border/50 shadow-md bg-white">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-lg font-bold">User Growth</CardTitle>
@@ -503,6 +723,7 @@ export default function AdminDashboardPage() {
                                     </ResponsiveContainer>
                                 </CardContent>
                             </Card>
+                            )}
 
                             {/* Recent Users List */}
                             <Card className="border-border/50 shadow-md bg-white">
@@ -512,30 +733,33 @@ export default function AdminDashboardPage() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="divide-y divide-border/50">
-                                        {recentUsers.map((user, i) => (
-                                            <div key={i} className="p-4 flex items-center justify-between hover:bg-muted/5 transition-colors">
-                                                <div className="flex items-center gap-3">
-                                                    <Avatar className="h-10 w-10 border border-border/50">
-                                                        <AvatarImage src={user.avatar} />
-                                                        <AvatarFallback className="bg-[#005a41]/10 text-[#005a41] font-bold">
-                                                            {user.name.split(' ').map(n => n[0]).join('')}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <div>
-                                                        <p className="text-sm font-bold text-foreground leading-none mb-1">{user.name}</p>
-                                                        <p className="text-xs text-muted-foreground leading-none">{user.email}</p>
+                                        {isLoading
+                                            ? Array.from({ length: 5 }).map((_, i) => <ListRowSkeleton key={i} />)
+                                            : recentUsers.map((user, i) => (
+                                                <div key={i} className="p-4 flex items-center justify-between hover:bg-muted/5 transition-colors">
+                                                    <div className="flex items-center gap-3">
+                                                        <Avatar className="h-10 w-10 border border-border/50">
+                                                            <AvatarImage src={user.avatar} />
+                                                            <AvatarFallback className="bg-[#005a41]/10 text-[#005a41] font-bold">
+                                                                {user.name.split(' ').map(n => n[0]).join('')}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-foreground leading-none mb-1">{user.name}</p>
+                                                            <p className="text-xs text-muted-foreground leading-none">{user.email}</p>
+                                                        </div>
                                                     </div>
+                                                    <Badge className={cn(
+                                                        "text-[10px] font-black uppercase px-2 py-0.5 border-none",
+                                                        user.role === 'Customer' ? 'bg-blue-600 text-white' :
+                                                            user.role === 'Agent' ? 'bg-indigo-600 text-white' :
+                                                                'bg-green-600 text-white'
+                                                    )}>
+                                                        {user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()}
+                                                    </Badge>
                                                 </div>
-                                                <Badge className={cn(
-                                                    "text-[10px] font-black uppercase px-2 py-0.5 border-none",
-                                                    user.role === 'Customer' ? 'bg-blue-600 text-white' :
-                                                        user.role === 'Agent' ? 'bg-indigo-600 text-white' :
-                                                            'bg-green-600 text-white'
-                                                )}>
-                                                    {user.role.charAt(0).toUpperCase() + user.role.slice(1).toLowerCase()}
-                                                </Badge>
-                                            </div>
-                                        ))}
+                                            ))
+                                        }
                                     </div>
                                     <div className="p-4 border-t border-border/50">
                                         <Link href="/dashboard/admin/users">
@@ -554,13 +778,14 @@ export default function AdminDashboardPage() {
                         <Card className="border-border">
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <CardTitle>Property Management</CardTitle>
+                                <Badge className="bg-[#005a41]">{filteredAllAssets.length} Properties</Badge>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <div className="p-4 border-b bg-muted/5 flex flex-wrap gap-4">
                                     <div className="relative flex-1 min-w-[200px]">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <input
-                                            placeholder="Search by Title or Address"
+                                            placeholder="Search by city, subcity, or village"
                                             value={propSearch}
                                             onChange={(e) => setPropSearch(e.target.value)}
                                             className="w-full pl-10 pr-4 py-2 bg-white border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
@@ -612,7 +837,9 @@ export default function AdminDashboardPage() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {filteredAllAssets.length > 0 ? (
+                                            {isLoading
+                                                ? Array.from({ length: 8 }).map((_, i) => <TableRowSkeleton key={i} cols={4} />)
+                                                : filteredAllAssets.length > 0 ? (
                                                 filteredAllAssets.map((property) => (
                                                     <tr key={property.id} className="border-b last:border-0 hover:bg-muted/10">
                                                         <td className="p-4">
@@ -622,9 +849,9 @@ export default function AdminDashboardPage() {
                                                         <td className="p-4">
                                                             <div className="flex items-center gap-2">
                                                                 <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
-                                                                    {property.ownerName?.split(' ').map(n => n[0]).join('') || '??'}
+                                                                    {(property.owner?.name || property.ownerName || 'Unknown').split(' ').map(n => n[0]).join('') || '??'}
                                                                 </div>
-                                                                <span>{property.ownerName || 'Unknown'}</span>
+                                                                <span>{property.owner?.name || property.ownerName || 'Unknown'}</span>
                                                             </div>
                                                         </td>
                                                         <td className="p-4">
@@ -979,14 +1206,53 @@ export default function AdminDashboardPage() {
                                         <TrendingUp className="h-5 w-5 text-muted-foreground" />
                                         Verification History
                                     </h3>
-                                    <select
-                                        value={verificationHistoryFilter}
-                                        onChange={(e) => setVerificationHistoryFilter(e.target.value)}
-                                        className="px-3 py-2 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005a41]"
-                                    >
-                                        <option value="all">Processed (All)</option>
-                                        <option value="Approved">Verified</option>
-                                    </select>
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <select
+                                            value={verificationDateFilter}
+                                            onChange={(e) => setVerificationDateFilter(e.target.value)}
+                                            className="px-3 py-2 bg-white border border-border rounded-lg text-[10px] uppercase font-bold focus:outline-none focus:ring-2 focus:ring-[#005a41]"
+                                        >
+                                            <option value="all">All Dates</option>
+                                            <option value="today">Today</option>
+                                            <option value="yesterday">Yesterday</option>
+                                            <option value="week">This Week</option>
+                                            <option value="month">This Month</option>
+                                            <option value="year">This Year</option>
+                                        </select>
+                                        <select
+                                            value={verificationCategoryFilter}
+                                            onChange={(e) => setVerificationCategoryFilter(e.target.value)}
+                                            className="px-3 py-2 bg-white border border-border rounded-lg text-[10px] uppercase font-bold focus:outline-none focus:ring-2 focus:ring-[#005a41]"
+                                        >
+                                            <option value="all">All Types</option>
+                                            <option value="Home">Home</option>
+                                            <option value="Car">Car</option>
+                                            <option value="Agent">Agent</option>
+                                        </select>
+                                        <select
+                                            value={verificationHistoryFilter}
+                                            onChange={(e) => setVerificationHistoryFilter(e.target.value)}
+                                            className="px-3 py-2 bg-white border border-border rounded-lg text-[10px] uppercase font-bold focus:outline-none focus:ring-2 focus:ring-[#005a41]"
+                                        >
+                                            <option value="all">Statuses</option>
+                                            <option value="Verified">Verified Only</option>
+                                            <option value="Rejected">Rejected Only</option>
+                                        </select>
+                                        {(verificationHistoryFilter !== 'all' || verificationCategoryFilter !== 'all' || verificationDateFilter !== 'all') && (
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                onClick={() => {
+                                                    setVerificationHistoryFilter('all');
+                                                    setVerificationCategoryFilter('all');
+                                                    setVerificationDateFilter('all');
+                                                }}
+                                                className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 px-2 text-[10px] uppercase font-bold"
+                                            >
+                                                Reset
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="overflow-x-auto">
@@ -1003,7 +1269,34 @@ export default function AdminDashboardPage() {
                                         </thead>
                                         <tbody>
                                             {verificationHistory
-                                                .filter(item => verificationHistoryFilter === 'all' || item.status === verificationHistoryFilter)
+                                                .filter(item => {
+                                                    const matchesStatus = verificationHistoryFilter === 'all' || item.status === verificationHistoryFilter;
+                                                    const matchesCategory = verificationCategoryFilter === 'all' || item.type === verificationCategoryFilter;
+                                                    
+                                                    let matchesDate = true;
+                                                    if (verificationDateFilter !== 'all') {
+                                                        const itemDate = new Date(item.rawDate);
+                                                        const today = new Date();
+                                                        today.setHours(0, 0, 0, 0);
+
+                                                        const yesterday = new Date(today);
+                                                        yesterday.setDate(yesterday.getDate() - 1);
+
+                                                        const startOfWeek = new Date(today);
+                                                        startOfWeek.setDate(today.getDate() - today.getDay());
+
+                                                        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+                                                        const startOfYear = new Date(today.getFullYear(), 0, 1);
+
+                                                        if (verificationDateFilter === 'today') matchesDate = itemDate >= today;
+                                                        else if (verificationDateFilter === 'yesterday') matchesDate = itemDate >= yesterday && itemDate < today;
+                                                        else if (verificationDateFilter === 'week') matchesDate = itemDate >= startOfWeek;
+                                                        else if (verificationDateFilter === 'month') matchesDate = itemDate >= startOfMonth;
+                                                        else if (verificationDateFilter === 'year') matchesDate = itemDate >= startOfYear;
+                                                    }
+
+                                                    return matchesStatus && matchesCategory && matchesDate;
+                                                })
                                                 .map((item) => (
                                                     <tr key={item.id} className="border-b last:border-0 hover:bg-muted/5 transition-colors">
                                                         <td className="p-4">
@@ -1015,15 +1308,15 @@ export default function AdminDashboardPage() {
                                                             </Badge>
                                                         </td>
                                                         <td className="p-4">
-                                                            <div className="text-sm font-medium">{item.owner || item.email}</div>
+                                                            <div className="text-sm font-medium">{item.owner || (item as any).email || 'Unknown User'}</div>
                                                         </td>
-                                                        <td className="p-4 text-muted-foreground text-xs">
+                                                        <td className="p-4 text-muted-foreground text-xs font-medium">
                                                             {item.date}
                                                         </td>
                                                         <td className="p-4">
                                                             <Badge className={cn(
                                                                 "border-none text-[10px] font-black uppercase px-2 py-0.5",
-                                                                item.status === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                                item.status === 'Verified' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                                                             )}>
                                                                 {item.status}
                                                             </Badge>

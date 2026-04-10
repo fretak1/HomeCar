@@ -4,6 +4,30 @@ import prisma from "./prisma.js";
 import { sendEmail } from "../services/emailService.js";
 import { emailOTP } from "better-auth/plugins";
 
+const configuredTrustedOrigins = (
+    process.env.BETTER_AUTH_TRUSTED_ORIGINS ||
+    process.env.CORS_ORIGINS ||
+    "http://localhost:3000,http://127.0.0.1:3000,http://10.0.2.2:3000"
+)
+    .split(",")
+    .map(origin => origin.trim())
+    .filter(Boolean);
+
+const isAllowedTrustedOrigin = (origin?: string | null) => {
+    if (!origin) return false;
+
+    if (configuredTrustedOrigins.includes(origin)) {
+        return true;
+    }
+
+    try {
+        const parsed = new URL(origin);
+        return ["localhost", "127.0.0.1", "10.0.2.2"].includes(parsed.hostname);
+    } catch {
+        return false;
+    }
+};
+
 export const auth = betterAuth({
     baseURL: process.env.BETTER_AUTH_URL,
     appURL: "http://localhost:3000",
@@ -16,6 +40,9 @@ export const auth = betterAuth({
                 type: "string",
                 defaultValue: "CUSTOMER",
             },
+            verificationPhoto: {
+                type: "string",
+            },
         },
     },
     session: {
@@ -24,9 +51,18 @@ export const auth = betterAuth({
                 type: "string",
                 defaultValue: "CUSTOMER",
             },
+            verificationPhoto: {
+                type: "string",
+            },
         },
     },
-    trustedOrigins: ["http://localhost:3000"],
+    trustedOrigins: async (request) => {
+        const requestOrigin = request?.headers.get("origin");
+        return [
+            ...configuredTrustedOrigins,
+            isAllowedTrustedOrigin(requestOrigin) ? requestOrigin : undefined,
+        ];
+    },
     emailAndPassword: {
         enabled: true,
         requireEmailVerification: true,

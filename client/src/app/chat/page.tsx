@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useChatStore } from '@/store/useChatStore';
 import { useUserStore } from '@/store/useUserStore';
+import ChatLoading from './loading';
 
 function getInitials(name?: string) {
     if (!name) return '??';
@@ -46,6 +48,11 @@ function ChatPageInner() {
     const [search, setSearch] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
+    // Sync active partner with global store to gracefully handle real-time unread badges
+    useEffect(() => {
+        useChatStore.getState().setActivePartner(selectedPartnerId);
+    }, [selectedPartnerId]);
+
     // Load conversations on mount
     useEffect(() => {
         if (currentUser) {
@@ -77,10 +84,7 @@ function ChatPageInner() {
     // Connect to real-time chat websockets
     useEffect(() => {
         if (currentUser) {
-            const token = localStorage.getItem('auth_token');
-            if (token) {
-                useChatStore.getState().connectSocket(token);
-            }
+            useChatStore.getState().connectSocket();
         }
 
         return () => {
@@ -104,6 +108,10 @@ function ChatPageInner() {
         c.partnerName.toLowerCase().includes(search.toLowerCase())
     );
 
+    if (isLoadingConversations) {
+        return <ChatLoading />;
+    }
+
     return (
         <div className="h-[calc(100vh-73px)] w-full bg-background flex flex-col">
             <div className="flex-1 w-full bg-card border-t border-border overflow-hidden flex">
@@ -124,11 +132,7 @@ function ChatPageInner() {
                         </div>
 
                         <ScrollArea className="flex-1">
-                            {isLoadingConversations ? (
-                                <div className="flex items-center justify-center h-32">
-                                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                                </div>
-                            ) : filteredConversations.length === 0 ? (
+                            {filteredConversations.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-48 text-center px-4">
                                     <MessageSquare className="h-10 w-10 text-muted-foreground mb-3" />
                                     <p className="text-muted-foreground text-sm">No conversations yet</p>
@@ -204,8 +208,18 @@ function ChatPageInner() {
                                 {/* Messages */}
                                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
                                     {isLoadingMessages ? (
-                                        <div className="flex justify-center items-center h-full">
-                                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                                        <div className="space-y-6">
+                                            <div className="flex justify-start">
+                                                <Skeleton className="h-8 w-8 rounded-full mr-2 flex-shrink-0" />
+                                                <Skeleton className="h-16 w-64 rounded-2xl" />
+                                            </div>
+                                            <div className="flex justify-end">
+                                                <Skeleton className="h-12 w-48 rounded-2xl" />
+                                            </div>
+                                            <div className="flex justify-start">
+                                                <Skeleton className="h-8 w-8 rounded-full mr-2 flex-shrink-0" />
+                                                <Skeleton className="h-20 w-72 rounded-2xl" />
+                                            </div>
                                         </div>
                                     ) : messages.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center h-full text-center">

@@ -92,7 +92,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
     });
 
     const { watch, setValue } = form;
-    const ownerId = watch('ownerId');
+    const watchedOwnerId = watch('ownerId');
     const propertyId = watch('propertyId');
     const startDate = watch('startDate');
     const endDate = watch('endDate');
@@ -118,12 +118,10 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
         o.name.toLowerCase().includes(ownerSearchQuery.toLowerCase())
     );
 
-    // Filter properties based on selected owner (if agent) with stability
     const filteredProperties = useMemo(() => {
-        return Array.isArray(propertySource) ? propertySource : [];
+        const source = Array.isArray(propertySource) ? propertySource : [];
+        return source.filter(p => p.listingType.includes('RENT'));
     }, [propertySource]);
-
-    // Auto-calculate values
     const paymentModel = watch('paymentModel');
     useEffect(() => {
         if (!propertyId) return;
@@ -167,24 +165,35 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                 terms: data.terms,
                 propertyId: data.propertyId,
                 customerId: data.tenantId,
-                ownerId: data.ownerId || currentUser?.id || ownerId || 'o1' // use actual currentUser or fallback
+                ownerId: role === 'agent' ? data.ownerId : (currentUser?.id || 'o1')
             } as any);
             toast.success("Lease agreement created successfully!");
             onSuccess();
-        } catch (error) {
-            toast.error("Failed to create lease.");
+        } catch (error: any) {
+            console.error('Lease creation failed:', error);
+            const errorMessage = error.response?.data?.error || "Failed to create lease.";
+            toast.error(errorMessage);
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    const onError = (errors: any) => {
+        const firstErrorKey = Object.keys(errors)[0];
+        if (firstErrorKey) {
+            toast.error(errors[firstErrorKey].message || `Please fill out the ${firstErrorKey} field.`);
+        } else {
+            toast.error('Please complete all required fields.');
+        }
+    };
+
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-                {/* 0. Party Selection (Agent Only) */}
-                {role === 'agent' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 0. Party Selection */}
+                <div className={`grid grid-cols-1 ${role === 'agent' ? 'md:grid-cols-2' : ''} gap-6`}>
+                    {role === 'agent' && (
                         <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">
                             <div className="flex items-center space-x-2 mb-6 text-primary">
                                 <Users className="h-5 w-5" />
@@ -260,37 +269,43 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                 )}
                             />
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* Select Customer (For Both Agent and Owner) */}
-                <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">
-                    <div className="flex items-center space-x-2 mb-6 text-primary">
-                        <Users className="h-5 w-5" />
-                        <h3 className="text-lg font-bold">Select Customer</h3>
+                    {/* Select Customer (For Both Agent and Owner) */}
+                    <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">
+                        <div className="flex items-center space-x-2 mb-6 text-primary">
+                            <Users className="h-5 w-5" />
+                            <h3 className="text-lg font-bold">Select Customer</h3>
+                        </div>
+                        <FormField
+                            control={form.control}
+                            name="tenantId"
+                            rules={{ required: 'Please select a customer for this lease' }}
+                            render={({ field }) => (
+                                <FormItem>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger className="h-14 bg-muted/5 border-border/60 rounded-xl">
+                                                <SelectValue placeholder="Identify the tenant" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent position="popper" side="bottom" sideOffset={4} className="rounded-xl max-h-56 z-[100]">
+                                            {availableTenants.length > 0 ? (
+                                                availableTenants.map(c => (
+                                                    <SelectItem key={c.id} value={c.id}>{c.name} {c.email ? `(${c.email})` : ''}</SelectItem>
+                                                ))
+                                            ) : (
+                                                <SelectItem value="no-tenants" disabled>
+                                                    <span className="text-xs text-muted-foreground italic px-2">No accepted applicants found</span>
+                                                </SelectItem>
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     </div>
-                    <FormField
-                        control={form.control}
-                        name="tenantId"
-                        rules={{ required: 'Please select a customer for this lease' }}
-                        render={({ field }) => (
-                            <FormItem>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger className="h-14 bg-muted/5 border-border/60 rounded-xl">
-                                            <SelectValue placeholder="Identify the tenant" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent position="popper" side="bottom" sideOffset={4} className="rounded-xl max-h-56 z-[100]">
-                                        {availableTenants.map(c => (
-                                            <SelectItem key={c.id} value={c.id}>{c.name} {c.email ? `(${c.email})` : ''}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
                 </div>
 
                 {/* 1. Property Selection */}
@@ -359,7 +374,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Lease Type</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
                                             <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
                                                 <SelectValue placeholder="Select type" />
@@ -380,7 +395,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Payment Model</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
                                             <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
                                                 <SelectValue placeholder="Select frequency" />
@@ -531,7 +546,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                         ) : (
                             <>
                                 <Check className="mr-2 h-5 w-5" />
-                                Finalize Agreement
+                                Create Lease
                             </>
                         )}
                     </Button>

@@ -26,6 +26,17 @@ import { useLeaseStore } from '@/store/useLeaseStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useChatStore } from '@/store/useChatStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
+import { usePaymentStore } from '@/store/usePaymentStore';
+import { useUserStore } from '@/store/useUserStore';
+import { toast } from 'sonner';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import { format, differenceInMonths, isBefore, startOfMonth, endOfMonth, isSameMonth, addMonths, differenceInDays, addDays, isWithinInterval } from 'date-fns';
 
 export default function LeaseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,6 +46,13 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
     const { properties, fetchProperties, isLoading: isPropertyLoading } = usePropertyStore();
     const { transactions, fetchTransactions } = useTransactionStore();
     const { initiateChat } = useChatStore();
+    const { initializePayment, isLoading: isPaymentLoading } = usePaymentStore();
+    const { currentUser } = useUserStore();
+
+    // Payment confirmation state
+    const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+    const [emailToConfirm, setEmailToConfirm] = useState('');
+    const [pendingPaymentInfo, setPendingPaymentInfo] = useState<{ lease: any, monthDate: Date } | null>(null);
 
     useEffect(() => {
         const loadData = async () => {
@@ -59,6 +77,57 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
         if (ownerId) {
             await initiateChat(ownerId);
             router.push(`/chat?partnerId=${ownerId}`);
+        }
+    };
+
+    const handleRentPayment = async (lease: any, monthDate: Date) => {
+        if (!currentUser) {
+            toast.error("Please log in to continue.");
+            return;
+        }
+        setEmailToConfirm(currentUser.email || '');
+        setPendingPaymentInfo({ lease, monthDate });
+        setIsEmailDialogOpen(true);
+    };
+
+    const processPaymentWithEmail = async () => {
+        if (!pendingPaymentInfo || !currentUser) return;
+        const { lease, monthDate } = pendingPaymentInfo;
+
+        if (!lease.owner?.chapaSubaccountId) {
+            toast.error("Payment setup incomplete. Please contact the owner.");
+            return;
+        }
+
+        const amount = lease.recurringAmount || lease.totalPrice;
+        const monthYear = format(monthDate, 'MMM-yyyy');
+        const txRef = `RENT-${lease.id.substring(0, 5)}-${monthYear}-${Date.now()}`;
+
+        try {
+            const data = await initializePayment({
+                amount,
+                email: emailToConfirm,
+                firstName: currentUser.name.split(' ')[0] || 'Customer',
+                lastName: currentUser.name.split(' ')[1] || '',
+                txRef,
+                callbackUrl: `${window.location.origin}/api/payments/webhook`,
+                subaccountId: lease.owner.chapaSubaccountId,
+                leaseId: lease.id,
+                propertyId: lease.propertyId,
+                payerId: currentUser.id,
+                payeeId: lease.owner.id,
+                meta: { leaseId: lease.id, month: monthYear }
+            });
+
+            if (data?.checkout_url) {
+                window.location.href = data.checkout_url;
+            } else {
+                toast.error("Failed to generate payment link.");
+            }
+        } catch (err) {
+            toast.error("Payment initialization failed.");
+        } finally {
+            setIsEmailDialogOpen(false);
         }
     };
 
@@ -108,9 +177,40 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-3 py-1 text-[10px] font-bold uppercase tracking-widest">
-                                Active Agreement
+                            <Badge className={cn(
+                                "border-none px-3 py-1 text-[10px] font-bold uppercase tracking-widest",
+                                lease.status === 'ACTIVE' ? "bg-green-100 text-green-700" :
+                                    lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" :
+                                        lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700 font-black ring-1 ring-orange-200" :
+                                        lease.status === 'COMPLETED' ? "bg-blue-100 text-blue-700" : 
+                                        "bg-red-100 text-red-700"
+                            )}>
+                                {lease.status === 'ACTIVE' ? 'Active Agreement' : 
+                                 lease.status === 'PENDING' ? 'Agreement Pending' : 
+                                 lease.status === 'CANCELLATION_PENDING' ? 'Cancellation Pending...' :
+                                 lease.status}
                             </Badge>
+                            {(lease.status === 'ACTIVE' || (lease.status === 'CANCELLATION_PENDING' && !lease.customerCancelled)) && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className={cn(
+                                        "h-7 text-[10px] font-bold uppercase tracking-widest transition-all duration-300",
+                                        lease.status === 'CANCELLATION_PENDING' 
+                                            ? "text-orange-600 border-orange-200 hover:bg-orange-50 font-black ring-1 ring-orange-200" 
+                                            : "text-rose-600 border-rose-200 hover:bg-rose-50"
+                                    )}
+                                    onClick={() => requestLeaseCancellation(lease.id, 'customer')}
+                                    disabled={isLeaseLoading}
+                                >
+                                    {lease.status === 'CANCELLATION_PENDING' ? 'Confirm Cancellation' : 'Cancel Lease'}
+                                </Button>
+                            )}
+                            {lease.status === 'CANCELLATION_PENDING' && lease.customerCancelled && (
+                                <Badge className="bg-amber-100 text-amber-700 border-none px-3 py-1 text-[10px] font-bold uppercase tracking-widest">
+                                    Cancellation Requested
+                                </Badge>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -152,7 +252,7 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                         <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Property Type</p>
                                         <p className="font-bold text-foreground capitalize flex items-center">
                                             {property.assetType === 'HOME' ? <Home className="h-3.5 w-3.5 mr-2 text-[#005a41]" /> : <ShieldCheck className="h-3.5 w-3.5 mr-2 text-[#005a41]" />}
-                                            {property.assetType === 'HOME' ? 'Property' : 'Vehicle'}
+                                            {property.propertyType || (property.assetType === 'HOME' ? 'Property' : 'Vehicle')}
                                         </p>
                                     </div>
                                     <div className="space-y-1">
@@ -160,10 +260,15 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                         <p className="font-bold text-foreground">{ownerName}</p>
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Lease Status</p>
+                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Agreement Status</p>
                                         <div className="flex items-center">
-                                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest">
-                                                Active
+                                            <Badge className={cn(
+                                                "border-none px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest",
+                                                lease.status === 'ACTIVE' ? "bg-green-100 text-green-700" :
+                                                    lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" :
+                                                        "bg-gray-100 text-gray-700"
+                                            )}>
+                                                {lease.status}
                                             </Badge>
                                         </div>
                                     </div>
@@ -227,6 +332,54 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* Agreement Terms */}
+                        <Card className="border-border shadow-md overflow-hidden">
+                            <CardHeader className="border-b border-border bg-[#005a41]/5 p-6">
+                                <CardTitle className="text-lg font-bold flex items-center gap-2 text-[#005a41]">
+                                    <FileText className="h-5 w-5" />
+                                    Agreement Terms
+                                </CardTitle>
+                                <CardDescription className="text-xs font-medium">Standard obligations for this lease</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-8">
+                                <div className="prose prose-sm max-w-none text-muted-foreground whitespace-pre-wrap font-medium leading-relaxed bg-muted/20 p-6 rounded-2xl border border-border/50 max-h-[400px] overflow-y-auto break-words overflow-x-hidden">
+                                    {lease.terms}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Payment Confirmation Dialog */}
+                        <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
+                            <DialogContent className="sm:max-w-[425px] rounded-2xl border-border">
+                                <DialogHeader>
+                                    <DialogTitle className="text-xl font-bold flex items-center gap-2 text-primary">
+                                        Confirm Payment Email
+                                    </DialogTitle>
+                                    <DialogDescription className="text-sm font-medium">
+                                        Chapa requires a valid email for receipts. Please confirm your email before proceeding to payment.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email Address</label>
+                                        <input
+                                            type="email"
+                                            value={emailToConfirm}
+                                            onChange={(e) => setEmailToConfirm(e.target.value)}
+                                            className="w-full h-11 px-4 rounded-xl border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium"
+                                            placeholder="your@email.com"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex gap-3">
+                                    <Button variant="outline" className="flex-1 rounded-xl h-12 font-bold" onClick={() => setIsEmailDialogOpen(false)}>Cancel</Button>
+                                    <Button className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-xl h-12 font-bold" onClick={processPaymentWithEmail} disabled={isPaymentLoading}>
+                                        {isPaymentLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Proceed to Chapa"}
+                                    </Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
 
                         {/* Detailed Payment History */}
                         <Card className="border-border shadow-md">
@@ -298,10 +451,15 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                                                     <Link href={`/dashboard/customer/documents/receipt/${transaction.id}`}>
                                                                         <Button variant="outline" size="sm" className="h-7 text-[10px] font-bold text-primary border-primary hover:bg-primary hover:text-white transition-colors duration-200 uppercase">View</Button>
                                                                     </Link>
-                                                                ) : (isCurrentMonth || isMonthPast) && !isPending ? (
-                                                                    <Link href="/dashboard/customer?tab=leases">
-                                                                        <Button size="sm" className="h-7 text-[10px] font-bold bg-primary hover:bg-primary/90 text-white uppercase shadow-sm active:scale-95 transition-all">Pay Now</Button>
-                                                                    </Link>
+                                                                ) : (isCurrentMonth || isMonthPast) && !isPending && lease.status === 'ACTIVE' ? (
+                                                                    <Button 
+                                                                        size="sm" 
+                                                                        className="h-7 text-[10px] font-bold bg-primary hover:bg-primary/90 text-white uppercase shadow-sm active:scale-95 transition-all"
+                                                                        onClick={() => handleRentPayment(lease, periodStart)}
+                                                                        disabled={isPaymentLoading}
+                                                                    >
+                                                                        {isPaymentLoading ? <Loader2 className="h-3 w-3 animate-spin"/> : "Pay Now"}
+                                                                    </Button>
                                                                 ) : (
                                                                     <span className="text-[10px] text-muted-foreground font-bold">—</span>
                                                                 )}
@@ -348,7 +506,13 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                         <MessageSquare className="h-4 w-4 mr-2" />
                                         Message Manager
                                     </Button>
-
+                                    {ownerId && (
+                                        <Link href={`/profile/${ownerId}`}>
+                                            <Button variant="outline" className="w-full text-foreground font-bold h-11 border-border rounded-xl">
+                                                View Manager Profile
+                                            </Button>
+                                        </Link>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>

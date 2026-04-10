@@ -14,12 +14,13 @@ model User {
   emailVerified       Boolean              @default(false)
   image               String?
   passwordHash        String?              // Optional for OAuth users
-  role                Role                 @default(CUSTOMER)
-  verified            Boolean              @default(false) // Your existing custom verification flag
+  verified            Boolean              @default(false)
+  rejectionReason     String?
   phoneNumber         String?
   profileImage        String?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
+  role                Role                 @default(CUSTOMER)
   
   // BetterAuth Relations
   accounts            Account[]
@@ -138,6 +139,7 @@ model Property {
   listedById          String
   locationId          String?
   isVerified          Boolean              @default(false)
+  rejectionReason     String?
   applications        Application[]
   ownershipDocuments  Document[]           @relation("PropertyDocuments")
   favoredBy           Favorite[]
@@ -196,6 +198,8 @@ model Lease {
   propertyId       String
   customerId       String
   ownerId          String
+  ownerCancelled   Boolean     @default(false)
+  customerCancelled Boolean     @default(false)
   createdAt        DateTime    @default(now())
   customer         User        @relation("CustomerLeases", fields: [customerId], references: [id])
   owner            User        @relation("OwnerLeases", fields: [ownerId], references: [id])
@@ -274,15 +278,17 @@ model Review {
 }
 
 model Document {
-  id         String    @id @default(cuid())
-  type       String
-  url        String
-  verified   Boolean   @default(false)
-  userId     String
-  uploadedAt DateTime  @default(now())
-  propertyId String?
-  property   Property? @relation("PropertyDocuments", fields: [propertyId], references: [id])
-  user       User      @relation(fields: [userId], references: [id])
+  id           String    @id @default(cuid())
+  type         String
+  url          String
+  publicId     String?
+  resourceType String?   @default("raw")
+  verified          Boolean   @default(false)
+  userId            String
+  uploadedAt   DateTime  @default(now())
+  propertyId   String?
+  property     Property? @relation("PropertyDocuments", fields: [propertyId], references: [id])
+  user         User      @relation(fields: [userId], references: [id])
 }
 
 model PropertyView {
@@ -352,6 +358,8 @@ enum LeaseStatus {
   ACTIVE
   COMPLETED
   TERMINATED
+  CANCELLED
+  CANCELLATION_PENDING
 }
 
 enum MaintenanceCategory {

@@ -17,11 +17,10 @@ import {
     Clock,
     Calendar,
     Eye,
-    TrendingUp,
-    Wallet,
     AlertCircle,
     Check,
     X,
+    User
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -57,7 +56,6 @@ import { useLeaseStore } from '@/store/useLeaseStore';
 import { useUserStore } from '@/store/useUserStore';
 import { formatLocation, getListingMainImage } from '@/lib/utils';
 import { format, differenceInMonths, addMonths, isBefore, endOfMonth, isSameMonth, startOfMonth, differenceInDays } from 'date-fns';
-import PayoutSettings from '@/components/PayoutSettings';
 
 export default function AgentDashboardPage() {
     const router = useRouter();
@@ -93,14 +91,12 @@ export default function AgentDashboardPage() {
         { value: 'properties', label: 'My Properties' },
         { value: 'applications', label: 'Applications' },
         { value: 'leases', label: 'Leases' },
-        { value: 'transactions', label: 'Transactions' },
-        { value: 'payout', label: 'Payout' },
     ];
 
     const stats = [
         { label: 'My Properties', value: properties.length.toString(), icon: Building2 },
-        { label: 'Commission Earned', value: 'ETB 154K', icon: Wallet },
         { label: 'Applications', value: applications.length.toString(), icon: Users },
+        { label: 'Initiated Leases', value: leases.length.toString(), icon: FileText },
     ];
 
     return (
@@ -127,23 +123,66 @@ export default function AgentDashboardPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Verification Warning for Unverified Agents */}
                 {currentUser && !currentUser.verified && (
-                    <Card className="mb-8 border-rose-200 bg-rose-50/50 shadow-sm overflow-hidden">
+                    <Card className={cn(
+                        "mb-8 border shadow-sm overflow-hidden",
+                        (currentUser.verificationPhoto && !currentUser.rejectionReason) 
+                            ? "border-amber-200 bg-amber-50/50" 
+                            : "border-rose-200 bg-rose-50/50"
+                    )}>
                         <CardContent className="p-0">
                             <div className="flex flex-col md:flex-row items-center gap-4 p-6">
-                                <div className="p-4 bg-rose-100 rounded-2xl text-rose-600">
-                                    <AlertCircle className="h-8 w-8" />
+                                <div className={cn(
+                                    "p-4 rounded-2xl",
+                                    (currentUser.verificationPhoto && !currentUser.rejectionReason)
+                                        ? "bg-amber-100 text-amber-600"
+                                        : "bg-rose-100 text-rose-600"
+                                )}>
+                                    {(currentUser.verificationPhoto && !currentUser.rejectionReason) 
+                                        ? <Clock className="h-8 w-8 animate-pulse" />
+                                        : <AlertCircle className="h-8 w-8" />
+                                    }
                                 </div>
                                 <div className="flex-1 text-center md:text-left">
-                                    <h3 className="text-lg font-bold text-rose-900 mb-1">Account Verification Required</h3>
-                                    <p className="text-rose-800/80 text-sm max-w-2xl">
-                                        Your agent account is currently unverified. To ensure platform safety, adding properties and other management features are restricted until your identification documents are verified by our team.
+                                    <h3 className={cn(
+                                        "text-lg font-bold mb-1",
+                                        (currentUser.verificationPhoto && !currentUser.rejectionReason)
+                                            ? "text-amber-900"
+                                            : "text-rose-900"
+                                    )}>
+                                        {(currentUser.verificationPhoto && !currentUser.rejectionReason)
+                                            ? "Verification in Progress"
+                                            : currentUser.rejectionReason
+                                                ? "Verification Rejected"
+                                                : "Account Verification Required"
+                                        }
+                                    </h3>
+                                    <p className={cn(
+                                        "text-sm max-w-2xl",
+                                        (currentUser.verificationPhoto && !currentUser.rejectionReason)
+                                            ? "text-amber-800/80"
+                                            : "text-rose-800/80"
+                                    )}>
+                                        {(currentUser.verificationPhoto && !currentUser.rejectionReason)
+                                            ? "Your application is currently being reviewed by our administration team. This usually takes 24-48 hours."
+                                            : currentUser.rejectionReason
+                                                ? `Your application was not approved: "${currentUser.rejectionReason}". Please update your documents to proceed.`
+                                                : "To ensure platform safety, adding properties and other management features are restricted until your identification documents are verified by our team."
+                                        }
                                     </p>
                                 </div>
                                 <Button
                                     onClick={() => router.push('/dashboard/agent/verify')}
-                                    className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-8 py-4 rounded-xl shadow-lg transition-all active:scale-95"
+                                    className={cn(
+                                        "font-bold px-8 py-4 rounded-xl shadow-lg transition-all active:scale-95",
+                                        (currentUser.verificationPhoto && !currentUser.rejectionReason)
+                                            ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                            : "bg-rose-600 hover:bg-rose-700 text-white"
+                                    )}
                                 >
-                                    Verify Now
+                                    {(currentUser.verificationPhoto && !currentUser.rejectionReason)
+                                        ? "Update Verification"
+                                        : "Verify Now"
+                                    }
                                 </Button>
                             </div>
                         </CardContent>
@@ -214,109 +253,150 @@ export default function AgentDashboardPage() {
 
                     {/* Applications Tab */}
                     <TabsContent value="applications">
-                        <Card className="border-border">
-                            <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/5">
-                                <CardTitle className="text-lg font-bold">Property Applications</CardTitle>
-                                <Badge className="bg-[#005a41]">{applications.length} Total</Badge>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <div className="divide-y divide-border">
-                                    {isAppLoading ? (
-                                        <div className="p-10 text-center text-muted-foreground">Loading applications...</div>
-                                    ) : applications.length > 0 ? (
-                                        applications.map((app) => (
-                                            <div key={app.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-muted/10 transition-colors gap-4">
-                                                <div className="flex items-center gap-6">
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 rounded-xl overflow-hidden border border-border shadow-sm">
-                                                            <img
-                                                                src={(app as any).propertyImage || (app as any).property?.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300'}
-                                                                alt={app.propertyTitle}
-                                                                className="w-full h-full object-cover"
-                                                                onError={(e) => {
-                                                                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300';
-                                                                }}
-                                                            />
-                                                        </div>
-                                                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 border shadow-sm">
-                                                            {(app as any).listingType === 'buy' ? <Building2 className="h-3 w-3 text-[#005a41]" /> : <FileText className="h-3 w-3 text-[#005a41]" />}
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <h4 className="font-bold text-base">{app.propertyTitle}</h4>
-                                                            <Badge variant="outline" className="text-[10px] uppercase">{(app as any).listingType || 'Rent'}</Badge>
-                                                        </div>
-                                                        <p className="text-sm text-muted-foreground flex items-center mb-1">
-                                                            <Users className="h-3 w-3 mr-1" />
-                                                            {app.customer?.name || 'Unknown Applicant'}
-                                                        </p>
-                                                        <p className="text-[10px] text-muted-foreground font-medium flex items-center">
-                                                            <Calendar className="h-3 w-3 mr-1" />
-                                                            {app.date || new Date(app.createdAt).toLocaleDateString()}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex flex-row items-center justify-between md:justify-end gap-6 w-full md:w-auto">
-                                                    <div className="text-left md:text-right">
-                                                        <p className="text-base font-black text-[#005a41]">ETB {app.price?.toLocaleString() || 'N/A'}</p>
-                                                        <Badge className={cn(
-                                                            "text-[10px] font-bold uppercase border-none shadow-sm",
-                                                            app.status === 'accepted' ? "bg-green-100 text-green-700" :
-                                                                app.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
-                                                        )}>
-                                                            {app.status}
-                                                        </Badge>
-                                                    </div>
-                                                    {app.status === 'pending' ? (
-                                                        <div className="flex gap-2">
-                                                            <Button
-                                                                size="sm"
-                                                                disabled={!currentUser?.verified}
-                                                                className="bg-[#005a41] hover:bg-[#004a35] h-9 px-4 text-xs font-bold rounded-xl"
-                                                                onClick={() => updateApplicationStatus(app.id, 'accepted')}
-                                                            >
-                                                                <Check className="h-4 w-4 mr-1" /> Accept
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                disabled={!currentUser?.verified}
-                                                                className="h-9 px-4 text-xs font-bold rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50"
-                                                                onClick={() => updateApplicationStatus(app.id, 'rejected')}
-                                                            >
-                                                                <X className="h-4 w-4 mr-1" /> Reject
-                                                            </Button>
-                                                        </div>
-                                                    ) : (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            disabled={!currentUser?.verified}
-                                                            className="h-9 text-xs text-muted-foreground hover:bg-muted/20"
-                                                            onClick={() => updateApplicationStatus(app.id, 'pending')}
-                                                        >
-                                                            Reset to Pending
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="py-24 text-center">
-                                            <div className="inline-flex p-4 rounded-full bg-muted/20 mb-4">
-                                                <ClipboardList className="h-10 w-10 text-muted-foreground/30" />
-                                            </div>
-                                            <h3 className="text-xl font-bold text-muted-foreground">No applications found</h3>
-                                            <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-2">
-                                                When potential customers apply for your properties, they will appear here.
-                                            </p>
-                                        </div>
-                                    )}
+                        <div className="space-y-6">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-foreground">Property Applications</h2>
+                                    <p className="text-muted-foreground">Review and manage incoming property applications</p>
                                 </div>
-                            </CardContent>
-                        </Card>
+                                <div className="flex gap-2">
+                                    <Badge variant="outline" className="bg-white border-border py-1.5 px-3">
+                                        <Clock className="h-3 w-3 mr-1.5 text-blue-500" />
+                                        <span className="text-xs font-semibold">{applications.filter(a => a.status === 'pending').length} Pending</span>
+                                    </Badge>
+                                    <Badge variant="outline" className="bg-white border-border py-1.5 px-3">
+                                        <CheckCircle className="h-3 w-3 mr-1.5 text-green-500" />
+                                        <span className="text-xs font-semibold">{applications.filter(a => a.status === 'accepted').length} Accepted</span>
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-6">
+                                {isAppLoading ? (
+                                    <div className="p-10 text-center text-muted-foreground">Loading applications...</div>
+                                ) : applications.length > 0 ? (
+                                    applications.map((app) => (
+                                        <Card key={app.id} className="border-border hover:shadow-xl transition-all duration-300 overflow-hidden group border-l-4 border-l-[#005a41] cursor-pointer" onClick={() => router.push(`/property/${app.propertyId}`)}>
+                                            <CardContent className="p-0">
+                                                <div className="flex flex-col xl:flex-row relative min-h-[160px]">
+                                                    {/* Property Image & Basic Info */}
+                                                    <div className="flex flex-col sm:flex-row p-6 flex-1 gap-6 border-b xl:border-b-0 border-border">
+                                                        <div className="relative w-full sm:w-32 h-32 rounded-xl overflow-hidden shadow-inner flex-shrink-0">
+                                                            <img src={(app as any).propertyImage || (app as any).property?.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300'} alt={app.propertyTitle} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300'; }} />
+                                                            <div className="absolute top-2 left-2">
+                                                                <Badge className="bg-white/90 backdrop-blur-sm text-black text-[10px] uppercase font-bold px-2 py-0.5 border-none shadow-sm capitalize">
+                                                                    {(app as any).listingType || 'Rent'}
+                                                                </Badge>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex-1 space-y-3 pb-8 md:pb-0">
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <h3 className="text-xl font-bold text-foreground group-hover:text-[#005a41] transition-colors mb-1">
+                                                                        {app.propertyTitle}
+                                                                    </h3>
+                                                                    <p className="text-sm text-muted-foreground flex items-center">
+                                                                        <User className="h-3 w-3 mr-1.5" />
+                                                                        {app.customer?.name || 'Unknown Applicant'}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-muted-foreground font-medium flex items-center mt-1">
+                                                                        <Clock className="h-3 w-3 mr-1" />
+                                                                        {app.date || new Date(app.createdAt).toLocaleDateString()}
+                                                                    </p>
+                                                                </div>
+                                                                <Badge className={cn(
+                                                                    "text-[10px] font-bold uppercase tracking-widest px-3 py-1 border-none shadow-sm",
+                                                                    app.status === 'accepted' ? "bg-green-100 text-green-700" :
+                                                                    app.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"
+                                                                )}>
+                                                                    {app.status}
+                                                                </Badge>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                                                                <div className="bg-muted/30 p-2.5 rounded-lg border border-border/50">
+                                                                    <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight mb-1">{(app as any).listingType === 'buy' ? 'Price' : 'Rent'}</p>
+                                                                    <p className="text-sm font-bold text-foreground">ETB {app.price != null ? app.price.toLocaleString() : 'N/A'}{(app as any).listingType === 'buy' ? '' : '/mo'}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Absolute positioned Action Buttons - Bottom Right */}
+                                                    <div className="absolute bottom-4 right-4 flex gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs h-9 px-4 rounded-lg bg-white/80 backdrop-blur-sm shadow-sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const customerId = app.customerId || app.customer?.id;
+                                                                if (customerId) {
+                                                                    router.push(`/profile/${customerId}`);
+                                                                } else {
+                                                                    toast.error("Customer profile not found");
+                                                                }
+                                                            }}
+                                                        >
+                                                            <User className="h-3.5 w-3.5 mr-2" />
+                                                            See Profile
+                                                        </Button>
+                                                        {app.status === 'pending' && (
+                                                            <>
+                                                                <Button
+                                                                    size="sm"
+                                                                    disabled={!currentUser?.verified}
+                                                                    className="bg-[#005a41] hover:bg-[#004a35] text-white shadow-lg shadow-[#005a41]/20 font-bold text-xs h-9 px-4 rounded-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (currentUser?.verified) updateApplicationStatus(app.id, 'accepted');
+                                                                    }}
+                                                                >
+                                                                    <Check className="h-3.5 w-3.5 mr-1" /> Accept
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    disabled={!currentUser?.verified}
+                                                                    className="border-rose-200 text-rose-600 hover:bg-rose-50 shadow-sm font-bold text-xs h-9 px-4 rounded-lg transition-all hover:scale-105 active:scale-95 bg-white disabled:opacity-50"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (currentUser?.verified) updateApplicationStatus(app.id, 'rejected');
+                                                                    }}
+                                                                >
+                                                                    <X className="h-3.5 w-3.5 mr-1" /> Reject
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                        {app.status !== 'pending' && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                disabled={!currentUser?.verified}
+                                                                className="h-9 px-4 rounded-lg text-xs font-bold text-muted-foreground hover:bg-muted/50 transition-all disabled:opacity-50"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    if (currentUser?.verified) updateApplicationStatus(app.id, 'pending');
+                                                                }}
+                                                            >
+                                                                Reset
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-20 bg-muted/5 rounded-2xl border-2 border-dashed border-border">
+                                        <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/20 mb-4" />
+                                        <h3 className="text-lg font-bold text-muted-foreground">No applications found</h3>
+                                        <p className="text-sm text-muted-foreground mt-2">When potential customers apply for your properties, they will appear here.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </TabsContent>
                     <TabsContent value="leases">
                         <Card className="border-border">
@@ -459,127 +539,6 @@ export default function AgentDashboardPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                    </TabsContent>
-
-                    {/* Transactions Tab */}
-
-                    <TabsContent value="transactions">
-                        <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <Card className="p-4 border-border bg-[#005a41]/5">
-                                    <p className="text-xs text-[#005a41] font-bold uppercase mb-1">Total Received</p>
-                                    <p className="text-2xl font-bold">ETB 450,200</p>
-                                </Card>
-                            </div>
-
-                            <Card className="border-border">
-                                <CardHeader className="border-b border-border/50">
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                        <CardTitle className="text-lg font-bold flex items-center gap-2">
-                                            <FileText className="h-5 w-5 text-[#005a41]" />
-                                            Transaction History
-                                        </CardTitle>
-                                        <div className="flex items-center gap-2">
-                                            <div className="relative">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                <Input
-                                                    placeholder="Search transactions..."
-                                                    className="pl-9 h-9 w-[200px] text-xs rounded-xl border-border"
-                                                    value={transactionSearch}
-                                                    onChange={(e) => setTransactionSearch(e.target.value)}
-                                                />
-                                            </div>
-                                            <Select value={transactionStatus} onValueChange={setTransactionStatus}>
-                                                <SelectTrigger className="h-9 w-[130px] text-xs rounded-xl border-border">
-                                                    <SelectValue placeholder="Status" />
-                                                </SelectTrigger>
-                                                <SelectContent className="rounded-xl border-border">
-                                                    <SelectItem value="all">All Status</SelectItem>
-                                                    <SelectItem value="completed">Completed</SelectItem>
-                                                    <SelectItem value="pending">Pending</SelectItem>
-                                                    <SelectItem value="failed">Failed</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    <div className="divide-y divide-border/50">
-                                        {[
-                                            { id: '1', itemTitle: 'Bole Summit Apt 1', date: 'Jan 1, 2026', amount: 12000, status: 'completed' },
-                                            { id: '2', itemTitle: 'Old Airport Villa', date: 'Jan 5, 2026', amount: 25000, status: 'completed' },
-                                            { id: '3', itemTitle: 'Kazanchis Loft', date: 'Jan 10, 2026', amount: 15000, status: 'pending' },
-                                            { id: '4', itemTitle: 'Bole Summit Apt 1', date: 'Feb 1, 2026', amount: 12000, status: 'pending' },
-                                        ]
-                                            .filter(t =>
-                                                (transactionStatus === 'all' || t.status === transactionStatus) &&
-                                                (t.itemTitle.toLowerCase().includes(transactionSearch.toLowerCase()))
-                                            )
-                                            .map((transaction) => (
-                                                <div key={transaction.id} className="p-4 hover:bg-muted/30 transition-colors group">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center space-x-4">
-                                                            <div className={cn(
-                                                                "p-3 rounded-2xl transition-all duration-300",
-                                                                transaction.status === 'completed' ? 'bg-green-50 text-green-600 group-hover:bg-green-100' :
-                                                                    transaction.status === 'pending' ? 'bg-yellow-50 text-yellow-600 group-hover:bg-yellow-100' :
-                                                                        'bg-red-50 text-red-600 group-hover:bg-red-100'
-                                                            )}>
-                                                                {transaction.status === 'completed' ? <CheckCircle className="h-5 w-5" /> :
-                                                                    transaction.status === 'pending' ? <Clock className="h-5 w-5" /> :
-                                                                        <AlertCircle className="h-5 w-5" />}
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="font-bold text-foreground group-hover:text-[#005a41] transition-colors">{transaction.itemTitle}</h4>
-                                                                <div className="flex items-center gap-3">
-                                                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">
-                                                                        ID: TX-{transaction.id.toUpperCase()}
-                                                                    </p>
-                                                                    <span className="w-1 h-1 bg-muted-foreground/30 rounded-full" />
-                                                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">
-                                                                        {transaction.date}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-6">
-                                                            <div className="text-right">
-                                                                <p className="text-lg font-black text-foreground">
-                                                                    ETB {transaction.amount.toLocaleString()}
-                                                                </p>
-                                                                <Badge
-                                                                    variant="outline"
-                                                                    className={cn(
-                                                                        "px-2 py-0 border-none text-[8px] font-black uppercase",
-                                                                        transaction.status === 'completed' ? 'bg-green-100 text-green-700' :
-                                                                            transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                                                                                'bg-red-100 text-red-700'
-                                                                    )}
-                                                                >
-                                                                    {transaction.status}
-                                                                </Badge>
-                                                            </div>
-                                                            {transaction.status === 'completed' && (
-                                                                <Button
-                                                                    variant="outline"
-                                                                    size="sm"
-                                                                    className="h-8 text-[10px] font-bold text-[#005a41] border-[#005a41]/20 hover:bg-[#005a41] hover:text-white transition-all duration-300 gap-1.5 px-3 rounded-lg"
-                                                                >
-                                                                    <FileText className="h-3 w-3" />
-                                                                    Receipt
-                                                                </Button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </TabsContent>
-                    <TabsContent value="payout">
-                        <PayoutSettings />
                     </TabsContent>
                 </DashboardTabs>
             </div>

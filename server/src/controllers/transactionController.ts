@@ -19,13 +19,20 @@ export const getTransactions = async (req: any, res: Response) => {
             transactions = await prisma.transaction.findMany({
                 include: {
                     payer: {
-                        select: { id: true, name: true, profileImage: true }
+                        select: { id: true, name: true, email: true, phoneNumber: true, profileImage: true }
                     },
                     payee: {
-                        select: { id: true, name: true, profileImage: true }
+                        select: { id: true, name: true, email: true, phoneNumber: true, profileImage: true }
                     },
                     property: {
-                        select: { id: true, title: true, assetType: true }
+                        select: { 
+                            id: true, 
+                            title: true, 
+                            assetType: true,
+                            location: {
+                                select: { city: true, subcity: true }
+                            }
+                        }
                     }
                 },
                 orderBy: { createdAt: 'desc' }
@@ -35,10 +42,17 @@ export const getTransactions = async (req: any, res: Response) => {
                 where: { payeeId: userId },
                 include: {
                     payer: {
-                        select: { id: true, name: true, profileImage: true }
+                        select: { id: true, name: true, email: true, phoneNumber: true, profileImage: true }
                     },
                     property: {
-                        select: { id: true, title: true, assetType: true }
+                        select: { 
+                            id: true, 
+                            title: true, 
+                            assetType: true,
+                            location: {
+                                select: { city: true, subcity: true }
+                            }
+                        }
                     }
                 },
                 orderBy: { createdAt: 'desc' }
@@ -48,11 +62,21 @@ export const getTransactions = async (req: any, res: Response) => {
             transactions = await prisma.transaction.findMany({
                 where: { payerId: userId },
                 include: {
+                    payer: {
+                        select: { id: true, name: true, email: true, phoneNumber: true, profileImage: true }
+                    },
                     payee: {
                         select: { id: true, name: true, profileImage: true }
                     },
                     property: {
-                        select: { id: true, title: true, assetType: true }
+                        select: { 
+                            id: true, 
+                            title: true, 
+                            assetType: true,
+                            location: {
+                                select: { city: true, subcity: true }
+                            }
+                        }
                     }
                 },
                 orderBy: { createdAt: 'desc' }

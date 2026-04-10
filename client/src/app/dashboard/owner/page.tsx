@@ -21,6 +21,7 @@ import {
     Check,
     X,
     User2,
+    User,
     Eye,
     AlertCircle
 } from 'lucide-react';
@@ -58,7 +59,7 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { formatLocation, getListingMainImage } from '@/lib/utils';
 import Link from 'next/link';
-import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth, addDays, isWithinInterval } from 'date-fns';
+import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth, addDays, isWithinInterval, isToday, isYesterday, isThisMonth, isThisYear } from 'date-fns';
 
 import DashboardTabs from '@/components/DashboardTabs';
 import { PropertyCard } from '@/components/PropertyCard';
@@ -70,6 +71,17 @@ import { useMaintenanceStore } from '@/store/useMaintenanceStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useLeaseStore } from '@/store/useLeaseStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
+import { useChatStore } from '@/store/useChatStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import {
+    StatCardsSkeleton,
+    PropertyGridSkeleton,
+    LeaseCardSkeleton,
+    MaintenanceCardSkeleton,
+    TabListSkeleton,
+    ListItemSkeleton,
+    TableRowSkeleton,
+} from '@/components/ui/dashboard-skeletons';
 
 export default function OwnerDashboardPage() {
     const router = useRouter();
@@ -79,13 +91,18 @@ export default function OwnerDashboardPage() {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [expandedSchedules, setExpandedSchedules] = useState<string[]>([]);
     const [transactionSearch, setTransactionSearch] = useState('');
+    const [transactionDateFilter, setTransactionDateFilter] = useState('all');
     const [transactionStatus, setTransactionStatus] = useState('all');
 
     const { properties, fetchPropertiesByOwnerId, isLoading: isPropLoading, error: propError, deleteProperty } = usePropertyStore();
     const { applications, fetchApplications, updateApplicationStatus, isLoading: isAppLoading } = useApplicationStore();
     const { requests: maintenanceRequests, fetchRequests: fetchMaintenanceRequests, updateRequestStatus, isLoading: isMaintenanceLoading } = useMaintenanceStore();
-    const { leases, fetchLeases, acceptLease, isLoading: isLeaseLoading } = useLeaseStore();
+    const { leases, fetchLeases, acceptLease, requestLeaseCancellation, isLoading: isLeaseLoading } = useLeaseStore();
     const { transactions, fetchTransactions, isLoading: isTransactionLoading } = useTransactionStore();
+    const { connectSocket, socket } = useChatStore();
+    const { notifications } = useNotificationStore();
+
+    const isLoading = isPropLoading || isAppLoading || isLeaseLoading || isMaintenanceLoading || isTransactionLoading;
 
     useEffect(() => {
         if (currentUser?.id) {
@@ -94,8 +111,13 @@ export default function OwnerDashboardPage() {
             fetchMaintenanceRequests(currentUser.id);
             fetchLeases(currentUser.id);
             fetchTransactions();
+            
+            // Connect socket for real-time notifications/chat
+            connectSocket();
         }
-    }, [fetchPropertiesByOwnerId, fetchApplications, fetchMaintenanceRequests, fetchLeases, fetchTransactions, currentUser]);
+    }, [fetchPropertiesByOwnerId, fetchApplications, fetchMaintenanceRequests, fetchLeases, fetchTransactions, currentUser, connectSocket]);
+
+
 
     const toggleSchedule = (id: string) => {
         setExpandedSchedules(prev =>
@@ -143,23 +165,28 @@ export default function OwnerDashboardPage() {
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Owner Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {stats.map((stat, i) => (
-                        <Card key={i} className="border-border">
-                            <CardContent className="p-6">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-[#005a41]/10 rounded-xl text-[#005a41]">
-                                        <stat.icon className="h-6 w-6" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
-                                        <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
+                {isLoading
+                    ? <StatCardsSkeleton count={4} />
+                    : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            {stats.map((stat, i) => (
+                                <Card key={i} className="border-border">
+                                    <CardContent className="p-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-3 bg-[#005a41]/10 rounded-xl text-[#005a41]">
+                                                <stat.icon className="h-6 w-6" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
+                                                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    )
+                }
 
                 <DashboardTabs
                     activeTab={activeTab}
@@ -183,7 +210,7 @@ export default function OwnerDashboardPage() {
                                     </Button>
                                 </div>
                             ) : isPropLoading ? (
-                                <div className="col-span-full py-20 text-center text-muted-foreground">Loading properties...</div>
+                                <PropertyGridSkeleton count={6} />
                             ) : properties.length > 0 ? (
                                 properties.map((property) => (
                                     <PropertyCard
@@ -226,7 +253,9 @@ export default function OwnerDashboardPage() {
                             <CardContent>
                                 <div className="space-y-4">
                                     {isLeaseLoading ? (
-                                        <div className="py-20 text-center text-muted-foreground">Loading leases...</div>
+                                        <div className="space-y-4">
+                                            {Array.from({ length: 3 }).map((_, i) => <LeaseCardSkeleton key={i} />)}
+                                        </div>
                                     ) : leases.length > 0 ? (
                                         leases.map((lease: any) => {
                                             const property = lease.property || properties.find((p: any) => p.id === lease.propertyId);
@@ -246,7 +275,7 @@ export default function OwnerDashboardPage() {
                                                                 <div>
                                                                     <h3 className="mb-1 text-foreground font-bold">{property.title}</h3>
                                                                     <p className="text-sm text-muted-foreground mb-1">
-                                                                        {formatLocation(property)}
+                                                                        {formatLocation(property.location || property)}
                                                                     </p>
                                                                     <p className="text-xs font-semibold text-[#005a41] mb-2 flex items-center">
                                                                         <User2 className="h-3 w-3 mr-1" />
@@ -260,9 +289,11 @@ export default function OwnerDashboardPage() {
                                                                         <Badge className={cn(
                                                                             "border-none",
                                                                             lease.status === 'ACTIVE' ? "bg-green-100 text-green-700" :
-                                                                                lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"
+                                                                                lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" : 
+                                                                                lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700 font-bold" :
+                                                                                "bg-gray-100 text-gray-700"
                                                                         )}>
-                                                                            {lease.status}
+                                                                            {lease.status === 'CANCELLATION_PENDING' ? 'CANCELLATION PENDING' : lease.status}
                                                                         </Badge>
                                                                     </div>
                                                                 </div>
@@ -278,6 +309,34 @@ export default function OwnerDashboardPage() {
                                                                                 View Detail
                                                                             </Button>
                                                                         </Link>
+                                                                        {(lease.status === 'ACTIVE' || (lease.status === 'CANCELLATION_PENDING' && !lease.ownerCancelled)) && (
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                className={cn(
+                                                                                    "h-9 px-4 rounded-xl transition-all duration-300 shadow-sm",
+                                                                                    lease.status === 'CANCELLATION_PENDING' 
+                                                                                        ? "text-orange-600 border-orange-200 hover:bg-orange-50" 
+                                                                                        : "border-rose-200 text-rose-600 hover:bg-rose-50"
+                                                                                )}
+                                                                                onClick={() => requestLeaseCancellation(lease.id, 'owner')}
+                                                                                disabled={isLoading}
+                                                                            >
+                                                                                <X className="h-4 w-4 mr-2" />
+                                                                                {lease.status === 'CANCELLATION_PENDING' ? 'Confirm Cancellation' : 'Cancel Lease'}
+                                                                            </Button>
+                                                                        )}
+                                                                        {lease.status === 'CANCELLATION_PENDING' && lease.ownerCancelled && (
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                disabled
+                                                                                className="h-9 px-4 rounded-xl text-amber-600 border-amber-200 bg-amber-50/50 font-bold"
+                                                                            >
+                                                                                <Clock className="h-4 w-4 mr-2" />
+                                                                                Requested
+                                                                            </Button>
+                                                                        )}
                                                                         {lease.status === 'PENDING' && !lease.ownerAccepted && (
                                                                             <Button size="sm" onClick={() => acceptLease(lease.id, 'owner')} className="h-9 px-4 rounded-xl bg-[#005a41] hover:bg-[#004a35] text-white">
                                                                                 <CheckCircle className="h-4 w-4 mr-2" />
@@ -453,96 +512,149 @@ export default function OwnerDashboardPage() {
 
                     {/* Applications Tab */}
                     <TabsContent value="applications">
-                        <Card className="border-border">
-                            <CardHeader className="flex flex-row items-center justify-between border-b bg-muted/5">
-                                <CardTitle className="text-lg font-bold">Property Applications</CardTitle>
-                                <Badge className="bg-[#005a41]">{applications.length} Total</Badge>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <div className="divide-y divide-border">
-                                    {isAppLoading ? (
-                                        <div className="p-10 text-center text-muted-foreground">Loading applications...</div>
-                                    ) : applications.length > 0 ? (
-                                        applications.map((app) => (
-                                            <div key={app.id} className="p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-muted/10 transition-colors gap-4">
-                                                <div className="flex items-center gap-6">
-                                                    <div className="relative">
-                                                        <div className="w-16 h-16 rounded-xl overflow-hidden border border-border shadow-sm">
-                                                            <img
-                                                                src={app.propertyImage}
-                                                                alt={app.propertyTitle}
-                                                                className="w-full h-full object-cover"
-                                                                onError={(e) => {
-                                                                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300';
-                                                                }}
-                                                            />
-                                                        </div>
-                                                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 border shadow-sm">
-                                                            {app.listingType === 'buy' ? <Building2 className="h-3 w-3 text-[#005a41]" /> : <FileText className="h-3 w-3 text-[#005a41]" />}
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <h4 className="font-bold text-base">{app.propertyTitle}</h4>
-                                                            <Badge variant="outline" className="text-[10px] uppercase">{app.listingType}</Badge>
-                                                        </div>
-                                                        <p className="text-sm text-muted-foreground flex items-center mb-1">
-                                                            <User2 className="h-3 w-3 mr-1" />
-                                                            {app.customer?.name || 'Unknown Applicant'}
-                                                        </p>
-                                                        <p className="text-[10px] text-muted-foreground font-medium flex items-center">
-                                                            <Calendar className="h-3 w-3 mr-1" />
-                                                            {app.date}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex flex-row items-center justify-between md:justify-end gap-6 w-full md:w-auto">
-                                                    <div className="text-left md:text-right">
-                                                        <p className="text-base font-black text-[#005a41]">ETB {app.price?.toLocaleString()}</p>
-                                                        <Badge className={cn(
-                                                            "text-[10px] font-bold uppercase border-none shadow-sm",
-                                                            app.status === 'accepted' ? "bg-green-100 text-green-700" :
-                                                                app.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"
-                                                        )}>{app.status}</Badge>
-                                                    </div>
-
-                                                    {app.status === 'pending' && (
-                                                        <div className="flex gap-2">
-                                                            <Button
-                                                                size="sm"
-                                                                className="bg-[#005a41] hover:bg-[#004a35] h-9 px-4 text-xs font-bold rounded-xl"
-                                                                onClick={() => updateApplicationStatus(app.id, 'accepted')}
-                                                            >
-                                                                <Check className="h-4 w-4 mr-1" /> Accept
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="h-9 px-4 text-xs font-bold rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50"
-                                                                onClick={() => updateApplicationStatus(app.id, 'rejected')}
-                                                            >
-                                                                <X className="h-4 w-4 mr-1" /> Reject
-                                                            </Button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="py-24 text-center">
-                                            <div className="inline-flex p-4 rounded-full bg-muted/20 mb-4">
-                                                <ClipboardList className="h-10 w-10 text-muted-foreground/30" />
-                                            </div>
-                                            <h3 className="text-xl font-bold text-muted-foreground">No applications found</h3>
-                                            <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-2">
-                                                When potential customers apply for your properties, they will appear here.
-                                            </p>
-                                        </div>
-                                    )}
+                        <div className="space-y-6">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-foreground">Property Applications</h2>
+                                    <p className="text-muted-foreground">Review and manage incoming property applications</p>
                                 </div>
-                            </CardContent>
-                        </Card>
+                                <div className="flex gap-2">
+                                    <Badge variant="outline" className="bg-white border-border py-1.5 px-3">
+                                        <Clock className="h-3 w-3 mr-1.5 text-blue-500" />
+                                        <span className="text-xs font-semibold">{applications.filter(a => a.status === 'pending').length} Pending</span>
+                                    </Badge>
+                                    <Badge variant="outline" className="bg-white border-border py-1.5 px-3">
+                                        <CheckCircle className="h-3 w-3 mr-1.5 text-green-500" />
+                                        <span className="text-xs font-semibold">{applications.filter(a => a.status === 'accepted').length} Accepted</span>
+                                    </Badge>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-6">
+                                {isAppLoading ? (
+                                    <div className="space-y-4">
+                                        {Array.from({ length: 4 }).map((_, i) => <ListItemSkeleton key={i} />)}
+                                    </div>
+                                ) : applications.length > 0 ? (
+                                    applications.map((app) => (
+                                        <Card key={app.id} className="border-border hover:shadow-xl transition-all duration-300 overflow-hidden group border-l-4 border-l-[#005a41] cursor-pointer" onClick={() => router.push(`/property/${app.propertyId}`)}>
+                                            <CardContent className="p-0">
+                                                <div className="flex flex-col xl:flex-row relative min-h-[160px]">
+                                                    {/* Property Image & Basic Info */}
+                                                    <div className="flex flex-col sm:flex-row p-6 flex-1 gap-6 border-b xl:border-b-0 border-border">
+                                                        <div className="relative w-full sm:w-32 h-32 rounded-xl overflow-hidden shadow-inner flex-shrink-0">
+                                                            <img src={app.propertyImage} alt={app.propertyTitle} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300'; }} />
+                                                            <div className="absolute top-2 left-2">
+                                                                <Badge className="bg-white/90 backdrop-blur-sm text-black text-[10px] uppercase font-bold px-2 py-0.5 border-none shadow-sm capitalize">
+                                                                    {app.listingType}
+                                                                </Badge>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex-1 space-y-3 pb-8 md:pb-0">
+                                                            <div className="flex justify-between items-start">
+                                                                <div>
+                                                                    <h3 className="text-xl font-bold text-foreground group-hover:text-[#005a41] transition-colors mb-1">
+                                                                        {app.propertyTitle}
+                                                                    </h3>
+                                                                    <p className="text-sm text-muted-foreground flex items-center">
+                                                                        <User2 className="h-3 w-3 mr-1.5" />
+                                                                        {app.customer?.name || 'Unknown Applicant'}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-muted-foreground font-medium flex items-center mt-1">
+                                                                        <Clock className="h-3 w-3 mr-1" />
+                                                                        {app.date}
+                                                                    </p>
+                                                                </div>
+                                                                <Badge className={cn(
+                                                                    "text-[10px] font-bold uppercase tracking-widest px-3 py-1 border-none shadow-sm",
+                                                                    app.status === 'accepted' ? "bg-green-100 text-green-700" :
+                                                                    app.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"
+                                                                )}>
+                                                                    {app.status}
+                                                                </Badge>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                                                                <div className="bg-muted/30 p-2.5 rounded-lg border border-border/50">
+                                                                    <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight mb-1">{app.listingType === 'rent' ? 'Rent' : 'Price'}</p>
+                                                                    <p className="text-sm font-bold text-foreground">ETB {app.price != null ? app.price.toLocaleString() : 'N/A'}{app.listingType === 'rent' ? '/mo' : ''}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Absolute positioned Action Buttons - Bottom Right */}
+                                                    <div className="absolute bottom-4 right-4 flex gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs h-9 px-4 rounded-lg bg-white/80 backdrop-blur-sm shadow-sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const customerId = app.customerId || app.customer?.id;
+                                                                if (customerId) {
+                                                                    router.push(`/profile/${customerId}`);
+                                                                } else {
+                                                                    toast.error("Customer profile not found");
+                                                                }
+                                                            }}
+                                                        >
+                                                            <User className="h-3.5 w-3.5 mr-2" />
+                                                            See Profile
+                                                        </Button>
+                                                        {app.status === 'pending' && (
+                                                            <>
+                                                                <Button
+                                                                    size="sm"
+                                                                    className="bg-[#005a41] hover:bg-[#004a35] text-white shadow-lg shadow-[#005a41]/20 font-bold text-xs h-9 px-4 rounded-lg transition-all hover:scale-105 active:scale-95"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        updateApplicationStatus(app.id, 'accepted');
+                                                                    }}
+                                                                >
+                                                                    <Check className="h-3.5 w-3.5 mr-1" /> Accept
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="border-rose-200 text-rose-600 hover:bg-rose-50 shadow-sm font-bold text-xs h-9 px-4 rounded-lg transition-all hover:scale-105 active:scale-95 bg-white"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        updateApplicationStatus(app.id, 'rejected');
+                                                                    }}
+                                                                >
+                                                                    <X className="h-3.5 w-3.5 mr-1" /> Reject
+                                                                </Button>
+                                                            </>
+                                                        )}
+                                                        {app.status !== 'pending' && (
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-9 px-4 rounded-lg text-xs font-bold text-muted-foreground hover:bg-muted/50 transition-all"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    updateApplicationStatus(app.id, 'pending');
+                                                                }}
+                                                            >
+                                                                Reset
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-20 bg-muted/5 rounded-2xl border-2 border-dashed border-border">
+                                        <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/20 mb-4" />
+                                        <h3 className="text-lg font-bold text-muted-foreground">No applications found</h3>
+                                        <p className="text-sm text-muted-foreground mt-2">When potential customers apply for your properties, they will appear here.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="maintenance">
@@ -557,12 +669,14 @@ export default function OwnerDashboardPage() {
 
                             <div className="grid grid-cols-1 gap-4">
                                 {isMaintenanceLoading ? (
-                                    <div className="text-center py-20 text-muted-foreground">Loading requests...</div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {Array.from({ length: 4 }).map((_, i) => <MaintenanceCardSkeleton key={i} />)}
+                                    </div>
                                 ) : maintenanceRequests.length > 0 ? (
                                     maintenanceRequests.map((request) => {
                                         const handleUpdateStatus = (id: string, status: 'inProgress' | 'completed') => {
                                             updateRequestStatus(id, status);
-                                            toast.info(`Status updated to ${status === 'inProgress' ? 'In Progress' : 'Completed'}`);
+                                            toast.success(`Status updated to ${status === 'inProgress' ? 'In Progress' : 'Completed'}`);
                                         };
 
                                         return (
@@ -583,33 +697,36 @@ export default function OwnerDashboardPage() {
                                                                         <img src={request.images[0]} alt={request.category} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                                                     </div>
                                                                 )}
-                                                                <div className="flex-1 space-y-3">
-                                                                    <div className="flex flex-wrap items-center gap-2">
-                                                                        <Badge className={cn(
-                                                                            "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 border-none shadow-sm",
-                                                                            request.status === 'completed' ? "bg-green-100 text-green-700" :
-                                                                                request.status === 'inProgress' ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"
-                                                                        )}>
-                                                                            {request.status.replace(/([A-Z])/g, ' $1').trim()}
-                                                                        </Badge>
-                                                                        <span className="text-xs text-muted-foreground flex items-center font-medium">
-                                                                            <Calendar className="h-3 w-3 mr-1" />
-                                                                            {request.date}
-                                                                        </span>
-
-                                                                        <div>
-                                                                            <h3 className="text-lg font-bold text-foreground group-hover:text-[#005a41] transition-colors">
-                                                                                {request.category}
-                                                                            </h3>
-                                                                            <p className="text-sm font-medium text-muted-foreground">
-                                                                                {request.propertyTitle}
-                                                                            </p>
+                                                                <div className="flex-1 space-y-4">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <Badge className={cn(
+                                                                                "text-[10px] font-bold uppercase tracking-widest px-2 py-1 border-none shadow-sm",
+                                                                                request.status === 'completed' ? "bg-green-100 text-green-700" :
+                                                                                    request.status === 'inProgress' ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"
+                                                                            )}>
+                                                                                {request.status.replace(/([A-Z])/g, ' $1').trim()}
+                                                                            </Badge>
+                                                                            <span className="text-xs text-muted-foreground flex items-center font-bold uppercase tracking-tighter">
+                                                                                <Calendar className="h-3 w-3 mr-1" />
+                                                                                {request.date}
+                                                                            </span>
                                                                         </div>
+                                                                    </div>
 
-                                                                        <p className="text-sm text-foreground/80 line-clamp-2 max-w-2xl leading-relaxed">
-                                                                            {request.description}
+                                                                    <div className="space-y-1">
+                                                                        <h3 className="text-xl font-black text-foreground group-hover:text-[#005a41] transition-colors leading-none tracking-tight">
+                                                                            {request.category}
+                                                                        </h3>
+                                                                        <p className="text-sm font-bold text-muted-foreground/80 flex items-center gap-1">
+                                                                            <Building2 className="h-3.5 w-3.5" />
+                                                                            {request.propertyTitle}
                                                                         </p>
                                                                     </div>
+
+                                                                    <p className="text-sm text-foreground/70 line-clamp-2 leading-relaxed bg-muted/20 p-3 rounded-xl border border-border/40 italic">
+                                                                        "{request.description}"
+                                                                    </p>
                                                                 </div>
 
                                                                 <div className="flex flex-col justify-between items-start lg:items-end gap-4 min-w-[200px]">
@@ -709,32 +826,45 @@ export default function OwnerDashboardPage() {
                     {/* Transactions Tab */}
                     <TabsContent value="transactions">
                         <div className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <Card className="p-4 border-border bg-[#005a41]/5">
-                                    <p className="text-xs text-[#005a41] font-bold uppercase mb-1">Total Received</p>
-                                    <p className="text-2xl font-bold">ETB {totalRevenue.toLocaleString()}</p>
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-foreground font-black tracking-tighter">My Transactions</h2>
+                                </div>
+                                <Card className="py-2.5 px-5 border-border bg-[#005a41]/5 rounded-2xl border-dashed">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-[#005a41]/10 rounded-xl text-[#005a41]">
+                                            <Wallet className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-[#005a41] font-black uppercase tracking-widest leading-none">Total Revenue</p>
+                                            <p className="text-xl font-black text-foreground">ETB {totalRevenue.toLocaleString()}</p>
+                                        </div>
+                                    </div>
                                 </Card>
                             </div>
 
-                            <Card className="border-border">
-                                <CardHeader className="border-b border-border/50">
+                            <Card className="border-border overflow-hidden rounded-2xl shadow-sm">
+                                <CardHeader className="border-b border-border/50 bg-muted/5 py-5">
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                         <CardTitle className="text-lg font-bold flex items-center gap-2">
                                             <FileText className="h-5 w-5 text-[#005a41]" />
                                             Transaction History
                                         </CardTitle>
                                         <div className="flex items-center gap-2">
-                                            <div className="relative">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                <Input
-                                                    placeholder="Search transactions..."
-                                                    className="pl-9 h-9 w-[200px] text-xs rounded-xl border-border"
-                                                    value={transactionSearch}
-                                                    onChange={(e) => setTransactionSearch(e.target.value)}
-                                                />
-                                            </div>
+                                            <Select value={transactionDateFilter} onValueChange={setTransactionDateFilter}>
+                                                <SelectTrigger className="h-9 w-[130px] text-xs font-bold rounded-xl border-border bg-white shadow-sm hover:shadow-md transition-all">
+                                                    <SelectValue placeholder="Date Range" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-border">
+                                                    <SelectItem value="all">All Time</SelectItem>
+                                                    <SelectItem value="today">Today</SelectItem>
+                                                    <SelectItem value="yesterday">Yesterday</SelectItem>
+                                                    <SelectItem value="this-month">This Month</SelectItem>
+                                                    <SelectItem value="this-year">This Year</SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                             <Select value={transactionStatus} onValueChange={setTransactionStatus}>
-                                                <SelectTrigger className="h-9 w-[130px] text-xs rounded-xl border-border">
+                                                <SelectTrigger className="h-9 w-[130px] text-xs font-bold rounded-xl border-border bg-white shadow-sm hover:shadow-md transition-all">
                                                     <SelectValue placeholder="Status" />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl border-border">
@@ -748,91 +878,122 @@ export default function OwnerDashboardPage() {
                                     </div>
                                 </CardHeader>
                                 <CardContent className="p-0">
-                                    <div className="divide-y divide-border/50">
-                                        {isTransactionLoading ? (
-                                            <div className="p-10 text-center text-muted-foreground">Loading transactions...</div>
-                                        ) : ownerTransactions
-                                            .filter(t => {
-                                                const searchStr = (t.property?.title || 'Rent Payment').toLowerCase();
-                                                return (transactionStatus === 'all' || t.status.toLowerCase() === transactionStatus.toLowerCase()) &&
-                                                    searchStr.includes(transactionSearch.toLowerCase());
-                                            })
-                                            .map((transaction) => (
-                                                <div key={transaction.id} className="p-4 hover:bg-muted/30 transition-colors group">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center space-x-4">
-                                                            <div className={cn(
-                                                                "p-3 rounded-2xl transition-all duration-300",
-                                                                transaction.status === 'COMPLETED' ? 'bg-green-50 text-green-600 group-hover:bg-green-100' :
-                                                                    transaction.status === 'PENDING' ? 'bg-yellow-50 text-yellow-600 group-hover:bg-yellow-100' :
-                                                                        'bg-red-50 text-red-600 group-hover:bg-red-100'
-                                                            )}>
-                                                                {transaction.status === 'COMPLETED' ? <CheckCircle className="h-5 w-5" /> :
-                                                                    transaction.status === 'PENDING' ? <Clock className="h-5 w-5" /> :
-                                                                        <AlertCircle className="h-5 w-5" />}
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="font-bold text-foreground group-hover:text-[#005a41] transition-colors">
-                                                                    {transaction.property?.title || 'Rent Payment'}
-                                                                </h4>
-                                                                <div className="flex items-center gap-3">
-                                                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">
-                                                                        ID: TX-{transaction.id.substring(0, 8).toUpperCase()}
-                                                                    </p>
-                                                                    <span className="w-1 h-1 bg-muted-foreground/30 rounded-full" />
-                                                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">
-                                                                        {format(new Date(transaction.createdAt), 'MMM dd, yyyy')}
-                                                                    </p>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-border/50 bg-muted/20">
+                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Transaction ID</th>
+                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Details</th>
+                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Date</th>
+                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Amount</th>
+                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Status</th>
+                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/50">
+                                                {(() => {
+                                                    const filteredTransactions = ownerTransactions.filter(t => {
+                                                        const tDate = new Date(t.createdAt);
+                                                        
+                                                        let matchesDate = true;
+                                                        if (transactionDateFilter === 'today') {
+                                                            matchesDate = isToday(tDate);
+                                                        } else if (transactionDateFilter === 'yesterday') {
+                                                            matchesDate = isYesterday(tDate);
+                                                        } else if (transactionDateFilter === 'this-month') {
+                                                            matchesDate = isThisMonth(tDate);
+                                                        } else if (transactionDateFilter === 'this-year') {
+                                                            matchesDate = isThisYear(tDate);
+                                                        }
+
+                                                        const matchesStatus = transactionStatus === 'all' || t.status === transactionStatus.toUpperCase();
+                                                        return matchesDate && matchesStatus;
+                                                    });
+
+                                                    if (isTransactionLoading) {
+                                                        return Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} cols={6} />);
+                                                    }
+
+                                                    if (filteredTransactions.length === 0) {
+                                                        return (
+                                                            <tr>
+                                                                <td colSpan={6} className="px-6 py-20 text-center text-muted-foreground">
+                                                                    <div className="flex flex-col items-center justify-center space-y-3">
+                                                                        <div className="p-4 bg-muted/50 rounded-full">
+                                                                            <Search className="h-8 w-8 opacity-20 text-muted-foreground" />
+                                                                        </div>
+                                                                        <p className="text-sm font-bold">No transactions found matching your criteria</p>
+                                                                        <Button variant="ghost" size="sm" onClick={() => { setTransactionDateFilter('all'); setTransactionStatus('all'); }} className="text-[#005a41] hover:bg-transparent hover:underline text-xs font-bold uppercase tracking-widest">Clear all filters</Button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }
+
+                                                    return filteredTransactions.map((transaction) => (
+                                                        <tr key={transaction.id} className="hover:bg-muted/5 transition-colors group">
+                                                            <td className="px-6 py-5 whitespace-nowrap">
+                                                                <span className="text-xs font-mono font-bold text-muted-foreground group-hover:text-foreground transition-colors">
+                                                                    TX-{transaction.id.substring(0, 8).toUpperCase()}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-5 whitespace-nowrap">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className={cn(
+                                                                        "p-3 rounded-2xl transition-all duration-300",
+                                                                        transaction.status === 'COMPLETED' ? 'bg-green-50 text-green-600' :
+                                                                            transaction.status === 'PENDING' ? 'bg-yellow-50 text-yellow-600' : 'bg-red-50 text-red-600'
+                                                                    )}>
+                                                                        {transaction.type === 'RENT' ? <Clock className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-sm font-black text-foreground group-hover:text-[#005a41] transition-colors">
+                                                                            {transaction.type === 'RENT' ? 'Rent Income' : 'Property Sale'}
+                                                                        </p>
+                                                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-tighter">
+                                                                            {transaction.property?.title || 'Rent Payment'}
+                                                                        </p>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-6">
-                                                            <div className="text-right">
-                                                                <p className="text-lg font-black text-foreground">
+                                                            </td>
+                                                            <td className="px-6 py-5 whitespace-nowrap text-sm font-bold text-muted-foreground">
+                                                                {format(new Date(transaction.createdAt), 'MMM dd, yyyy')}
+                                                            </td>
+                                                            <td className="px-6 py-5 whitespace-nowrap">
+                                                                <span className="text-sm font-black text-foreground">
                                                                     ETB {transaction.amount.toLocaleString()}
-                                                                </p>
-                                                                <Badge
-                                                                    variant="outline"
-                                                                    className={cn(
-                                                                        "px-2 py-0 border-none text-[8px] font-black uppercase",
-                                                                        transaction.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                                                                            transaction.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                                                                                'bg-red-100 text-red-700'
-                                                                    )}
-                                                                >
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-5 whitespace-nowrap">
+                                                                <Badge className={cn(
+                                                                    "px-2 py-0.5 border-none text-[8px] font-black uppercase tracking-widest shadow-sm",
+                                                                    transaction.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                                                        transaction.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                                                                            'bg-amber-100 text-amber-700'
+                                                                )}>
                                                                     {transaction.status}
                                                                 </Badge>
-                                                            </div>
-                                                            {transaction.status === 'COMPLETED' && (
-                                                                <Link href={`/dashboard/owner/documents/receipt/${transaction.id}`} target="_blank">
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        className="h-8 text-[10px] font-bold text-[#005a41] border-[#005a41]/20 hover:bg-[#005a41] hover:text-white transition-all duration-300 gap-1.5 px-3 rounded-lg"
-                                                                    >
-                                                                        <FileText className="h-3 w-3" />
-                                                                        Receipt
-                                                                    </Button>
-                                                                </Link>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                            </td>
+                                                            <td className="px-6 py-5 whitespace-nowrap text-right">
+                                                                {transaction.status === 'COMPLETED' && (
+                                                                    <Link href={`/dashboard/owner/documents/receipt/${transaction.id}`}>
+                                                                        <Button 
+                                                                            variant="outline" 
+                                                                            size="sm" 
+                                                                            className="h-8 px-4 rounded-xl border-border hover:bg-[#005a41] hover:text-white font-black text-[10px] uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg active:scale-95"
+                                                                        >
+                                                                            <FileText className="h-3.5 w-3.5 mr-2 opacity-60" />
+                                                                            View Receipt
+                                                                        </Button>
+                                                                    </Link>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ));
+                                                })()}
+                                            </tbody>
+                                        </table>
                                     </div>
-                                    {ownerTransactions.filter(t => {
-                                        const searchStr = (t.property?.title || 'Rent Payment').toLowerCase();
-                                        return (transactionStatus === 'all' || t.status.toLowerCase() === transactionStatus.toLowerCase()) &&
-                                            searchStr.includes(transactionSearch.toLowerCase());
-                                    }).length === 0 && (
-                                            <div className="p-12 text-center space-y-3">
-                                                <div className="bg-muted p-4 rounded-full w-12 h-12 flex items-center justify-center mx-auto opacity-50">
-                                                    <Search className="h-6 w-6 text-muted-foreground" />
-                                                </div>
-                                                <p className="text-sm text-muted-foreground font-medium">No transactions found matching your criteria</p>
-                                                <Button variant="ghost" size="sm" onClick={() => { setTransactionSearch(''); setTransactionStatus('all'); }} className="text-[#005a41] hover:bg-transparent hover:underline">Clear all filters</Button>
-                                            </div>
-                                        )}
                                 </CardContent>
                             </Card>
                         </div>

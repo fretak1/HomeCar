@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Home, Car, Sparkles } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Eye, EyeOff, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ImageWithFallback } from '@/components/imageFallback/ImageWithFallback';
+import { Logo } from '@/components/common/Logo';
 import { SocialButtons } from '@/components/auth/SocialButtons';
 
 
@@ -43,8 +45,12 @@ export default function LoginPage() {
 
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-muted/30 via-background to-muted/20 flex items-center justify-center p-4">
-            <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+        <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="min-h-screen bg-gradient-to-br from-muted/30 via-background to-muted/20 flex items-center justify-center p-4 overflow-x-hidden"
+        >            <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
                 {/* Left Side - Image & Branding Card */}
                 <div className="hidden lg:block relative min-h-[400px] rounded-3xl overflow-hidden shadow-2xl border border-border">
                     <ImageWithFallback
@@ -70,12 +76,11 @@ export default function LoginPage() {
                 <div className="bg-card rounded-3xl shadow-2xl border border-border flex flex-col justify-center p-6 lg:p-10 space-y-5">
                     {/* Logo and Title */}
                     <div className="text-center space-y-3">
-                        <div className="flex items-center justify-center">
-                            <div className="flex items-center space-x-1.5 p-2 bg-primary rounded-xl shadow-md ring-2 ring-primary/5">
-                                <Home className="w-6 h-6 text-primary-foreground" />
-                                <div className="w-px h-4 bg-primary-foreground/20" />
-                                <Car className="w-6 h-6 text-primary-foreground" />
-                            </div>
+
+                        <div className="flex items-center justify-center mb-6">
+                            <Link href="/" className="transition-transform hover:scale-105 active:scale-95">
+                                <Logo className="h-12 w-auto" />
+                            </Link>
                         </div>
                         <div className="space-y-1">
                             <h1 className="text-3xl font-bold text-foreground tracking-tight">
@@ -148,7 +153,7 @@ export default function LoginPage() {
                     </form>
 
                     {/* Divider */}
-                    
+
 
                     {/* Social Login */}
                     <SocialButtons />
@@ -169,6 +174,6 @@ export default function LoginPage() {
 
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }

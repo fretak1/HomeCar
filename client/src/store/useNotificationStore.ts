@@ -19,9 +19,10 @@ interface NotificationState {
     unreadCount: number;
     loading: boolean;
     error: string | null;
-    fetchNotifications: () => Promise<void>;
     markAsRead: (id: string) => Promise<void>;
     markAllAsRead: () => Promise<void>;
+    connectSocket: () => void;
+    disconnectSocket: () => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
@@ -66,6 +67,43 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             set({ notifications: updatedNotifications, unreadCount: 0 });
         } catch (error: any) {
             console.error('Mark all as read error:', error);
+        }
+    },
+    
+    connectSocket: () => {
+        const { socket } = get() as any;
+        if (socket) return;
+
+        const { io } = require('socket.io-client');
+        const newSocket = io(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5000', {
+            withCredentials: true
+        });
+
+        newSocket.on('connect', () => {
+            console.log('Connected to notification server');
+        });
+
+        newSocket.on('new_notification', (notification: Notification) => {
+            console.log('Real-time notification received:', notification);
+            set(state => {
+                if (state.notifications.some(n => n.id === notification.id)) return state;
+                
+                const updatedNotifications = [notification, ...state.notifications];
+                return {
+                    notifications: updatedNotifications,
+                    unreadCount: state.unreadCount + 1
+                };
+            });
+        });
+
+        set({ socket: newSocket } as any);
+    },
+
+    disconnectSocket: () => {
+        const { socket } = get() as any;
+        if (socket) {
+            socket.disconnect();
+            set({ socket: null } as any);
         }
     }
 }));

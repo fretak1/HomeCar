@@ -1,5 +1,6 @@
-import { Building2, Facebook, Instagram, Send, Linkedin } from 'lucide-react';
+import { Facebook, Instagram, Send, Linkedin } from 'lucide-react';
 import Link from 'next/link';
+import { Logo } from './common/Logo';
 
 export function Footer() {
   return (
@@ -7,9 +8,8 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <Link href="/" className="flex items-center space-x-2 mb-4">
-              <Building2 className="h-8 w-8 text-primary" />
-              <span className="text-xl font-semibold text-primary">HomeCar</span>
+            <Link href="/" className="flex items-center mb-4 transition-transform hover:scale-105 active:scale-92 origin-left">
+              <Logo className="h-12 w-auto" />
             </Link>
             <p className="text-muted-foreground mb-4">
               AI-powered platform for finding your perfect property or vehicle with confidence and ease.

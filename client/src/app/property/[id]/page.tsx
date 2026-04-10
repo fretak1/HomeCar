@@ -16,7 +16,8 @@ import {
     Loader2,
     Calendar,
     Send,
-    MessageSquareText
+    MessageSquareText,
+    User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -45,6 +46,7 @@ import { useFavoriteStore } from '@/store/useFavoriteStore';
 import { cn, formatLocation, getImageUrl } from '@/lib/utils';
 import { ReviewCard } from '@/components/ReviewCard';
 import { ReviewForm } from '@/components/ReviewForm';
+import { MapView } from '@/components/MapView';
 import { AIRecommendations } from '@/components/AIRecommendations';
 import { usePaymentStore } from '@/store/usePaymentStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
@@ -216,16 +218,18 @@ export default function PropertyDetailPage() {
                                 alt={property.title}
                                 className="w-full h-[500px] object-cover"
                             />
-                            <div className="absolute top-4 right-4 flex space-x-2">
-                                <Button
-                                    size="icon"
-                                    variant="secondary"
-                                    className={`rounded-full cursor-pointer hover:scale-110 transition-transform ${favorite ? 'text-rose-500 hover:text-rose-600 shadow-sm' : 'text-gray-500 hover:text-gray-600 bg-white/90'}`}
-                                    onClick={handleFavoriteClick}
-                                >
-                                    <Heart className={`h-5 w-5 ${favorite ? 'fill-current' : ''}`} />
-                                </Button>
-                            </div>
+                            {currentUser?.role !== 'ADMIN' && (
+                                <div className="absolute top-4 right-4 flex space-x-2">
+                                    <Button
+                                        size="icon"
+                                        variant="secondary"
+                                        className={`rounded-full cursor-pointer hover:scale-110 transition-transform ${favorite ? 'text-rose-500 hover:text-rose-600 shadow-sm' : 'text-gray-500 hover:text-gray-600 bg-white/90'}`}
+                                        onClick={handleFavoriteClick}
+                                    >
+                                        <Heart className={`h-5 w-5 ${favorite ? 'fill-current' : ''}`} />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                         <div className="grid grid-cols-4 gap-4 mt-4">
                             {property.images.map((image, index) => (
@@ -276,6 +280,7 @@ export default function PropertyDetailPage() {
                                                         disabled={
                                                             currentUser?.role === 'OWNER' ||
                                                             currentUser?.role === 'AGENT' ||
+                                                            currentUser?.role === 'ADMIN' ||
                                                             applications.some(app => app.propertyId === id)
                                                         }
                                                     >
@@ -300,7 +305,7 @@ export default function PropertyDetailPage() {
                                                         <div className="space-y-2">
                                                             <h4 className="font-medium text-sm">Message</h4>
                                                             <Textarea
-                                                                placeholder="Tell the owner why you're interested and any questions you have..."
+                                                                placeholder="Tell the owner why you're interested ..."
                                                                 value={applicationMessage}
                                                                 onChange={(e) => setApplicationMessage(e.target.value)}
                                                                 className="min-h-[120px] resize-none"
@@ -321,9 +326,10 @@ export default function PropertyDetailPage() {
                                             </Dialog>
                                         )}
 
-                                    {/* Pay and Secure Button - Visible only if application is accepted */}
+                                    {/* Pay and Secure Button - Visible only if application is accepted and not already paid */}
                                     {currentUser?.role === 'CUSTOMER' &&
-                                        applications.some(app => app.propertyId === id && app.status === 'accepted') && (
+                                        applications.some(app => app.propertyId === id && app.status === 'accepted') &&
+                                        !transactions.some(tx => tx.propertyId === id && tx.status?.toUpperCase() === 'COMPLETED') && (
                                             <Button
                                                 className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl shadow-lg transition-all active:scale-95"
                                                 onClick={handlePayment}
@@ -352,22 +358,17 @@ export default function PropertyDetailPage() {
                                         </div>
                                     </div>
                                     <Button
-                                        disabled={
-                                            currentUser?.role === 'OWNER' ||
-                                            currentUser?.role === 'AGENT' ||
-                                            !applications.some(app => app.managerId === property.owner?.id && app.status === 'accepted')
-                                        }
+                                        disabled={!property.owner?.id}
                                         variant="outline"
-                                        className="w-full cursor-pointer"
-                                        onClick={async () => {
-                                            if (!property.owner?.id) return;
-                                            const { initiateChat } = useChatStore.getState();
-                                            await initiateChat(property.owner.id);
-                                            router.push(`/chat?partnerId=${property.owner.id}`);
+                                        className="w-full cursor-pointer hover:bg-primary/5 border-primary/20 text-primary font-bold"
+                                        onClick={() => {
+                                            if (property.owner?.id) {
+                                                router.push(`/profile/${property.owner.id}`);
+                                            }
                                         }}
                                     >
-                                        <MessageSquare className="h-4 w-4 mr-2" />
-                                        Contact {property.owner?.role || 'Owner'}
+                                        <User className="h-4 w-4 mr-2" />
+                                        {property.owner?.role === 'AGENT' ? 'See Agent Profile' : 'See Owner Profile'}
                                     </Button>
                                 </div>
                             </CardContent>
@@ -505,17 +506,11 @@ export default function PropertyDetailPage() {
                         </Card>
                     </div>
 
-                    {/* Map Placeholder */}
+                    {/* Interactive Map */}
                     <div className="lg:col-span-1">
                         <Card className="border-border mb-6">
-                            <CardContent className="p-0">
-                                <div className="bg-muted h-64 rounded-lg flex items-center justify-center text-muted-foreground">
-                                    <div className="text-center">
-                                        <MapPin className="h-12 w-12 mx-auto mb-2 text-primary/40" />
-                                        <p className="font-medium">Interactive Map</p>
-                                        <p className="text-xs">{formatLocation(property.location)}</p>
-                                    </div>
-                                </div>
+                            <CardContent className="p-0 rounded-xl overflow-hidden">
+                                <MapView location={property.location || { lat: 9.032, lng: 38.740 }} height="h-[300px]" />
                             </CardContent>
                         </Card>
 
@@ -538,10 +533,12 @@ export default function PropertyDetailPage() {
                     </div>
                 </div>
 
-                {/* Similar Properties */}
-                <div className="mt-16">
-                    <AIRecommendations type={property.assetType === 'HOME' ? 'property' : 'car'} title="Similar Listings" />
-                </div>
+                {/* Similar Properties - Hidden for restricted roles */}
+                {!(currentUser && ['ADMIN', 'OWNER', 'AGENT'].includes(currentUser.role)) && (
+                    <div className="mt-16">
+                        <AIRecommendations type={property.assetType === 'HOME' ? 'property' : 'car'} title="Similar Listings" />
+                    </div>
+                )}
             </div>
 
             {/* Email Confirmation Dialog */}

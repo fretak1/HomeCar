@@ -16,8 +16,8 @@ export interface Transaction {
     chapaReference?: string;
     metadata?: any;
     createdAt: string;
-    payer?: { name: string; profileImage?: string };
-    payee?: { name: string; profileImage?: string };
+    payer?: { name: string; email?: string; phoneNumber?: string; profileImage?: string };
+    payee?: { name: string; email?: string; phoneNumber?: string; profileImage?: string };
     property?: { title: string; assetType: string };
 }
 

@@ -11,6 +11,17 @@ export interface AuthRequest extends Request {
     session?: any;
 }
 
+const hasBetterAuthCookie = (req: Request) => {
+    const cookieHeader = req.headers.cookie;
+    if (!cookieHeader) {
+        return false;
+    }
+
+    return cookieHeader
+        .split(';')
+        .some(cookie => cookie.trim().startsWith('better-auth'));
+};
+
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const session = await auth.api.getSession({
@@ -36,6 +47,11 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
 };
 
 export const optionalAuthenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!hasBetterAuthCookie(req)) {
+        next();
+        return;
+    }
+
     try {
         const session = await auth.api.getSession({
             headers: req.headers

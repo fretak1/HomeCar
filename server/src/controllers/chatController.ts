@@ -203,3 +203,26 @@ export const initiateChat = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+// PATCH /api/chats/read/:partnerId
+// Silently marks messages from partner as read for real-time open windows
+export const markAsRead = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.id;
+        const { partnerId } = req.params;
+
+        await prisma.chat.updateMany({
+            where: {
+                senderId: partnerId,
+                receiverId: userId,
+                read: false
+            },
+            data: { read: true }
+        });
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error('Error marking as read:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};

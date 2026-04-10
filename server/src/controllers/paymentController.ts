@@ -204,8 +204,39 @@ export const verifyPayment = async (req: Request, res: Response) => {
                 module.sendEmail(transaction.payee.email, subject, html);
             }).catch(err => console.error('Delayed email import failed:', err));
 
-            // 3. If it's a lease payment, we could do more here (e.g., auto-advance month)
-            // But for now, just marking it as completed is enough to reflect in the UI
+            // 3. Update property status automatically
+            if (transaction.propertyId) {
+                const newStatus = transaction.type === 'RENT' ? 'RENTED' : 'SOLD';
+                await prisma.property.update({
+                    where: { id: transaction.propertyId },
+                    data: { status: newStatus }
+                });
+            }
+
+            // 5. Automatic Application Cleanup
+            if (transaction.propertyId && transaction.payerId) {
+                if (!transaction.leaseId) {
+                    // One-time payment / Full purchase
+                    await prisma.application.deleteMany({
+                        where: { propertyId: transaction.propertyId, customerId: transaction.payerId }
+                    });
+                } else {
+                    // Recurring lease completeness check
+                    const currentLease = await prisma.lease.findUnique({
+                        where: { id: transaction.leaseId },
+                        include: { transactions: { where: { status: 'COMPLETED' } } }
+                    });
+                    
+                    if (currentLease && currentLease.totalPrice) {
+                        const totalPaid = currentLease.transactions.reduce((sum, tx) => sum + tx.amount, 0);
+                        if (totalPaid >= currentLease.totalPrice) {
+                            await prisma.application.deleteMany({
+                                where: { propertyId: transaction.propertyId, customerId: transaction.payerId }
+                            });
+                        }
+                    }
+                }
+            }
 
             return res.json({
                 success: true,
@@ -280,6 +311,37 @@ export const verifyWebhook = async (req: Request, res: Response) => {
             }).catch(err => console.error('Webhook email sending failed:', err));
 
             // If it's a lease payment, we might want to update the lease last payment date here
+            
+            if (transaction.propertyId) {
+                const newStatus = transaction.type === 'RENT' ? 'RENTED' : 'SOLD';
+                await prisma.property.update({
+                    where: { id: transaction.propertyId },
+                    data: { status: newStatus }
+                });
+            }
+
+            // Automatic Application Cleanup
+            if (transaction.propertyId && transaction.payerId) {
+                if (!transaction.leaseId) {
+                    await prisma.application.deleteMany({
+                        where: { propertyId: transaction.propertyId, customerId: transaction.payerId }
+                    });
+                } else {
+                    const currentLease = await prisma.lease.findUnique({
+                        where: { id: transaction.leaseId },
+                        include: { transactions: { where: { status: 'COMPLETED' } } }
+                    });
+                    
+                    if (currentLease && currentLease.totalPrice) {
+                        const totalPaid = currentLease.transactions.reduce((sum, tx) => sum + tx.amount, 0);
+                        if (totalPaid >= currentLease.totalPrice) {
+                            await prisma.application.deleteMany({
+                                where: { propertyId: transaction.propertyId, customerId: transaction.payerId }
+                            });
+                        }
+                    }
+                }
+            }
         }
 
         res.sendStatus(200);

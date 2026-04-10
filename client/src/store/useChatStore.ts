@@ -34,12 +34,14 @@ interface ChatState {
     isLoadingMessages: boolean;
     error: string | null;
     socket: Socket | null;
+    activePartnerId: string | null;
+    setActivePartner: (partnerId: string | null) => void;
     fetchConversations: () => Promise<void>;
     fetchMessages: (partnerId: string) => Promise<void>;
     sendMessage: (receiverId: string, content: string) => Promise<ChatMessage | null>;
     initiateChat: (receiverId: string, content?: string) => Promise<string | null>;
     appendMessage: (message: ChatMessage) => void;
-    connectSocket: (token: string) => void;
+    connectSocket: () => void;
     disconnectSocket: () => void;
 }
 
@@ -50,12 +52,38 @@ export const useChatStore = create<ChatState>((set, get) => ({
     isLoadingMessages: false,
     error: null,
     socket: null,
+    activePartnerId: null,
+
+    setActivePartner: (partnerId: string | null) => {
+        set({ activePartnerId: partnerId });
+        // If we switch to someone, immediately clear their unread marks
+        if (partnerId) {
+            set(state => ({
+                conversations: state.conversations.map(c => 
+                    c.partnerId === partnerId ? { ...c, unread: 0 } : c
+                )
+            }));
+        }
+    },
 
     fetchConversations: async () => {
         set({ isLoadingConversations: true, error: null });
         try {
             const response = await api.get(`${API_ROUTES.CHATS}/conversations`);
-            set({ conversations: response.data, isLoadingConversations: false });
+            
+            set(state => {
+                const fetchedConversations = response.data;
+                // Preserve stubs (conversations that exist locally but have no messages and aren't in fetched yet)
+                const localStubs = state.conversations.filter(localC => 
+                    !fetchedConversations.some((fetchedC: any) => fetchedC.partnerId === localC.partnerId) && 
+                    localC.lastMessage === ''
+                );
+
+                const finalConversations = [...localStubs, ...fetchedConversations];
+                finalConversations.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+                return { conversations: finalConversations, isLoadingConversations: false };
+            });
         } catch (error) {
             set({ error: 'Failed to fetch conversations', isLoadingConversations: false });
         }
@@ -144,41 +172,49 @@ export const useChatStore = create<ChatState>((set, get) => ({
     },
 
     appendMessage: (message: ChatMessage) => {
-        set(state => {
-            // Keep conversations array sorted and updated with the newest message
-            const updatedConversations = state.conversations.map(c =>
-                c.partnerId === message.senderId
-                    ? {
-                        ...c,
-                        lastMessage: message.content,
-                        timestamp: message.createdAt,
-                        unread: c.unread + 1 // Increment unread count globally
-                    }
-                    : c
-            );
+        const { activePartnerId, conversations, messages } = get();
+        const isActive = activePartnerId === message.senderId;
 
-            // If we don't have this conversation in the sidebar yet, we should fetch to inject it
-            if (!updatedConversations.some(c => c.partnerId === message.senderId)) {
-                get().fetchConversations();
-            } else {
-                updatedConversations.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-            }
+        // 1. If the user currently has this thread open, quietly tell the backend they've read it!
+        if (isActive) {
+            api.patch(`${API_ROUTES.CHATS}/read/${message.senderId}`).catch(console.error);
+        }
 
-            // If we are currently talking to this person, append to the live chat history
-            // Wait to figure out if it's the active partner in the UI
-            return {
-                messages: [...state.messages, message],
-                conversations: updatedConversations
-            };
+        // 2. Update the sidebar/conversations state
+        const updatedConversations = conversations.map(c =>
+            c.partnerId === message.senderId
+                ? {
+                    ...c,
+                    lastMessage: message.content,
+                    timestamp: message.createdAt,
+                    unread: isActive ? 0 : c.unread + 1
+                }
+                : c
+        );
+
+        // If we don't have this conversation in the sidebar yet, we should fetch to inject it
+        if (!updatedConversations.some(c => c.partnerId === message.senderId)) {
+            get().fetchConversations();
+        } else {
+            updatedConversations.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        }
+
+        // 3. Update the thread: ONLY append if this message belongs to the current open chat
+        // If isActive is true, it means we are talking to the sender.
+        // If isActive is false, it means we are talking to someone else (or no one).
+        const newMessages = isActive ? [...messages, message] : messages;
+
+        set({
+            messages: newMessages,
+            conversations: updatedConversations
         });
     },
 
-    connectSocket: (token: string) => {
+    connectSocket: () => {
         const { socket } = get();
         if (socket) return; // Already connected
 
-        const newSocket = io('http://localhost:5000', {
-            auth: { token },
+        const newSocket = io(process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5000', {
             withCredentials: true
         });
 

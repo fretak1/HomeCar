@@ -57,7 +57,7 @@ export function SearchBar({ onSearch }: SearchBarProps) {
   const handleSearch = () => {
     const params = new URLSearchParams();
 
-    if (location) params.set('location', location);
+    if (location) params.set('city', location.trim());
     if (listingType) params.set('listingType', listingType);
     params.set('searchType', activeTab);
 

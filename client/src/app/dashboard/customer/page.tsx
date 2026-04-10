@@ -23,7 +23,8 @@ import {
     Eye,
     Camera,
     Loader2,
-    X
+    X,
+    User
 } from 'lucide-react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -65,8 +66,17 @@ import { useMaintenanceStore, MaintenanceCategory } from '@/store/useMaintenance
 import { useChatStore } from '@/store/useChatStore';
 import { useFavoriteStore } from '@/store/useFavoriteStore';
 import { useLeaseStore } from '@/store/useLeaseStore';
+import {
+    StatCardsSkeleton,
+    PropertyGridSkeleton,
+    LeaseCardSkeleton,
+    MaintenanceCardSkeleton,
+    ListItemSkeleton,
+    TableRowSkeleton,
+} from '@/components/ui/dashboard-skeletons';
+import { useNotificationStore } from '@/store/useNotificationStore';
 
-import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth, addDays, isWithinInterval } from 'date-fns';
+import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth, addDays, isWithinInterval, isToday, isYesterday, isThisMonth, isThisYear } from 'date-fns';
 
 
 export default function CustomerDashboardPage() {
@@ -76,13 +86,14 @@ export default function CustomerDashboardPage() {
     const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [newRequest, setNewRequest] = useState({
         propertyId: '',
         category: '' as MaintenanceCategory | '',
         description: '',
         images: [] as string[],
     });
-    const [transactionSearch, setTransactionSearch] = useState('');
+    const [transactionDateFilter, setTransactionDateFilter] = useState('all');
     const [transactionStatus, setTransactionStatus] = useState('all');
     const [favoriteFilter, setFavoriteFilter] = useState('all');
 
@@ -99,11 +110,15 @@ export default function CustomerDashboardPage() {
     const applications = rawApplications || [];
     const { favorites: rawFavorites } = useFavoriteStore();
     const favorites = rawFavorites || [];
-    const { leases: rawLeases, fetchLeases, acceptLease, isLoading: isLeaseLoading } = useLeaseStore();
+    const { leases: rawLeases, fetchLeases, acceptLease, requestLeaseCancellation, isLoading: isLeaseLoading } = useLeaseStore();
     const leases = rawLeases || [];
     const { requests: rawRequests, updateRequestStatus, fetchRequests, addRequest, isLoading: isMaintenanceLoading } = useMaintenanceStore();
     const maintenanceRequests = rawRequests || [];
     const { transactions, fetchTransactions, isLoading: isTransactionLoading } = useTransactionStore();
+    const { connectSocket, socket } = useChatStore();
+    const { notifications } = useNotificationStore();
+
+    const isLoading = isUserLoading || isAppLoading || isLeaseLoading || isMaintenanceLoading || isTransactionLoading;
 
     const [expandedSchedules, setExpandedSchedules] = useState<string[]>([]);
 
@@ -114,8 +129,13 @@ export default function CustomerDashboardPage() {
             fetchLeases(currentCustomer.id);
             fetchRequests(currentCustomer.id);
             fetchTransactions();
+            
+            // Real-time socket connection
+            connectSocket();
         }
-    }, [currentCustomer, fetchApplications, fetchProperties, fetchLeases, fetchRequests, fetchTransactions]);
+    }, [currentCustomer, fetchApplications, fetchProperties, fetchLeases, fetchRequests, fetchTransactions, connectSocket]);
+
+
 
     useEffect(() => {
         const tab = searchParams.get('tab');
@@ -157,40 +177,20 @@ export default function CustomerDashboardPage() {
         );
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
 
-        // Check if we already have 4 images
-        if (newRequest.images.length + files.length > 4) {
-            toast.error('You can only upload up to 4 images.');
+        // Check if we already have 2 images
+        if (selectedFiles.length + files.length > 2) {
+            toast.error('Maximum 2 images allowed for maintenance requests.');
             return;
         }
 
-        setIsUploading(true);
-        try {
-            const uploadPromises = Array.from(files).map(async (file) => {
-                const formData = new FormData();
-                formData.append('file', file);
-                const response = await api.post(`${API_ROUTES.UPLOAD}/single`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
-                return response.data.url;
-            });
-
-            const uploadedUrls = await Promise.all(uploadPromises);
-            setNewRequest(prev => ({
-                ...prev,
-                images: [...prev.images, ...uploadedUrls]
-            }));
-            toast.success('Images uploaded successfully');
-        } catch (error) {
-            console.error('Upload failed:', error);
-            toast.error('Failed to upload images');
-        } finally {
-            setIsUploading(false);
-            if (fileInputRef.current) fileInputRef.current.value = '';
-        }
+        const newFiles = Array.from(files);
+        setSelectedFiles(prev => [...prev, ...newFiles]);
+        
+        if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
     const handleCreateMaintenanceRequest = async () => {
@@ -199,24 +199,48 @@ export default function CustomerDashboardPage() {
             return;
         }
 
+        setIsUploading(true);
+        try {
+            // 1. Upload images if any
+            let imageUrls: string[] = [];
+            if (selectedFiles.length > 0) {
+                const uploadPromises = selectedFiles.map(async (file) => {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    const response = await api.post(`${API_ROUTES.UPLOAD}/single`, formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    return response.data.url;
+                });
+                imageUrls = await Promise.all(uploadPromises);
+            }
 
-        const selectedProperty = properties.find(p => p.id === newRequest.propertyId);
-        await addRequest({
-            propertyId: newRequest.propertyId,
-            propertyTitle: selectedProperty?.title || 'Unknown Property',
-            category: newRequest.category,
-            description: newRequest.description,
-            images: newRequest.images,
-        });
-        setIsNewRequestOpen(false);
-        setNewRequest({
-            propertyId: '',
-            category: '' as MaintenanceCategory | '',
-            description: '',
-            images: [],
-        });
-        // Optionally refetch maintenance requests
+            // 2. Submit the request
+            const selectedProperty = properties.find(p => p.id === newRequest.propertyId);
+            await addRequest({
+                propertyId: newRequest.propertyId,
+                propertyTitle: selectedProperty?.title || 'Unknown Property',
+                category: newRequest.category,
+                description: newRequest.description,
+                images: imageUrls,
+            });
 
+            // 3. Success & Reset
+            toast.success("Maintenance request submitted successfully!");
+            setIsNewRequestOpen(false);
+            setNewRequest({
+                propertyId: '',
+                category: '' as MaintenanceCategory | '',
+                description: '',
+                images: [],
+            });
+            setSelectedFiles([]);
+        } catch (error) {
+            console.error('Failed to create maintenance request:', error);
+            toast.error('Failed to submit maintenance request');
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     const handleRentPayment = async (lease: any, monthDate: Date) => {
@@ -293,91 +317,95 @@ export default function CustomerDashboardPage() {
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                        <Card className="border-border">
-                            <CardContent className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground mb-1">Active Leases</p>
-                                        <p className="text-3xl text-foreground font-bold">{leases.filter(l => l.status === 'Active' || l.status === 'ACTIVE').length}</p>
+                    {isLoading ? (
+                        <StatCardsSkeleton count={5} />
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+                            <Card className="border-border">
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground mb-1">Active Leases</p>
+                                            <p className="text-3xl text-foreground font-bold">{leases.filter(l => l.status === 'Active' || l.status === 'ACTIVE').length}</p>
+                                        </div>
+                                        <div className="bg-primary/10 p-3 rounded-lg">
+                                            <FileText className="h-6 w-6 text-primary" />
+                                        </div>
                                     </div>
-                                    <div className="bg-primary/10 p-3 rounded-lg">
-                                        <FileText className="h-6 w-6 text-primary" />
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
 
-                        <Card className="border-border">
-                            <CardContent className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground mb-1">Applications</p>
-                                        <p className="text-3xl text-foreground font-bold">{applications.length}</p>
+                            <Card className="border-border">
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground mb-1">Applications</p>
+                                            <p className="text-3xl text-foreground font-bold">{applications.length}</p>
+                                        </div>
+                                        <div className="bg-purple-100 p-3 rounded-lg">
+                                            <ClipboardList className="h-6 w-6 text-purple-600" />
+                                        </div>
                                     </div>
-                                    <div className="bg-purple-100 p-3 rounded-lg">
-                                        <ClipboardList className="h-6 w-6 text-purple-600" />
+                                    <div className="mt-4 flex items-center text-sm">
+                                        <span className="text-green-500 font-medium">{applications.filter(a => a.status === 'accepted').length} accepted</span>
                                     </div>
-                                </div>
-                                <div className="mt-4 flex items-center text-sm">
-                                    <span className="text-green-500 font-medium">{applications.filter(a => a.status === 'accepted').length} accepted</span>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
 
-                        <Card className="border-border">
-                            <CardContent className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground mb-1">Favorites</p>
-                                        <p className="text-3xl text-foreground font-bold">{favorites.length}</p>
+                            <Card className="border-border">
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground mb-1">Favorites</p>
+                                            <p className="text-3xl text-foreground font-bold">{favorites.length}</p>
+                                        </div>
+                                        <div className="bg-secondary/10 p-3 rounded-lg">
+                                            <Heart className="h-6 w-6 text-secondary" />
+                                        </div>
                                     </div>
-                                    <div className="bg-secondary/10 p-3 rounded-lg">
-                                        <Heart className="h-6 w-6 text-secondary" />
+                                    <div className="mt-4 flex items-center text-sm">
+                                        <span className="text-muted-foreground">Properties & Cars saved</span>
                                     </div>
-                                </div>
-                                <div className="mt-4 flex items-center text-sm">
-                                    <span className="text-muted-foreground">Properties & Cars saved</span>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
 
-                        <Card className="border-border">
-                            <CardContent className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground mb-1">Total Spent</p>
-                                        <p className="text-3xl text-foreground font-bold">
-                                            ETB {transactions
-                                                .filter(t => t.status === 'COMPLETED')
-                                                .reduce((sum, t) => sum + t.amount, 0)
-                                                .toLocaleString()}
-                                        </p>
+                            <Card className="border-border">
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground mb-1">Total Spent</p>
+                                            <p className="text-3xl text-foreground font-bold">
+                                                ETB {transactions
+                                                    .filter(t => t.status === 'COMPLETED')
+                                                    .reduce((sum, t) => sum + t.amount, 0)
+                                                    .toLocaleString()}
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="mt-4 flex items-center text-sm">
-                                    <span className="text-muted-foreground">Lifetime transaction value</span>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                    <div className="mt-4 flex items-center text-sm">
+                                        <span className="text-muted-foreground">Lifetime transaction value</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                        <Card className="border-border">
-                            <CardContent className="p-6">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-muted-foreground mb-1">Maintenance</p>
-                                        <p className="text-3xl text-foreground font-bold">{maintenanceRequests.length}</p>
+                            <Card className="border-border">
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground mb-1">Maintenance</p>
+                                            <p className="text-3xl text-foreground font-bold">{maintenanceRequests.length}</p>
+                                        </div>
+                                        <div className="bg-yellow-100 p-3 rounded-lg">
+                                            <Wrench className="h-6 w-6 text-yellow-600" />
+                                        </div>
                                     </div>
-                                    <div className="bg-yellow-100 p-3 rounded-lg">
-                                        <Wrench className="h-6 w-6 text-yellow-600" />
+                                    <div className="mt-4 flex items-center text-sm">
+                                        <span className="text-yellow-600 font-medium">{maintenanceRequests.filter(r => r.status === 'pending').length} pending</span>
                                     </div>
-                                </div>
-                                <div className="mt-4 flex items-center text-sm">
-                                    <span className="text-yellow-600 font-medium">{maintenanceRequests.filter(r => r.status === 'pending').length} pending</span>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
 
                     <DashboardTabs
                         activeTab={activeTab}
@@ -387,7 +415,7 @@ export default function CustomerDashboardPage() {
                             { value: 'maintenance', label: 'Maintenance' },
                             { value: 'leases', label: 'Leases' },
                             { value: 'transactions', label: 'Transactions' },
-                            { value: 'favorites', label: 'Favorites' },
+                            ...(currentCustomer?.role === 'CUSTOMER' ? [{ value: 'favorites', label: 'Favorites' }] : []),
                         ]}
                     >
 
@@ -414,16 +442,18 @@ export default function CustomerDashboardPage() {
 
                                 <div className="grid grid-cols-1 gap-6">
                                     {isAppLoading ? (
-                                        <div className="text-center py-10 text-muted-foreground">Loading applications...</div>
+                                        <div className="space-y-4">
+                                            {Array.from({ length: 4 }).map((_, i) => <ListItemSkeleton key={i} />)}
+                                        </div>
                                     ) : applications.length > 0 ? (
                                         applications.map((app) => (
-                                            <Card key={app.id} className="border-border hover:shadow-xl transition-all duration-300 overflow-hidden group border-l-4 border-l-[#005a41]">
+                                            <Card key={app.id} className="border-border hover:shadow-xl transition-all duration-300 overflow-hidden group border-l-4 border-l-[#005a41] cursor-pointer" onClick={() => router.push(`/property/${app.propertyId}`)}>
                                                 <CardContent className="p-0">
                                                     <div className="flex flex-col xl:flex-row relative min-h-[160px]">
                                                         {/* Property Image & Basic Info */}
                                                         <div className="flex flex-col sm:flex-row p-6 flex-1 gap-6 border-b xl:border-b-0 border-border">
                                                             <div className="relative w-full sm:w-32 h-32 rounded-xl overflow-hidden shadow-inner flex-shrink-0">
-                                                                <img src={app.propertyImage} alt={app.propertyTitle} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                                <img src={app.propertyImage} alt={app.propertyTitle} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300'; }} />
                                                                 <div className="absolute top-2 left-2">
                                                                     <Badge className="bg-white/90 backdrop-blur-sm text-black text-[10px] uppercase font-bold px-2 py-0.5 border-none shadow-sm capitalize">
                                                                         {app.listingType}
@@ -441,6 +471,10 @@ export default function CustomerDashboardPage() {
                                                                             <Calendar className="h-3 w-3 mr-1.5" />
                                                                             {formatLocation(app.propertyLocation)}
                                                                         </p>
+                                                                        <p className="text-[10px] text-muted-foreground font-medium flex items-center mt-1">
+                                                                            <Clock className="h-3 w-3 mr-1" />
+                                                                            {app.date}
+                                                                        </p>
                                                                     </div>
                                                                     <Badge className={cn(
                                                                         "text-[10px] font-bold uppercase tracking-widest px-3 py-1 border-none shadow-sm",
@@ -454,20 +488,33 @@ export default function CustomerDashboardPage() {
 
                                                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                                                                     <div className="bg-muted/30 p-2.5 rounded-lg border border-border/50">
-                                                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight mb-1">Rent/Price</p>
+                                                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight mb-1">{app.listingType === 'rent' ? 'Rent' : 'Price'}</p>
                                                                         <p className="text-sm font-bold text-foreground">ETB {app.price != null ? app.price.toLocaleString() : 'N/A'}{app.listingType === 'rent' ? '/mo' : ''}</p>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                         </div>
 
-                                                        {/* Absolute positioned Start Chat button - Bottom Right */}
-                                                        {app.status === 'accepted' && (
-                                                            <div className="absolute bottom-4 right-4">
+                                                        {/* Bottom Right Actions */}
+                                                        <div className="absolute bottom-4 right-4 flex gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs h-9 px-4 rounded-lg bg-white/80 backdrop-blur-sm"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    router.push(`/profile/${app.managerId}`);
+                                                                }}
+                                                            >
+                                                                <User className="h-3.5 w-3.5 mr-2" />
+                                                                See Profile
+                                                            </Button>
+                                                            {app.status === 'accepted' && (
                                                                 <Button
                                                                     size="sm"
                                                                     className="bg-[#005a41] hover:bg-[#004a35] text-white shadow-lg shadow-[#005a41]/20 font-bold text-xs h-9 px-5 rounded-lg transition-all hover:scale-105 active:scale-95"
-                                                                    onClick={async () => {
+                                                                    onClick={async (e) => {
+                                                                        e.stopPropagation();
                                                                         await initiateChat(app.managerId);
                                                                         router.push(`/chat?partnerId=${app.managerId}`);
                                                                     }}
@@ -475,8 +522,8 @@ export default function CustomerDashboardPage() {
                                                                     <MessageSquare className="h-3.5 w-3.5 mr-2" />
                                                                     Start Chat
                                                                 </Button>
-                                                            </div>
-                                                        )}
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </CardContent>
                                             </Card>
@@ -530,8 +577,11 @@ export default function CustomerDashboardPage() {
                                                                     />
                                                                     <div>
                                                                         <h3 className="mb-1 text-foreground">{property.title}</h3>
+                                                                        <p className="text-xs font-medium text-primary/80 mb-1">
+                                                                            {property.propertyType || (property.assetType === 'HOME' ? 'Property' : 'Vehicle')}
+                                                                        </p>
                                                                         <p className="text-sm text-muted-foreground mb-2">
-                                                                            {formatLocation(property as any)}
+                                                                            {formatLocation(property.location || property)}
                                                                         </p>
                                                                         <div className="flex items-center space-x-4 text-sm">
                                                                             <div className="flex items-center text-muted-foreground">
@@ -541,9 +591,11 @@ export default function CustomerDashboardPage() {
                                                                             <Badge className={cn(
                                                                                 "border-none",
                                                                                 lease.status === 'ACTIVE' ? "bg-green-100 text-green-700" :
-                                                                                    lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"
+                                                                                    lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" : 
+                                                                                    lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700 font-bold" :
+                                                                                    "bg-gray-100 text-gray-700"
                                                                             )}>
-                                                                                {lease.status}
+                                                                                {lease.status === 'CANCELLATION_PENDING' ? 'CANCELLATION PENDING' : lease.status}
                                                                             </Badge>
                                                                         </div>
                                                                     </div>
@@ -559,6 +611,34 @@ export default function CustomerDashboardPage() {
                                                                                 View Details
                                                                             </Button>
                                                                         </Link>
+                                                                        {(lease.status === 'ACTIVE' || (lease.status === 'CANCELLATION_PENDING' && !lease.customerCancelled)) && (
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                className={cn(
+                                                                                    "rounded-xl font-bold transition-all duration-300 shadow-sm hover:shadow-md active:scale-95",
+                                                                                    lease.status === 'CANCELLATION_PENDING' 
+                                                                                        ? "text-orange-600 border-orange-200 hover:bg-orange-50" 
+                                                                                        : "text-rose-600 border-rose-200 hover:bg-rose-50"
+                                                                                )}
+                                                                                onClick={() => requestLeaseCancellation(lease.id, 'customer')}
+                                                                                disabled={isLoading}
+                                                                            >
+                                                                                <X className="h-3.5 w-3.5 mr-1" />
+                                                                                {lease.status === 'CANCELLATION_PENDING' ? 'Confirm Cancellation' : 'Cancel Lease'}
+                                                                            </Button>
+                                                                        )}
+                                                                        {lease.status === 'CANCELLATION_PENDING' && lease.customerCancelled && (
+                                                                            <Button
+                                                                                variant="outline"
+                                                                                size="sm"
+                                                                                disabled
+                                                                                className="text-amber-600 border-amber-200 bg-amber-50/50 rounded-xl font-bold"
+                                                                            >
+                                                                                <Clock className="h-3.5 w-3.5 mr-1" />
+                                                                                Cancellation Requested
+                                                                            </Button>
+                                                                        )}
                                                                         {lease.status === 'PENDING' && !lease.customerAccepted && (
                                                                             <Button size="sm" onClick={() => acceptLease(lease.id, 'customer')} className="bg-[#005a41] hover:bg-[#004a35] text-white transition-all duration-300 shadow-sm hover:shadow-md active:scale-95">
                                                                                 <CheckCircle className="h-4 w-4 mr-2" />
@@ -669,7 +749,7 @@ export default function CustomerDashboardPage() {
                                                                                                                 <Clock className="h-4 w-4 mr-2" />
                                                                                                                 Pending
                                                                                                             </div>
-                                                                                                        ) : (isCurrentMonth || isMonthPast) ? (
+                                                                                                        ) : (isCurrentMonth || isMonthPast) && (lease.status === 'ACTIVE' || lease.status === 'Active') ? (
                                                                                                             <div className="flex flex-col gap-2 w-full md:w-auto">
                                                                                                                 <Button
                                                                                                                     size="sm"
@@ -744,7 +824,7 @@ export default function CustomerDashboardPage() {
                                                     New Maintenance Request
                                                 </DialogTitle>
                                                 <DialogDescription>
-                                                    Tell us what needs attention and we'll send someone over.
+                                                    Describe the issue
                                                 </DialogDescription>
                                             </DialogHeader>
                                             <div className="space-y-4 pt-4">
@@ -796,7 +876,7 @@ export default function CustomerDashboardPage() {
 
                                                 <div className="space-y-2">
                                                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                                        Add Photos (Max 4)
+                                                        Add Photos (Max 2)
                                                     </Label>
                                                     <div className="flex flex-wrap gap-4">
                                                         <input
@@ -807,17 +887,18 @@ export default function CustomerDashboardPage() {
                                                             multiple
                                                             className="hidden"
                                                         />
-                                                        {newRequest.images.map((img, index) => (
-                                                            <div key={index} className="relative group w-24 h-24 rounded-xl border border-border overflow-hidden shadow-sm">
-                                                                <img src={img} alt={`Preview ${index}`} className="w-full h-full object-cover" />
+                                                        {selectedFiles.map((file, index) => (
+                                                            <div key={index} className="relative group w-24 h-24 rounded-xl border border-border overflow-hidden shadow-sm bg-muted/20">
+                                                                <img 
+                                                                    src={URL.createObjectURL(file)} 
+                                                                    alt={`Preview ${index}`} 
+                                                                    className="w-full h-full object-cover" 
+                                                                />
                                                                 <button
                                                                     type="button"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        setNewRequest(prev => ({
-                                                                            ...prev,
-                                                                            images: prev.images.filter((_, i) => i !== index)
-                                                                        }));
+                                                                        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
                                                                     }}
                                                                     className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                                                                 >
@@ -826,7 +907,7 @@ export default function CustomerDashboardPage() {
                                                             </div>
                                                         ))}
 
-                                                        {newRequest.images.length < 4 && (
+                                                        {selectedFiles.length < 2 && (
                                                             <div
                                                                 onClick={() => fileInputRef.current?.click()}
                                                                 className={cn(
@@ -865,16 +946,19 @@ export default function CustomerDashboardPage() {
                                                     <Button
                                                         variant="outline"
                                                         className="flex-1 rounded-xl font-bold border-border"
-                                                        onClick={() => setIsNewRequestOpen(false)}
+                                                        onClick={() => {
+                                                            setIsNewRequestOpen(false);
+                                                            setSelectedFiles([]);
+                                                        }}
                                                     >
                                                         Cancel
                                                     </Button>
                                                     <Button
                                                         className="flex-3 bg-[#005a41] hover:bg-[#004a35] text-white rounded-xl font-bold px-8"
-                                                        disabled={!newRequest.propertyId || !newRequest.category}
+                                                        disabled={!newRequest.propertyId || !newRequest.category || isUploading}
                                                         onClick={handleCreateMaintenanceRequest}
                                                     >
-                                                        Submit Request
+                                                        {isUploading ? "Uploading..." : "Submit Request"}
                                                     </Button>
                                                 </div>
                                             </div>
@@ -1057,15 +1141,18 @@ export default function CustomerDashboardPage() {
                                                 Transaction History
                                             </CardTitle>
                                             <div className="flex items-center gap-2">
-                                                <div className="relative">
-                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                    <Input
-                                                        placeholder="Search transactions..."
-                                                        className="pl-9 h-9 w-[200px] text-xs border-border"
-                                                        value={transactionSearch}
-                                                        onChange={(e) => setTransactionSearch(e.target.value)}
-                                                    />
-                                                </div>
+                                                <Select value={transactionDateFilter} onValueChange={setTransactionDateFilter}>
+                                                    <SelectTrigger className="h-9 w-[130px] text-xs border-border">
+                                                        <SelectValue placeholder="Date Range" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="border-border">
+                                                        <SelectItem value="all">All Time</SelectItem>
+                                                        <SelectItem value="today">Today</SelectItem>
+                                                        <SelectItem value="yesterday">Yesterday</SelectItem>
+                                                        <SelectItem value="this-month">This Month</SelectItem>
+                                                        <SelectItem value="this-year">This Year</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                                 <Select value={transactionStatus} onValueChange={setTransactionStatus}>
                                                     <SelectTrigger className="h-9 w-[130px] text-xs border-border">
                                                         <SelectValue placeholder="Status" />
@@ -1090,20 +1177,27 @@ export default function CustomerDashboardPage() {
                                                         <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Date</th>
                                                         <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Amount</th>
                                                         <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Status</th>
+                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-border/50">
                                                     {(() => {
                                                         const filteredTransactions = transactions.filter(t => {
-                                                            const searchTerm = transactionSearch.toLowerCase();
-                                                            const matchesSearch =
-                                                                (t.property?.title || '').toLowerCase().includes(searchTerm) ||
-                                                                (t.metadata?.month || '').toLowerCase().includes(searchTerm) ||
-                                                                (t.chapaReference || '').toLowerCase().includes(searchTerm) ||
-                                                                (t.type || '').toLowerCase().includes(searchTerm);
+                                                            const tDate = new Date(t.createdAt);
+                                                            
+                                                            let matchesDate = true;
+                                                            if (transactionDateFilter === 'today') {
+                                                                matchesDate = isToday(tDate);
+                                                            } else if (transactionDateFilter === 'yesterday') {
+                                                                matchesDate = isYesterday(tDate);
+                                                            } else if (transactionDateFilter === 'this-month') {
+                                                                matchesDate = isThisMonth(tDate);
+                                                            } else if (transactionDateFilter === 'this-year') {
+                                                                matchesDate = isThisYear(tDate);
+                                                            }
 
                                                             const matchesStatus = transactionStatus === 'all' || t.status === transactionStatus.toUpperCase();
-                                                            return matchesSearch && matchesStatus;
+                                                            return matchesDate && matchesStatus;
                                                         });
 
                                                         if (filteredTransactions.length === 0) {
@@ -1158,6 +1252,18 @@ export default function CustomerDashboardPage() {
                                                                     }>
                                                                         {transaction.status}
                                                                     </Badge>
+                                                                </td>
+                                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <Link href={`/dashboard/customer/documents/receipt/${transaction.id}`}>
+                                                                        <Button 
+                                                                            variant="outline" 
+                                                                            size="sm" 
+                                                                            className="h-8 px-3 rounded-lg border-border hover:bg-[#005a41]/5 hover:text-[#005a41] group/btn transition-colors"
+                                                                        >
+                                                                            <FileText className="h-3.5 w-3.5 mr-1.5 opacity-60 group-hover/btn:opacity-100" />
+                                                                            View Receipt
+                                                                        </Button>
+                                                                    </Link>
                                                                 </td>
                                                             </tr>
                                                         ));

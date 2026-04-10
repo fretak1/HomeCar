@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
@@ -23,22 +23,28 @@ import { cn, formatLocation, getListingMainImage } from '@/lib/utils';
 import { useLeaseStore } from '@/store/useLeaseStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useChatStore } from '@/store/useChatStore';
-import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth, addDays, isWithinInterval } from 'date-fns';
+import { useTransactionStore } from '@/store/useTransactionStore';
+import { format, differenceInDays, isBefore, isWithinInterval, addDays } from 'date-fns';
 
 export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const searchParams = useSearchParams();
     const isFromAdmin = searchParams.get('source') === 'admin';
 
-    // Fetch lease correctly
-    const { leases } = useLeaseStore();
+    const { leases, requestLeaseCancellation, isLoading } = useLeaseStore();
     const { properties } = usePropertyStore();
     const router = useRouter();
     const { initiateChat } = useChatStore();
+    const { transactions, fetchTransactions } = useTransactionStore();
+
+    useEffect(() => {
+        if (transactions.length === 0) {
+            fetchTransactions();
+        }
+    }, [fetchTransactions, transactions.length]);
 
     const lease = leases.find(l => l.id === id);
     const property = lease ? (lease.property || properties.find(p => p.id === lease.propertyId)) : null;
-
 
     const tenantName = lease ? (lease as any).customer?.name || "Unknown Tenant" : "Unknown Tenant";
 
@@ -83,14 +89,40 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                             <div>
                                 <h1 className="text-xl font-bold text-foreground">Lease Management</h1>
                                 <p className="text-xs text-muted-foreground font-medium flex items-center">
-                                    ID: LEASE-{lease.property?.id.toUpperCase()}-2026
+                                    ID: LEASE-{lease.id.substring(0, 12).toUpperCase()}-2026
                                 </p>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-3 py-1 text-[10px] font-bold uppercase tracking-widest">
-                                Active Agreement
+                            <Badge className={cn(
+                                "border-none px-3 py-1 text-[10px] font-bold uppercase tracking-widest hover:bg-transparent",
+                                lease.status === 'ACTIVE' ? "bg-green-100 text-green-700" :
+                                    lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" :
+                                        lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700 font-black ring-1 ring-orange-200" :
+                                        lease.status === 'COMPLETED' ? "bg-blue-100 text-blue-700" : 
+                                        "bg-red-100 text-red-700"
+                            )}>
+                                {lease.status === 'ACTIVE' ? 'Active Agreement' : 
+                                 lease.status === 'PENDING' ? 'Agreement Pending' : 
+                                 lease.status === 'CANCELLATION_PENDING' ? 'Cancellation Pending...' :
+                                 lease.status}
                             </Badge>
+                            {(lease.status === 'ACTIVE' || (lease.status === 'CANCELLATION_PENDING' && !lease.ownerCancelled)) && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className={cn(
+                                        "h-7 text-[10px] font-bold uppercase tracking-widest transition-all duration-300",
+                                        lease.status === 'CANCELLATION_PENDING' 
+                                            ? "text-orange-600 border-orange-200 hover:bg-orange-50 font-black ring-1 ring-orange-200" 
+                                            : "text-rose-600 border-rose-200 hover:bg-rose-50"
+                                    )}
+                                    onClick={() => requestLeaseCancellation(lease.id, 'owner')}
+                                    disabled={isLoading}
+                                >
+                                    {lease.status === 'CANCELLATION_PENDING' ? 'Confirm Cancellation' : 'Cancel Lease'}
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -116,12 +148,12 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                             <h2 className="text-3xl font-black text-white">{property.title}</h2>
                                             <p className="text-white/80 flex items-center text-sm font-medium">
                                                 <MapPin className="h-4 w-4 mr-2 text-primary" />
-                                                {formatLocation(property as any)}
+                                                {formatLocation(property.location || (property as any).location)}
                                             </p>
                                         </div>
                                         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 text-white min-w-[140px]">
                                             <p className="text-[10px] uppercase font-bold text-white/60 tracking-widest mb-1">Monthly Income</p>
-                                            <p className="text-2xl font-black">ETB {(lease.recurringAmount || lease.property?.price || 0).toLocaleString()}</p>
+                                            <p className="text-2xl font-black">ETB {(lease.recurringAmount || property.price || 0).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -131,8 +163,8 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                     <div className="space-y-1">
                                         <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Property Type</p>
                                         <p className="font-bold text-foreground capitalize flex items-center">
-                                            {lease.property?.assetType === 'HOME' || lease.property?.assetType === 'CAR' ? <Home className="h-3.5 w-3.5 mr-2 text-[#005a41]" /> : <ShieldCheck className="h-3.5 w-3.5 mr-2 text-[#005a41]" />}
-                                            {/* {lease.property.assetType || lease.property.assetType} */}
+                                            {property.assetType === 'HOME' ? <Home className="h-3.5 w-3.5 mr-2 text-[#005a41]" /> : <ShieldCheck className="h-3.5 w-3.5 mr-2 text-[#005a41]" />}
+                                            {property.propertyType || (property.assetType === 'HOME' ? 'Home' : 'Vehicle')}
                                         </p>
                                     </div>
                                     <div className="space-y-1">
@@ -174,8 +206,7 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                                         const start = new Date(lease.startDate);
                                                         const end = new Date(lease.endDate);
                                                         const days = differenceInDays(end, start);
-                                                        const months = Math.floor(days / 30);
-                                                        return `${months} MONTH${months !== 1 ? 'S' : ''} (${days} DAYS)`;
+                                                        return `${Math.floor(days / 30)} MONTHS (${days} DAYS)`;
                                                     })()}
                                                 </Badge>
                                             </div>
@@ -186,7 +217,7 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                                     <div className="flex justify-between items-end mb-2">
                                                         <div className="space-y-1">
                                                             <p className="text-[10px] uppercase font-bold text-muted-foreground">Term Progress</p>
-                                                            <p className="text-2xl font-black text-foreground">{leaseProgressValue.toFixed(0)}% <span className="text-sm font-medium text-muted-foreground">Collected</span></p>
+                                                            <p className="text-2xl font-black text-foreground">{leaseProgressValue.toFixed(0)}% <span className="text-sm font-medium text-muted-foreground">Elapsed</span></p>
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="text-[10px] uppercase font-bold text-muted-foreground">Remaining</p>
@@ -206,7 +237,7 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
 
                                     {/* Detailed Payment History */}
                                     <Card className="border-border shadow-md">
-                                        <CardHeader className="border-b border-border bg-muted/5 flex flex-row items-center justify-between">
+                                        <CardHeader className="border-b border-border bg-muted/5">
                                             <CardTitle className="text-lg font-bold flex items-center gap-2">
                                                 <DollarSign className="h-5 w-5 text-[#005a41]" />
                                                 Revenue Collection Record
@@ -228,6 +259,13 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                                         {Array.from({ length: totalMonths }).map((_, i) => {
                                                             const periodStart = addDays(startDate, i * 30);
                                                             const periodEnd = addDays(periodStart, 30);
+                                                            const monthKey = format(periodStart, 'MMM-yyyy');
+                                                            const paymentRecord = transactions.find(t => 
+                                                                t.leaseId === lease.id && 
+                                                                t.status === 'COMPLETED' && 
+                                                                (t.metadata as any)?.month === monthKey
+                                                            );
+                                                            const isPaid = !!paymentRecord;
                                                             const isMonthPast = isBefore(periodEnd, new Date());
                                                             const isCurrentMonth = isWithinInterval(new Date(), { start: periodStart, end: periodEnd });
 
@@ -235,28 +273,26 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                                                 <tr key={i} className={cn("hover:bg-muted/10 transition-colors", isCurrentMonth ? "bg-[#005a41]/5" : "")}>
                                                                     <td className="px-6 py-4">
                                                                         <p className="text-sm font-bold text-foreground">{format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd, yyyy')}</p>
-                                                                        <p className="text-[10px] text-muted-foreground">Fixed 30-Day Billing Cycle</p>
                                                                     </td>
                                                                     <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
-                                                                        {format(periodEnd, 'MMM dd, yyyy')}
+                                                                        {isPaid ? format(new Date(paymentRecord.updatedAt), 'MMM dd, yyyy') : '—'}
                                                                     </td>
                                                                     <td className="px-6 py-4 text-sm font-black text-foreground">ETB {(lease.recurringAmount || property.price).toLocaleString()}</td>
                                                                     <td className="px-6 py-4">
-                                                                        {isMonthPast ? (
-                                                                            <Badge className="bg-green-50 text-green-700 border-green-100 px-2 py-0.5 text-[8px] font-bold">RECEIVED</Badge>
+                                                                        {isPaid ? (
+                                                                            <Badge className="bg-green-100 text-green-700 border-none px-2 py-0.5 text-[8px] font-bold">RECEIVED</Badge>
+                                                                        ) : isMonthPast ? (
+                                                                            <Badge className="bg-red-50 text-red-700 border-red-100 px-2 py-0.5 text-[8px] font-bold">OVERDUE</Badge>
                                                                         ) : isCurrentMonth ? (
                                                                             <Badge className="bg-[#005a41] text-white border-none px-2 py-0.5 text-[8px] font-bold animate-pulse">UPCOMING</Badge>
                                                                         ) : (
                                                                             <Badge variant="outline" className="text-[8px] font-bold opacity-50">PENDING</Badge>
                                                                         )}
                                                                     </td>
-                                                                    <td className="px-6 py-4 text-right">
-                                                                        {isMonthPast ? (
-                                                                            <Link href={`/dashboard/owner/documents/receipt/t${i + 1}`} target="_blank">
-                                                                                <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold text-[#005a41] border-[#005a41]/20 hover:bg-[#005a41] hover:text-white transition-all duration-300 gap-1.5 px-3 rounded-lg">
-                                                                                    <FileText className="h-3 w-3" />
-                                                                                    Receipt
-                                                                                </Button>
+                                                                    <td className="px-6 py-4">
+                                                                        {isPaid ? (
+                                                                            <Link href={`/dashboard/customer/documents/receipt/${paymentRecord.id}`}>
+                                                                                <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold text-primary border-primary hover:bg-primary hover:text-white uppercase transition-colors">View Record</Button>
                                                                             </Link>
                                                                         ) : (
                                                                             <span className="text-[10px] text-muted-foreground font-bold">—</span>
@@ -294,45 +330,25 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-foreground">{tenantName}</h4>
-                                        <p className="text-xs text-muted-foreground">Tenant since Jan 2026</p>
+                                        <p className="text-xs text-muted-foreground">Certified HomeCar Tenant</p>
                                     </div>
                                 </div>
                                 <div className="space-y-4">
-                                    {isFromAdmin ? (
-                                        <Link href={`/dashboard/admin/users/${(property as any).ownerId || 'o1'}`}>
-                                            <Button className="w-full bg-[#005a41] hover:bg-[#004a35] text-white font-bold h-11 mb-2 rounded-xl">
-                                                <ShieldCheck className="h-4 w-4 mr-2" />
-                                                View Owner Profile
-                                            </Button>
-                                        </Link>
-                                    ) : (
-                                        <Button
-                                            onClick={handleMessageTenant}
-                                            className="w-full bg-[#005a41] hover:bg-[#004a35] text-white font-bold h-11 rounded-xl"
-                                        >
-                                            <MessageSquare className="h-4 w-4 mr-2" />
-                                            Message Tenant
+                                    <Button
+                                        onClick={handleMessageTenant}
+                                        className="w-full bg-[#005a41] hover:bg-[#004a35] text-white font-bold h-11 rounded-xl shadow-md active:scale-95 transition-all"
+                                    >
+                                        <MessageSquare className="h-4 w-4 mr-2" />
+                                        Message Tenant
+                                    </Button>
+                                    <Link href={`/profile/${lease.customerId}`} className="w-full block">
+                                        <Button variant="outline" className="w-full text-foreground font-bold h-11 border-border rounded-xl">
+                                            View Tenant Profile
                                         </Button>
-                                    )}
-                                    {isFromAdmin ? (
-                                        <Link href={`/dashboard/admin/users/${lease.customerId}`}>
-                                            <Button variant="outline" className="w-full text-muted-foreground hover:text-foreground font-bold h-11 rounded-xl border-border">
-                                                View Tenant Profile
-                                            </Button>
-                                        </Link>
-                                    ) : (
-                                        <Link href={`/dashboard/admin/users/${lease.customerId}`} className="w-full">
-                                            <Button variant="outline" className="w-full text-muted-foreground hover:text-foreground font-bold h-11 rounded-xl border-border">
-                                                View Tenant Profile
-                                            </Button>
-                                        </Link>
-                                    )}
+                                    </Link>
                                 </div>
                             </CardContent>
                         </Card>
-
-
-
                     </div>
                 </div>
             </div>

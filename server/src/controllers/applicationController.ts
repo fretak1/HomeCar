@@ -36,7 +36,9 @@ export const getApplications = async (req: Request, res: Response) => {
                     select: {
                         id: true,
                         name: true,
-                        email: true
+                        email: true,
+                        profileImage: true,
+                        chapaSubaccountId: true
                     }
                 }
             },
@@ -50,6 +52,7 @@ export const getApplications = async (req: Request, res: Response) => {
             propertyTitle: app.property.title,
             propertyImage: app.property.images.find(img => img.isMain)?.url || app.property.images[0]?.url,
             propertyLocation: app.property.location ? `${app.property.location.city}, ${app.property.location.subcity}` : 'Unknown',
+            assetType: app.property.assetType,
             status: app.status,
             message: app.message,
             date: app.createdAt.toLocaleDateString(),
@@ -81,6 +84,17 @@ export const addApplication = async (req: Request, res: Response) => {
 
         if (!property) {
             return res.status(404).json({ error: 'Property not found' });
+        }
+
+        const existingApplication = await prisma.application.findFirst({
+            where: {
+                propertyId,
+                customerId
+            }
+        });
+
+        if (existingApplication) {
+            return res.status(409).json({ error: 'You already have an application for this listing' });
         }
 
         const application = await prisma.application.create({

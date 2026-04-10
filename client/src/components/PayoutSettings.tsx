@@ -14,6 +14,7 @@ import {
     SelectValue
 } from '@/components/ui/select';
 import { Building2, Save, CreditCard, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 export default function PayoutSettings() {
@@ -24,12 +25,21 @@ export default function PayoutSettings() {
     const [accountNumber, setAccountNumber] = useState(currentUser?.payoutAccountNumber || '');
     const [accountName, setAccountName] = useState(currentUser?.payoutAccountName || '');
     const [businessName, setBusinessName] = useState(currentUser?.name || '');
+    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => {
         fetchBanks();
     }, [fetchBanks]);
 
-    console.log(banks, "banks");
+    // Handle re-syncing state if currentUser updates
+    useEffect(() => {
+        if (currentUser && !isEditing) {
+            setBankCode(currentUser.payoutBankCode || '');
+            setAccountNumber(currentUser.payoutAccountNumber || '');
+            setAccountName(currentUser.payoutAccountName || '');
+            setBusinessName(currentUser.name || '');
+        }
+    }, [currentUser, isEditing]);
 
     const handleSave = async () => {
         if (!currentUser?.id) return;
@@ -47,114 +57,182 @@ export default function PayoutSettings() {
                 businessName,
             });
             toast.success('Payout details saved and verified with Chapa!');
+            setIsEditing(false); // Switch back to view mode after saving
         } catch (err) {
             toast.error('Failed to save payout details. Please check your bank information.');
         }
     };
 
     const isLinked = !!currentUser?.chapaSubaccountId;
+    const isBanksLoading = isLoading && banks.length === 0;
+    const currentBank = banks.find(b => String(b.id) === String(currentUser?.payoutBankCode) || b.code === currentUser?.payoutBankCode);
 
     return (
-        <Card className="border-border">
-            <CardHeader>
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                        <CreditCard className="h-5 w-5" />
+        <Card className="border-border overflow-hidden shadow-sm">
+            <CardHeader className="bg-muted/5 border-b border-border/50">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-[#005a41]/10 rounded-xl text-[#005a41]">
+                            <CreditCard className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-xl font-black tracking-tighter">Payout Settings</CardTitle>
+                            <CardDescription className="text-xs font-medium">Configure where you want to receive your earnings</CardDescription>
+                        </div>
                     </div>
-                    <div>
-                        <CardTitle className="text-xl font-bold">Payout Settings</CardTitle>
-                        <CardDescription>Configure where you want to receive your payments</CardDescription>
-                    </div>
+                    {isLinked && !isEditing && (
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setIsEditing(true)}
+                            className="text-[10px] font-black uppercase tracking-widest border-border hover:bg-muted rounded-xl h-8 px-4"
+                        >
+                            Update Account
+                        </Button>
+                    )}
+                    {isEditing && (
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setIsEditing(false)}
+                            className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:bg-transparent hover:text-foreground h-8"
+                        >
+                            Cancel
+                        </Button>
+                    )}
                 </div>
             </CardHeader>
-            <CardContent className="space-y-6">
-                {isLinked ? (
-                    <div className="p-4 bg-green-50 border border-green-100 rounded-xl flex items-center gap-3 text-green-700">
-                        <CheckCircle2 className="h-5 w-5 shrink-0" />
-                        <div className="text-sm">
-                            <p className="font-bold">Bank Account Linked</p>
-                            <p className="opacity-90 leading-tight">Your account is ready to receive direct payments. Commission set to 0%.</p>
+            <CardContent className="p-6 space-y-8">
+                {isLinked && !isEditing ? (
+                    <div className="space-y-6">
+                        <div className="p-5 bg-green-50/50 border border-green-100 rounded-2xl flex items-start gap-4">
+                            <div className="p-3 bg-green-100 rounded-full text-green-600">
+                                <CheckCircle2 className="h-6 w-6" />
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-lg font-black text-green-900 leading-none">Account Linked & Verified</p>
+                                <p className="text-sm text-green-800 font-medium opacity-80">Your funds will be automatically settled to this account.</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="p-4 rounded-2xl border border-border bg-muted/5 space-y-1">
+                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Receiving Bank</p>
+                                <div className="flex items-center gap-2">
+                                    <Building2 className="h-4 w-4 text-[#005a41]" />
+                                    <p className="font-bold text-foreground">
+                                        {isBanksLoading ? (
+                                            <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Loading bank info...</span>
+                                        ) : (
+                                            currentBank?.name || 'Unknown Bank'
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="p-4 rounded-2xl border border-border bg-muted/5 space-y-1">
+                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Account Holder</p>
+                                <p className="font-bold text-foreground">{currentUser?.payoutAccountName}</p>
+                            </div>
+                            <div className="p-4 rounded-2xl border border-border bg-muted/5 space-y-1">
+                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Account Number</p>
+                                <p className="font-mono font-black text-lg text-foreground">
+                                    {currentUser?.payoutAccountNumber}
+                                </p>
+                            </div>
+                            <div className="p-4 rounded-2xl border border-border bg-muted/5 space-y-1">
+                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Settlement Type</p>
+                                <Badge className="bg-[#005a41]/10 text-[#005a41] border-none text-[10px] uppercase font-black tracking-widest px-2 py-0">Direct Deposit</Badge>
+                            </div>
                         </div>
                     </div>
                 ) : (
-                    <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-3 text-amber-700">
-                        <AlertCircle className="h-5 w-5 shrink-0" />
-                        <div className="text-sm">
-                            <p className="font-bold">Attention Needed</p>
-                            <p className="opacity-90 leading-tight">Please link your bank account to start receiving payments for your properties.</p>
+                    <div className="space-y-6">
+                        {!isLinked && (
+                            <div className="p-5 bg-amber-50/50 border border-amber-100 rounded-2xl flex items-start gap-4">
+                                <div className="p-3 bg-amber-100 rounded-full text-amber-600">
+                                    <AlertCircle className="h-6 w-6" />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-lg font-black text-amber-900 leading-none">Setup Payout Method</p>
+                                    <p className="text-sm text-amber-800 font-medium opacity-80">Link your bank account to start receiving direct payments from HomeCar.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Select Bank</label>
+                                <Select value={bankCode} onValueChange={setBankCode}>
+                                    <SelectTrigger className="rounded-xl border-border h-12 bg-muted/5 font-bold focus:ring-2 focus:ring-[#005a41]/20">
+                                        <SelectValue placeholder="Choose a bank..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-border">
+                                        {banks.map((bank) => (
+                                            <SelectItem key={bank.id} value={bank.id} className="font-medium">
+                                                {bank.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Account Holder Name</label>
+                                <Input
+                                    placeholder="Full name as it appears on bank"
+                                    value={accountName}
+                                    onChange={(e) => setAccountName(e.target.value)}
+                                    className="rounded-xl border-border h-12 bg-muted/5 font-bold focus:ring-2 focus:ring-[#005a41]/20"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Account Number</label>
+                                <Input
+                                    placeholder="Enter your account number"
+                                    value={accountNumber}
+                                    onChange={(e) => setAccountNumber(e.target.value)}
+                                    className="rounded-xl border-border h-12 bg-muted/5 font-black tracking-widest focus:ring-2 focus:ring-[#005a41]/20"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest ml-1">Business Reference (Optional)</label>
+                                <Input
+                                    placeholder="Business or personality name"
+                                    value={businessName}
+                                    onChange={(e) => setBusinessName(e.target.value)}
+                                    className="rounded-xl border-border h-12 bg-muted/5 font-bold focus:ring-2 focus:ring-[#005a41]/20"
+                                />
+                            </div>
                         </div>
+
+                        {error && (
+                            <div className="flex items-center gap-2 p-3 bg-red-50 text-red-600 rounded-xl border border-red-100 italic font-medium text-xs">
+                                <AlertCircle className="h-4 w-4" />
+                                {error}
+                            </div>
+                        )}
+
+                        <Button
+                            onClick={handleSave}
+                            disabled={isLoading}
+                            className="w-full md:w-auto px-10 bg-[#005a41] hover:bg-[#004a35] text-white font-black h-12 rounded-xl shadow-xl shadow-[#005a41]/10 transition-all active:scale-95 uppercase tracking-widest text-xs"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Verifying with Chapa...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="mr-2 h-4 w-4" />
+                                    {isLinked ? 'Update Payout Details' : 'Verify & Setup Account'}
+                                </>
+                            )}
+                        </Button>
                     </div>
                 )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Select Bank</label>
-                        <Select value={bankCode} onValueChange={setBankCode}>
-                            <SelectTrigger className="rounded-xl border-border h-11 bg-white">
-                                <SelectValue placeholder="Choose a bank..." />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border">
-                                {banks.map((bank) => (
-                                    <SelectItem key={bank.id} value={bank.id}>
-                                        {bank.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Account Name</label>
-                        <Input
-                            placeholder="Full name as it appears on bank"
-                            value={accountName}
-                            onChange={(e) => setAccountName(e.target.value)}
-                            className="rounded-xl border-border h-11 bg-white"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Account Number</label>
-                        <Input
-                            placeholder="Enter your account number"
-                            value={accountNumber}
-                            onChange={(e) => setAccountNumber(e.target.value)}
-                            className="rounded-xl border-border h-11 bg-white"
-                        />
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Business Name (Optional)</label>
-                        <Input
-                            placeholder="Your business or personal name"
-                            value={businessName}
-                            onChange={(e) => setBusinessName(e.target.value)}
-                            className="rounded-xl border-border h-11 bg-white"
-                        />
-                    </div>
-                </div>
-
-                {error && (
-                    <p className="text-xs text-rose-500 font-medium">{error}</p>
-                )}
-
-                <Button
-                    onClick={handleSave}
-                    disabled={isLoading}
-                    className="w-full md:w-auto px-8 bg-primary hover:bg-primary/90 text-white font-bold h-11 rounded-xl shadow-lg transition-all active:scale-95"
-                >
-                    {isLoading ? (
-                        <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Verifying...
-                        </>
-                    ) : (
-                        <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Save Payout Details
-                        </>
-                    )}
-                </Button>
             </CardContent>
         </Card>
     );

@@ -2,6 +2,12 @@ import { Request, Response } from 'express';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import prisma from '../lib/prisma.js';
 import { format } from 'date-fns';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const downloadReceipt = async (req: any, res: Response) => {
     try {
@@ -12,7 +18,7 @@ export const downloadReceipt = async (req: any, res: Response) => {
             where: { id },
             include: {
                 payer: {
-                    select: { id: true, name: true, email: true }
+                    select: { id: true, name: true, email: true, phoneNumber: true }
                 },
                 payee: {
                     select: { id: true, name: true, email: true }
@@ -33,12 +39,14 @@ export const downloadReceipt = async (req: any, res: Response) => {
         });
 
         if (!transaction) {
-            return res.status(404).json({ error: 'Transaction not found' });
+            console.warn(`[ReceiptGen] Transaction ${id} not found in database.`);
+            return res.status(404).json({ error: 'Transaction record not found' });
         }
 
         // Security check: Only payer, payee or admin can download
         if (req.user.role !== 'ADMIN' && transaction.payerId !== userId && transaction.payeeId !== userId) {
-            return res.status(403).json({ error: 'Access denied' });
+            console.warn(`[ReceiptGen] Access denied for user ${userId} on transaction ${id}. User Role: ${req.user.role}`);
+            return res.status(403).json({ error: 'You do not have permission to download this receipt' });
         }
 
         // Create PDF
@@ -61,33 +69,39 @@ export const downloadReceipt = async (req: any, res: Response) => {
         const pendingText = rgb(0.7, 0.4, 0.08); // amber-700
 
         // Header Section
-        // Draw Logo Background
-        const boxX = 50;
-        const boxY = height - 100;
-        page.drawRectangle({
-            x: boxX,
-            y: boxY,
-            width: 44,
-            height: 44,
-            color: primaryColor,
-        });
-
-        // Building Icon drawing (Approximating Building2 icon)
-        // Main tower
-        page.drawRectangle({ x: boxX + 14, y: boxY + 8, width: 16, height: 26, color: rgb(1, 1, 1) });
-        // Side wing left
-        page.drawRectangle({ x: boxX + 6, y: boxY + 8, width: 6, height: 16, color: rgb(1, 1, 1) });
-        // Side wing right
-        page.drawRectangle({ x: boxX + 32, y: boxY + 8, width: 6, height: 12, color: rgb(1, 1, 1) });
-
-        // Windows and doors (colored primary to "cut out" the white)
-        // Door
-        page.drawRectangle({ x: boxX + 19, y: boxY + 8, width: 6, height: 8, color: primaryColor });
-        // Main tower windows
-        page.drawRectangle({ x: boxX + 17, y: boxY + 20, width: 3, height: 3, color: primaryColor });
-        page.drawRectangle({ x: boxX + 24, y: boxY + 20, width: 3, height: 3, color: primaryColor });
-        page.drawRectangle({ x: boxX + 17, y: boxY + 26, width: 3, height: 3, color: primaryColor });
-        page.drawRectangle({ x: boxX + 24, y: boxY + 26, width: 3, height: 3, color: primaryColor });
+        // Draw Logo from public directory
+        try {
+            const logoPath = path.resolve(__dirname, '../../../client/public/homecar.png');
+            if (fs.existsSync(logoPath)) {
+                const logoBytes = fs.readFileSync(logoPath);
+                const logoImage = await pdfDoc.embedPng(logoBytes);
+                
+                page.drawImage(logoImage, {
+                    x: 50,
+                    y: height - 110,
+                    width: 60,
+                    height: 60,
+                });
+            } else {
+                // Fallback to rectangle if logo not found
+                page.drawRectangle({
+                    x: 50,
+                    y: height - 100,
+                    width: 44,
+                    height: 44,
+                    color: primaryColor,
+                });
+            }
+        } catch (logoError) {
+            console.error('Error embedding logo:', logoError);
+            page.drawRectangle({
+                x: 50,
+                y: height - 100,
+                width: 44,
+                height: 44,
+                color: primaryColor,
+            });
+        }
 
         page.drawText('HomeCar', {
             x: 105,
@@ -158,7 +172,11 @@ export const downloadReceipt = async (req: any, res: Response) => {
 
         const contactY = billToY - 45;
         page.drawText(transaction.payer?.email || 'N/A', { x: 50, y: contactY, size: 10, font: regularFont, color: mutedForeground });
-        page.drawText(`Unit: ${transaction.property?.title || 'Unknown Property'}`, { x: 50, y: contactY - 18, size: 10, font: boldFont, color: foregroundColor });
+        if (transaction.payer?.phoneNumber) {
+            page.drawText(transaction.payer.phoneNumber, { x: 50, y: contactY - 15, size: 10, font: regularFont, color: mutedForeground });
+        }
+        const locationText = `Location: ${transaction.property?.location?.city || transaction.property?.title || 'Unknown'}`;
+        page.drawText(locationText, { x: 50, y: contactY - (transaction.payer?.phoneNumber ? 33 : 18), size: 10, font: boldFont, color: foregroundColor });
 
         // Payment Info section
         page.drawText('PAYMENT INFO', { x: rightLabelX, y: billToY, size: 8, font: boldFont, color: mutedForeground });
@@ -255,13 +273,285 @@ export const downloadReceipt = async (req: any, res: Response) => {
         });
 
         const pdfBytes = await pdfDoc.save();
+        const base64 = Buffer.from(pdfBytes).toString('base64');
+        const dataUri = `data:application/pdf;base64,${base64}`;
 
-        res.contentType('application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="Receipt-${transaction.chapaReference || transaction.id}.pdf"`);
-        res.send(Buffer.from(pdfBytes));
+        res.json({ dataUri });
 
     } catch (error: any) {
         console.error('PDF Generation Error:', error);
         res.status(500).json({ error: 'Failed to generate PDF' });
+    }
+};
+
+export const downloadLeaseContract = async (req: any, res: Response) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.id;
+        const role = req.user?.role?.toUpperCase?.() || '';
+
+        const lease = await prisma.lease.findUnique({
+            where: { id },
+            include: {
+                owner: {
+                    select: { id: true, name: true, email: true, phoneNumber: true }
+                },
+                customer: {
+                    select: { id: true, name: true, email: true, phoneNumber: true }
+                },
+                property: {
+                    select: {
+                        id: true,
+                        title: true,
+                        assetType: true,
+                        listedById: true,
+                        location: {
+                            select: {
+                                city: true,
+                                subcity: true,
+                                region: true,
+                                village: true
+                            }
+                        }
+                    }
+                },
+                transactions: {
+                    where: { status: 'COMPLETED' },
+                    orderBy: { createdAt: 'desc' },
+                    take: 5
+                }
+            }
+        });
+
+        if (!lease) {
+            return res.status(404).json({ error: 'Lease not found' });
+        }
+
+        const canAccess =
+            role === 'ADMIN' ||
+            lease.ownerId === userId ||
+            lease.customerId === userId ||
+            lease.property.listedById === userId;
+
+        if (!canAccess) {
+            return res.status(403).json({ error: 'You do not have permission to view this agreement' });
+        }
+
+        const pdfDoc = await PDFDocument.create();
+        const page = pdfDoc.addPage([595.28, 841.89]);
+        const { width, height } = page.getSize();
+
+        const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const regularFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+        const primaryColor = rgb(0, 0.353, 0.255);
+        const foregroundColor = rgb(0.1, 0.1, 0.1);
+        const mutedForeground = rgb(0.45, 0.45, 0.45);
+        const borderColor = rgb(0.88, 0.88, 0.88);
+        const sectionBg = rgb(0.96, 0.98, 0.97);
+
+        const drawLabelValue = (label: string, value: string, x: number, y: number) => {
+            page.drawText(label.toUpperCase(), {
+                x,
+                y,
+                size: 8,
+                font: boldFont,
+                color: mutedForeground
+            });
+            page.drawText(value, {
+                x,
+                y: y - 15,
+                size: 11,
+                font: regularFont,
+                color: foregroundColor
+            });
+        };
+
+        page.drawText('HomeCar Lease Agreement', {
+            x: 50,
+            y: height - 70,
+            size: 28,
+            font: boldFont,
+            color: primaryColor
+        });
+
+        page.drawText(`Agreement ID: ${lease.id.toUpperCase()}`, {
+            x: 50,
+            y: height - 95,
+            size: 10,
+            font: regularFont,
+            color: mutedForeground
+        });
+
+        page.drawText(format(new Date(), 'MMM dd, yyyy'), {
+            x: width - 130,
+            y: height - 78,
+            size: 10,
+            font: boldFont,
+            color: foregroundColor
+        });
+
+        page.drawLine({
+            start: { x: 50, y: height - 115 },
+            end: { x: width - 50, y: height - 115 },
+            thickness: 1,
+            color: borderColor
+        });
+
+        const locationParts = [
+            lease.property.location?.subcity,
+            lease.property.location?.city,
+            lease.property.location?.region
+        ].filter(Boolean);
+
+        drawLabelValue('Property', lease.property.title, 50, height - 150);
+        drawLabelValue('Location', locationParts.length > 0 ? locationParts.join(', ') : 'Unknown location', 300, height - 150);
+        drawLabelValue('Lease type', lease.leaseType, 50, height - 205);
+        drawLabelValue('Status', lease.status.replace(/_/g, ' '), 300, height - 205);
+        drawLabelValue('Start date', format(new Date(lease.startDate), 'MMM dd, yyyy'), 50, height - 260);
+        drawLabelValue('End date', format(new Date(lease.endDate), 'MMM dd, yyyy'), 300, height - 260);
+
+        page.drawRectangle({
+            x: 50,
+            y: height - 360,
+            width: width - 100,
+            height: 90,
+            color: sectionBg,
+            borderColor,
+            borderWidth: 1
+        });
+
+        drawLabelValue('Owner', lease.owner.name, 65, height - 300);
+        drawLabelValue('Customer', lease.customer.name, 305, height - 300);
+        drawLabelValue('Owner email', lease.owner.email || 'N/A', 65, height - 340);
+        drawLabelValue('Customer email', lease.customer.email || 'N/A', 305, height - 340);
+
+        page.drawRectangle({
+            x: 50,
+            y: height - 455,
+            width: width - 100,
+            height: 70,
+            color: rgb(0.97, 0.97, 0.97),
+            borderColor,
+            borderWidth: 1
+        });
+
+        page.drawText('Financial Terms', {
+            x: 65,
+            y: height - 408,
+            size: 12,
+            font: boldFont,
+            color: foregroundColor
+        });
+
+        const recurringLabel = lease.recurringAmount
+            ? `Recurring Payment: ETB ${lease.recurringAmount.toLocaleString()}`
+            : 'Recurring Payment: Not specified';
+        const totalLabel = `Total Contract Value: ETB ${lease.totalPrice.toLocaleString()}`;
+
+        page.drawText(recurringLabel, {
+            x: 65,
+            y: height - 430,
+            size: 10,
+            font: regularFont,
+            color: mutedForeground
+        });
+        page.drawText(totalLabel, {
+            x: 320,
+            y: height - 430,
+            size: 10,
+            font: boldFont,
+            color: primaryColor
+        });
+
+        page.drawText('Terms & Conditions', {
+            x: 50,
+            y: height - 490,
+            size: 14,
+            font: boldFont,
+            color: foregroundColor
+        });
+
+        page.drawText(
+            lease.terms.trim().isEmpty
+                ? 'No custom lease terms were provided for this agreement.'
+                : lease.terms,
+            {
+                x: 50,
+                y: height - 515,
+                size: 10,
+                font: regularFont,
+                color: foregroundColor,
+                lineHeight: 15,
+                maxWidth: width - 100
+            }
+        );
+
+        const transactionSummary = lease.transactions.length > 0
+            ? `Completed payments linked to this lease: ${lease.transactions.length}`
+            : 'No completed payments have been linked to this lease yet.';
+
+        page.drawText('Contract Notes', {
+            x: 50,
+            y: 165,
+            size: 12,
+            font: boldFont,
+            color: foregroundColor
+        });
+        page.drawText(transactionSummary, {
+            x: 50,
+            y: 145,
+            size: 10,
+            font: regularFont,
+            color: mutedForeground
+        });
+        page.drawText(
+            'This agreement is generated from the HomeCar platform records and reflects the accepted lease data between the listed parties.',
+            {
+                x: 50,
+                y: 128,
+                size: 9,
+                font: regularFont,
+                color: mutedForeground,
+                lineHeight: 13,
+                maxWidth: width - 100
+            }
+        );
+
+        page.drawLine({
+            start: { x: 50, y: 90 },
+            end: { x: 220, y: 90 },
+            thickness: 1,
+            color: borderColor
+        });
+        page.drawLine({
+            start: { x: width - 220, y: 90 },
+            end: { x: width - 50, y: 90 },
+            thickness: 1,
+            color: borderColor
+        });
+        page.drawText('Owner / Agent Signature', {
+            x: 50,
+            y: 75,
+            size: 9,
+            font: regularFont,
+            color: mutedForeground
+        });
+        page.drawText('Customer Signature', {
+            x: width - 170,
+            y: 75,
+            size: 9,
+            font: regularFont,
+            color: mutedForeground
+        });
+
+        const pdfBytes = await pdfDoc.save();
+        const base64 = Buffer.from(pdfBytes).toString('base64');
+        const dataUri = `data:application/pdf;base64,${base64}`;
+
+        res.json({ dataUri });
+    } catch (error: any) {
+        console.error('Lease Contract Generation Error:', error);
+        res.status(500).json({ error: 'Failed to generate lease agreement PDF' });
     }
 };

@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Home, Car, Sparkles, CheckCircle2 } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Eye, EyeOff, Sparkles, CheckCircle2, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Select,
     SelectContent,
@@ -15,11 +15,14 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { ImageWithFallback } from '@/components/imageFallback/ImageWithFallback';
+import { Logo } from '@/components/common/Logo';
 import { SocialButtons } from '@/components/auth/SocialButtons';
 
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/useUserStore';
 import { toast } from 'sonner';
+
+const strongPasswordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
 
 export default function SignUpPage() {
     const router = useRouter();
@@ -32,7 +35,6 @@ export default function SignUpPage() {
         password: '',
         confirmPassword: '',
         role: '',
-        agreeToTerms: false,
     });
 
     const handleInputChange = (field: string, value: string | boolean) => {
@@ -42,16 +44,15 @@ export default function SignUpPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        const isPasswordStrong = strongPasswordRegex.test(formData.password);
+        if (!isPasswordStrong) return;
+
         if (formData.password !== formData.confirmPassword) {
             return toast.error('Passwords do not match');
         }
 
-        if (!formData.agreeToTerms) {
-            return toast.error('Please agree to the Terms & Privacy');
-        }
-
         try {
-            const { confirmPassword, agreeToTerms, ...registerData } = formData;
+            const { confirmPassword, ...registerData } = formData;
             await register(registerData);
             toast.success('Account created! Please enter the verification code sent to your email.');
             router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
@@ -68,18 +69,20 @@ export default function SignUpPage() {
 
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-muted/30 via-background to-muted/20 flex items-center justify-center p-4">
-            <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6 items-stretch">
+        <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="min-h-screen bg-gradient-to-br from-muted/30 via-background to-muted/20 flex items-center justify-center p-4 overflow-x-hidden"
+        >            <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6 items-stretch">
                 {/* Left Side - Sign Up Form Card */}
                 <div className="bg-card rounded-3xl shadow-2xl border border-border flex flex-col justify-center p-6 lg:p-8 space-y-4 order-2 lg:order-1">
                     {/* Logo and Title */}
                     <div className="text-center space-y-2">
-                        <div className="flex items-center justify-center">
-                            <div className="flex items-center space-x-1.5 p-2 bg-primary rounded-xl shadow-md ring-2 ring-primary/5">
-                                <Home className="w-6 h-6 text-primary-foreground" />
-                                <div className="w-px h-4 bg-primary-foreground/20" />
-                                <Car className="w-6 h-6 text-primary-foreground" />
-                            </div>
+                        <div className="flex items-center justify-center mb-6">
+                            <Link href="/" className="transition-transform hover:scale-105 active:scale-95">
+                                <Logo className="h-12 w-auto" />
+                            </Link>
                         </div>
                         <div className="space-y-1">
                             <h1 className="text-2xl font-bold text-foreground tracking-tight">
@@ -168,6 +171,29 @@ export default function SignUpPage() {
                             </div>
                         </div>
 
+                        {/* Password Strength Row (Full Width) */}
+                        {formData.password && (
+                            <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 ml-1">
+                                {[
+                                    { label: '8+ Characters', met: formData.password.length >= 8 },
+                                    { label: 'Uppercase', met: /[A-Z]/.test(formData.password) },
+                                    { label: 'Number', met: /\d/.test(formData.password) },
+                                    { label: 'Special', met: /[^a-zA-Z0-9]/.test(formData.password) },
+                                ].map((req, i) => (
+                                    <div key={i} className="flex items-center space-x-1 transition-all duration-300">
+                                        {req.met ? (
+                                            <Check className="w-2.5 h-2.5 text-emerald-500 transition-colors" />
+                                        ) : (
+                                            <X className="w-2.5 h-2.5 text-destructive transition-colors" />
+                                        )}
+                                        <span className={`text-[9px] font-bold uppercase tracking-wider transition-colors ${req.met ? 'text-emerald-500' : 'text-destructive/80'}`}>
+                                            {req.label}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         <div className="space-y-1">
                             <Label htmlFor="role" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Account Type</Label>
                             <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
@@ -182,26 +208,12 @@ export default function SignUpPage() {
                             </Select>
                         </div>
 
-                        <div className="flex items-start space-x-2 pt-1 ml-1">
-                            <Checkbox
-                                id="terms"
-                                checked={formData.agreeToTerms}
-                                onCheckedChange={(checked) => handleInputChange('agreeToTerms', checked as boolean)}
-                                className="mt-1 rounded-sm border-primary"
-                            />
-                            <Label
-                                htmlFor="terms"
-                                className="text-[10px] font-bold leading-tight cursor-pointer text-muted-foreground/80"
-                            >
-                                I agree to the <Link href="/terms" className="text-primary hover:underline">Terms</Link> & <Link href="/privacy" className="text-primary hover:underline">Privacy</Link>
-                            </Label>
-                        </div>
+
 
                         <Button
                             type="submit"
-                            disabled={isLoading}
-                            className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99] mt-1"
-
+                            disabled={isLoading || !strongPasswordRegex.test(formData.password) || !formData.role}
+                            className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed mt-1"
                         >
                             {isLoading ? 'Creating Account...' : 'Create Account'}
                         </Button>
@@ -247,6 +259,6 @@ export default function SignUpPage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }

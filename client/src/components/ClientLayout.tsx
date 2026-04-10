@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useUserStore } from "@/store/useUserStore";
 import { useFavoriteStore } from "@/store/useFavoriteStore";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -10,9 +10,22 @@ import { Footer } from "@/components/Footer";
 import { AskAIAssistant } from "@/components/ai/AskAIAssistant";
 import { Toaster } from "sonner";
 
+const RESTRICTED_ROLES = ['ADMIN', 'OWNER', 'AGENT'];
+
+function isManagementPath(pathname: string) {
+    return (
+        pathname.startsWith('/dashboard') ||
+        pathname.startsWith('/profile') ||
+        pathname.startsWith('/verify-email') ||
+        pathname.startsWith('/property/') ||
+        pathname.startsWith('/chat')
+    );
+}
+
 export function ClientLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
-    const { getMe, currentUser } = useUserStore();
+    const router = useRouter();
+    const { getMe, currentUser, isLoading } = useUserStore();
     const { fetchFavorites } = useFavoriteStore();
     const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password" || pathname === "/reset-password";
 
@@ -26,6 +39,27 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
         }
     }, [currentUser, fetchFavorites]);
 
+    // Role-based Access Control Redirects (client-side safety net)
+    useEffect(() => {
+        if (!isLoading && currentUser) {
+            const role = currentUser.role;
+            if (RESTRICTED_ROLES.includes(role)) {
+                if (!isManagementPath(pathname) && !isAuthPage) {
+                    router.replace('/dashboard');
+                }
+            }
+        }
+    }, [currentUser, isLoading, pathname, router, isAuthPage]);
+
+    const isRestrictedRole = currentUser && RESTRICTED_ROLES.includes(currentUser.role);
+    const shouldHideUI = isRestrictedRole || isAuthPage;
+
+    // Proactive guard: if a restricted role is on a consumer path, render nothing
+    // (middleware already redirected — this blocks the brief content flash)
+    if (!isLoading && isRestrictedRole && !isManagementPath(pathname) && !isAuthPage) {
+        return null;
+    }
+
     return (
         <AuthProvider>
             <div className="min-h-screen bg-background flex flex-col">
@@ -33,8 +67,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 <main className="flex-1">
                     {children}
                 </main>
-                {!isAuthPage && <div className="print:hidden"><Footer /></div>}
-                {!isAuthPage && <div className="print:hidden"><AskAIAssistant /></div>}
+                {!shouldHideUI && <div className="print:hidden"><Footer /></div>}
+                {!shouldHideUI && <div className="print:hidden"><AskAIAssistant /></div>}
             </div>
             <Toaster position="top-right" expand={true} richColors />
         </AuthProvider>

@@ -12,6 +12,7 @@ interface LeaseState {
     createLease: (lease: Omit<Lease, 'id' | 'createdAt' | 'status' | 'ownerAccepted' | 'customerAccepted'>) => Promise<void>;
     updateLeaseStatus: (id: string, status: Lease['status']) => Promise<void>;
     acceptLease: (id: string, role: 'owner' | 'customer') => Promise<void>;
+    requestLeaseCancellation: (id: string, role: 'owner' | 'customer') => Promise<void>;
 }
 
 export const useLeaseStore = create<LeaseState>((set) => ({
@@ -35,6 +36,7 @@ export const useLeaseStore = create<LeaseState>((set) => ({
             set((state) => ({ leases: [...state.leases, response.data], isLoading: false }));
         } catch (error) {
             set({ error: 'Failed to create lease', isLoading: false });
+            throw error;
         }
     },
     updateLeaseStatus: async (id, status) => {
@@ -49,6 +51,7 @@ export const useLeaseStore = create<LeaseState>((set) => ({
             }));
         } catch (error) {
             set({ error: 'Failed to update lease status', isLoading: false });
+            throw error;
         }
     },
     acceptLease: async (id, role) => {
@@ -67,6 +70,22 @@ export const useLeaseStore = create<LeaseState>((set) => ({
             }));
         } catch (error) {
             set({ error: 'Failed to accept lease', isLoading: false });
+            throw error;
+        }
+    },
+    requestLeaseCancellation: async (id, role) => {
+        set({ isLoading: true });
+        try {
+            const response = await api.post(`${API_ROUTES.LEASES}/${id}/cancel`, { role });
+            set((state) => ({
+                leases: state.leases.map((l) =>
+                    l.id === id ? response.data : l
+                ),
+                isLoading: false
+            }));
+        } catch (error) {
+            set({ error: 'Failed to request cancellation', isLoading: false });
+            throw error;
         }
     }
 }));

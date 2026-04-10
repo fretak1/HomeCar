@@ -61,6 +61,7 @@ import {
 import { CameraCapture } from '@/components/CameraCapture';
 import { MapPicker } from '@/components/MapPicker';
 import { cn } from '@/components/ui/utils';
+import { ethiopiaLocations } from '@/lib/ethiopiaLocations';
 
 interface AddItemFormProps {
     onSuccess: (data: any) => void;
@@ -98,6 +99,10 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
         // Fallback: detect by car-specific fields
         return initialData?.mileage !== undefined || initialData?.brand ? 'Car' : 'Home';
     };
+    const { addProperty, updateProperty, isLoading: isSubmitting } = usePropertyStore();
+    const { currentUser } = useUserStore();
+    const { predictCarPrice, predictHousePrice, isPredicting } = useAIStore();
+
     const [activeType, setActiveType] = useState<'Home' | 'Car'>(getInitialType);
 
     // Normalize amenities from backend to match the amenity id keys
@@ -126,16 +131,18 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
         initialData?.ownershipDocuments?.[0]?.url || initialData?.ownershipDocument || null
     );
     const [ownershipFile, setOwnershipFile] = useState<File | null>(null);
-    const [ownerPhoto, setOwnerPhoto] = useState<string | null>(initialData?.ownerPhoto || null);
+
+    const [ownerPhoto, setOwnerPhoto] = useState<string | null>(() => {
+        return initialData?.ownerPhoto || currentUser?.verificationPhoto || null;
+    });
+
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [imageFiles, setImageFiles] = useState<(File | null)[]>(() => {
         return new Array(Math.max(4, initialData?.images?.length || 0)).fill(null);
     });
     const [aiReasoning, setAiReasoning] = useState<string | null>(null);
     const [similarListings, setSimilarListings] = useState<any[]>([]);
-    const { addProperty, updateProperty, isLoading: isSubmitting } = usePropertyStore();
-    const { currentUser } = useUserStore();
-    const { predictCarPrice, predictHousePrice, isPredicting } = useAIStore();
+    
     const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const docInputRef = useRef<HTMLInputElement>(null);
     const isEditMode = !!(initialData as any)?.id;
@@ -171,11 +178,44 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
 
     const watchedFields = useWatch({ control: form.control });
 
+    // Dynamic Dropdown Logic for Geography
+    const selectedRegion = useWatch({ control: form.control, name: 'region' });
+    const selectedCity = useWatch({ control: form.control, name: 'city' });
+    const selectedSubCity = useWatch({ control: form.control, name: 'subCity' });
+
+    const availableRegions = Object.keys(ethiopiaLocations);
+    const availableCities = selectedRegion && ethiopiaLocations[selectedRegion] 
+        ? Object.keys(ethiopiaLocations[selectedRegion]) 
+        : [];
+    const availableSubCities = selectedRegion && selectedCity && ethiopiaLocations[selectedRegion]?.[selectedCity] 
+        ? Object.keys(ethiopiaLocations[selectedRegion][selectedCity]) 
+        : [];
+    const availableVillages = selectedRegion && selectedCity && selectedSubCity && ethiopiaLocations[selectedRegion]?.[selectedCity]?.[selectedSubCity] 
+        ? ethiopiaLocations[selectedRegion][selectedCity][selectedSubCity] 
+        : [];
+
     // 1. Effect for Edit Mode syncing - Handles async data loading for existing listings
     useEffect(() => {
         if (!initialData || Object.keys(initialData).length === 0) return;
+        
+        const initialImages = initialData?.images?.map((img: any) => typeof img === 'string' ? img : img.url) || [];
+        setImages(initialImages.length > 0 ? initialImages : [null, null, null, null]);
+        setImageFiles(new Array(Math.max(4, initialData?.images?.length || 0)).fill(null));
+        setOwnershipDoc(initialData?.ownershipDocuments?.[0]?.url || (initialData as any)?.ownershipDocument || null);
+        if (initialData.ownerPhoto) setOwnerPhoto(initialData.ownerPhoto);
+    }, [initialData]);
 
-        // Sync asset type tab
+    // 2. Effect to sync ownerPhoto with currentUser verification photo for new properties
+    useEffect(() => {
+        if (!isEditMode && !ownerPhoto && currentUser?.verificationPhoto) {
+            console.log("Pre-filling owner photo from user verification photo");
+            setOwnerPhoto(currentUser.verificationPhoto);
+        }
+    }, [currentUser, isEditMode, ownerPhoto]);
+
+    // Sync asset type tab
+    useEffect(() => {
+        if (!initialData || Object.keys(initialData).length === 0) return;
         const assetType = initialData.assetType;
         if (assetType === 'HOME' || assetType === 'Home') setActiveType('Home');
         else if (assetType === 'CAR' || assetType === 'Car') setActiveType('Car');
@@ -235,16 +275,21 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
     useEffect(() => {
         if (!isEditMode && currentUser?.verificationPhoto && !ownerPhoto) {
             setOwnerPhoto(currentUser.verificationPhoto);
+            console.log("Memory: Pre-populating owner identification photo from profile.");
         }
-    }, [currentUser, isEditMode, ownerPhoto]);
+    }, [currentUser?.verificationPhoto, isEditMode, ownerPhoto]);
     
-    // 3. Studio Auto-Lock Logic
+    // 3. Small Unit Auto-Lock Logic (Studio, 3x3, 3x4, etc.)
     const category = form.watch('category');
+    const isSmallUnit = ['studio', '3*3', '3*4', '4*4'].includes(category);
+
     useEffect(() => {
-        if (category === 'studio') {
+        if (isSmallUnit) {
             form.setValue('bedrooms', '0');
+            form.setValue('bathrooms', '0');
+            form.setValue('area', '0');
         }
-    }, [category, form.setValue]);
+    }, [category, isSmallUnit, form.setValue]);
 
 
 
@@ -376,6 +421,9 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
             }
 
             formData.append('assetType', activeType);
+            if (activeType === 'Home') {
+                formData.append('propertyType', data.category);
+            }
             formData.append('amenities', JSON.stringify(selectedAmenities));
 
             for (let [key, value] of formData.entries()) {
@@ -387,7 +435,11 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                 toast.success('Property updated successfully!');
             } else {
                 await addProperty(formData);
-                toast.success('Listing created successfully! Our team will verify it shortly.');
+                toast.success(
+                    currentUser?.role === 'AGENT' 
+                        ? 'Listing published successfully! Your property is live immediately.'
+                        : 'Listing created successfully! Our team will verify it shortly.'
+                );
             }
             onSuccess(data);
         } catch (error: any) {
@@ -459,6 +511,9 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
             }
         }
     };
+
+
+    console.log(currentUser, 'jfkjfsjkkjdfs')
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -569,17 +624,66 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
 
                             <FormField
                                 control={form.control}
+                                name="region"
+                                rules={{ required: 'Region is required' }}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Region</FormLabel>
+                                        <Select onValueChange={(val) => {
+                                            field.onChange(val);
+                                            form.setValue('city', '');
+                                            form.setValue('subCity', '');
+                                            form.setValue('village', '');
+                                        }} value={field.value || undefined}>
+                                            <FormControl>
+                                                <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                                                        <SelectValue placeholder="Select region" />
+                                                    </div>
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl max-h-[300px]">
+                                                {availableRegions.map(r => (
+                                                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
                                 name="city"
                                 rules={{ required: 'City is required' }}
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>City</FormLabel>
-                                        <FormControl>
-                                            <div className="relative group">
-                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Addis Ababa" {...field} />
-                                            </div>
-                                        </FormControl>
+                                        <Select 
+                                            onValueChange={(val) => {
+                                                field.onChange(val);
+                                                form.setValue('subCity', '');
+                                                form.setValue('village', '');
+                                            }} 
+                                            value={field.value || undefined}
+                                            disabled={availableCities.length === 0}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                                                        <SelectValue placeholder="Select city" />
+                                                    </div>
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl max-h-[300px]">
+                                                {availableCities.map(c => (
+                                                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -592,30 +696,28 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Sub City</FormLabel>
-                                        <FormControl>
-                                            <div className="relative group">
-                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Bole" {...field} />
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="region"
-                                rules={{ required: 'Region is required' }}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Region</FormLabel>
-                                        <FormControl>
-                                            <div className="relative group">
-                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Addis Ababa" {...field} />
-                                            </div>
-                                        </FormControl>
+                                        <Select 
+                                            onValueChange={(val) => {
+                                                field.onChange(val);
+                                                form.setValue('village', '');
+                                            }} 
+                                            value={field.value || undefined}
+                                            disabled={availableSubCities.length === 0}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                                                        <SelectValue placeholder="Select sub-city" />
+                                                    </div>
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl max-h-[300px]">
+                                                {availableSubCities.map(sc => (
+                                                    <SelectItem key={sc} value={sc}>{sc}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -627,12 +729,25 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Village / Kebele</FormLabel>
-                                        <FormControl>
-                                            <div className="relative group">
-                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder="Hayat / CMC" {...field} />
-                                            </div>
-                                        </FormControl>
+                                        <Select 
+                                            onValueChange={field.onChange} 
+                                            value={field.value || undefined}
+                                            disabled={availableVillages.length === 0}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
+                                                    <div className="flex items-center gap-2">
+                                                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                                                        <SelectValue placeholder="Select village" />
+                                                    </div>
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl max-h-[300px]">
+                                                {availableVillages.map(v => (
+                                                    <SelectItem key={v} value={v}>{v}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -744,10 +859,10 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                         type="number" 
                                                         className={cn(
                                                             "pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl transition-all",
-                                                            category === 'studio' && "bg-muted/30 cursor-not-allowed opacity-70"
+                                                            isSmallUnit && "bg-muted/30 cursor-not-allowed opacity-70"
                                                         )}
-                                                        placeholder={category === 'studio' ? "0 (Studio)" : "3"} 
-                                                        disabled={category === 'studio'}
+                                                        placeholder={isSmallUnit ? "0 (Shared/None)" : "3"} 
+                                                        disabled={isSmallUnit}
                                                         {...field} 
                                                     />
                                                 </div>
@@ -764,7 +879,16 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                             <FormControl>
                                                 <div className="relative group">
                                                     <Bath className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                    <Input type="number" className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl" placeholder="2" {...field} />
+                                                    <Input 
+                                                        type="number" 
+                                                        className={cn(
+                                                            "pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl transition-all",
+                                                            isSmallUnit && "bg-muted/30 cursor-not-allowed opacity-70"
+                                                        )}
+                                                        placeholder="2" 
+                                                        disabled={isSmallUnit}
+                                                        {...field} 
+                                                    />
                                                 </div>
                                             </FormControl>
                                         </FormItem>
@@ -779,7 +903,16 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                             <FormControl>
                                                 <div className="relative group">
                                                     <Ruler className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                                    <Input type="number" className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl" placeholder="150" {...field} />
+                                                    <Input 
+                                                        type="number" 
+                                                        className={cn(
+                                                            "pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl transition-all",
+                                                            isSmallUnit && "bg-muted/30 cursor-not-allowed opacity-70"
+                                                        )}
+                                                        placeholder="150" 
+                                                        disabled={isSmallUnit}
+                                                        {...field} 
+                                                    />
                                                 </div>
                                             </FormControl>
                                         </FormItem>
@@ -991,18 +1124,65 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                     type="button"
                                                     variant="outline"
                                                     size="sm"
-                                                    onClick={() => {
-                                                        let finalUrl = ownershipDoc;
-                                                        if (!finalUrl.startsWith('http')) {
-                                                            // Fallback for old local paths
-                                                            finalUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/${finalUrl}`;
+                                                    onClick={async () => {
+                                                        try {
+                                                            // Case 1: User just uploaded a new file that isn't saved yet
+                                                            if (ownershipFile) {
+                                                                const objectUrl = window.URL.createObjectURL(ownershipFile);
+                                                                const link = document.createElement('a');
+                                                                link.href = objectUrl;
+                                                                link.download = ownershipDoc || 'Document.pdf';
+                                                                document.body.appendChild(link);
+                                                                link.click();
+                                                                document.body.removeChild(link);
+                                                                window.URL.revokeObjectURL(objectUrl);
+                                                                return;
+                                                            }
+
+                                                            // Case 2: Use the Base64 Data Proxy if it exists in DB
+                                                            const docId = initialData?.ownershipDocuments?.[0]?.id;
+                                                            if (docId) {
+                                                                const token = localStorage.getItem('auth_token');
+                                                                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/properties/document/${docId}/view`, {
+                                                                    headers: { 'Authorization': `Bearer ${token}` },
+                                                                    credentials: 'include'
+                                                                });
+                                                                
+                                                                if (response.ok) {
+                                                                    const data = await response.json();
+                                                                    const link = document.createElement('a');
+                                                                    link.href = data.dataUri; // Base64 data forces a download
+                                                                    link.download = `HomeCar_Document_${docId.substring(0, 5)}.pdf`;
+                                                                    document.body.appendChild(link);
+                                                                    link.click();
+                                                                    document.body.removeChild(link);
+                                                                    return;
+                                                                }
+                                                            }
+
+                                                            // Case 3: Legacy Fallback for direct URLs
+                                                            let finalUrl = ownershipDoc;
+                                                            if (!finalUrl.startsWith('http')) {
+                                                                finalUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/${finalUrl}`;
+                                                            }
+                                                            const response = await fetch(finalUrl);
+                                                            if (!response.ok) throw new Error('Fetch failed');
+                                                            const blob = await response.blob();
+                                                            const objectUrl = window.URL.createObjectURL(blob);
+                                                            const link = document.createElement('a');
+                                                            link.href = objectUrl;
+                                                            link.download = `HomeCar_Document.pdf`;
+                                                            document.body.appendChild(link);
+                                                            link.click();
+                                                            document.body.removeChild(link);
+                                                            window.URL.revokeObjectURL(objectUrl);
+                                                        } catch (e) {
+                                                            toast.error("Download failed or blocked by CORS.");
                                                         }
-                                                        console.log("Opening document:", finalUrl);
-                                                        window.open(finalUrl, '_blank');
                                                     }}
                                                     className="font-bold border-green-200 text-green-700 hover:bg-green-50 rounded-xl"
                                                 >
-                                                    View
+                                                    Download
                                                 </Button>
                                             )}
                                             <Button
@@ -1097,25 +1277,29 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                             >
                                                 View
                                             </Button>
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={openCamera}
-                                                className="font-bold border-[#005a41]/20 text-[#005a41] hover:bg-[#005a41]/5 rounded-xl"
-                                            >
-                                                Retake
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => setOwnerPhoto(null)}
-                                                className="text-destructive hover:bg-destructive/10 rounded-xl"
-                                            >
-                                                <X className="h-4 w-4 mr-2" />
-                                                Remove
-                                            </Button>
+                                            {!currentUser?.verificationPhoto && (
+                                                <>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={openCamera}
+                                                        className="font-bold border-[#005a41]/20 text-[#005a41] hover:bg-[#005a41]/5 rounded-xl"
+                                                    >
+                                                        Retake
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => setOwnerPhoto(null)}
+                                                        className="text-destructive hover:bg-destructive/10 rounded-xl"
+                                                    >
+                                                        <X className="h-4 w-4 mr-2" />
+                                                        Remove
+                                                    </Button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 ) : (

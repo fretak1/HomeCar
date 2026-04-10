@@ -73,17 +73,20 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
             )}
           </div>
 
-          <div className="absolute top-4 right-4 z-10">
-            <Button
-              variant="secondary"
-              size="icon"
-              disabled={disabled}
-              className={`h-8 w-8 rounded-full bg-white/90 shadow-sm hover:bg-white transition-all duration-200 ${!disabled && 'hover:scale-110'} ${favorite ? 'text-rose-500' : 'text-gray-500'}`}
-              onClick={handleFavoriteClick}
-            >
-              <Heart className={`h-4 w-4 ${favorite ? 'fill-current' : ''}`} />
-            </Button>
-          </div>
+          {/* Hide heart icon for owners of the property */}
+          {currentUser?.id !== property.ownerId && (
+            <div className="absolute top-4 right-4 z-10">
+              <Button
+                variant="secondary"
+                size="icon"
+                disabled={disabled}
+                className={`h-8 w-8 rounded-full bg-white/90 shadow-sm hover:bg-white transition-all duration-200 ${!disabled && 'hover:scale-110'} ${favorite ? 'text-rose-500' : 'text-gray-500'}`}
+                onClick={handleFavoriteClick}
+              >
+                <Heart className={`h-4 w-4 ${favorite ? 'fill-current' : ''}`} />
+              </Button>
+            </div>
+          )}
 
         </div>
 

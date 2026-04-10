@@ -14,13 +14,13 @@ interface UserState {
     fetchUserById: (id: string) => Promise<User>;
     login: (email: string, password: string) => Promise<void>;
     register: (userData: any) => Promise<void>;
-    logout: () => void;
+    logout: () => Promise<void>;
     getMe: () => Promise<void>;
     updateUser: (userData: any) => Promise<void>;
-    verifyUser: (id: string, verified: boolean) => Promise<void>;
+    verifyUser: (id: string, verified: boolean, rejectionReason?: string) => Promise<void>;
 }
 
-export const useUserStore = create<UserState>((set) => ({
+export const useUserStore = create<UserState>((set, get) => ({
     users: [],
     currentUser: null,
     isLoading: true,
@@ -31,10 +31,17 @@ export const useUserStore = create<UserState>((set) => ({
         try {
             const { data: session, error } = await authClient.getSession();
             if (error || !session) {
+                document.cookie = "user-role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
                 set({ currentUser: null, isLoading: false });
                 return;
             }
-            set({ currentUser: session.user as any, isLoading: false });
+            
+            // Secondary fetch to get full DB profile (including payout details)
+            const response = await api.get(`${API_ROUTES.USER}/me`);
+            const user = response.data;
+
+            document.cookie = `user-role=${user.role}; path=/; max-age=604800`; // 1 week
+            set({ currentUser: user, isLoading: false });
         } catch (error) {
             console.error('Failed to fetch user profile:', error);
             set({ currentUser: null, isLoading: false });
@@ -79,7 +86,11 @@ export const useUserStore = create<UserState>((set) => ({
 
             if (error) throw new Error(error.message || 'Login failed');
 
-            set({ currentUser: data.user as any, isLoading: false });
+            const user = data.user as any;
+            document.cookie = `user-role=${user.role}; path=/; max-age=604800`;
+            
+            // Force fetch full deep profile from Custom API rather than relying purely on BetterAuth's minimal response
+            await get().getMe();
         } catch (error: any) {
             const message = error.message || 'Login failed';
             set({ error: message, isLoading: false });
@@ -108,16 +119,16 @@ export const useUserStore = create<UserState>((set) => ({
                 name: userData.name,
                 image: userData.profileImage,
                 role: userData.role,
-                callbackURL: window.location.origin + "/login",
-            });
+                rememberMe: true, // Auto-remember on signup
+            } as any);
 
             if (error) throw new Error(error.message || 'Registration failed');
 
-            set((state) => ({
-                users: [...state.users, data.user as any],
-                currentUser: data.user as any,
-                isLoading: false
-            }));
+            const user = data.user as any;
+            document.cookie = `user-role=${user.role}; path=/; max-age=604800`;
+            
+            // Force fetch full deep profile from Custom API rather than relying purely on BetterAuth's minimal response
+            await get().getMe();
         } catch (error: any) {
             console.error('Registration API Error:', error);
             const message = error.message || 'Registration failed';
@@ -127,6 +138,7 @@ export const useUserStore = create<UserState>((set) => ({
     },
     logout: async () => {
         await authClient.signOut();
+        document.cookie = "user-role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         set({ currentUser: null });
     },
     updateUser: async (formData) => {
@@ -155,10 +167,10 @@ export const useUserStore = create<UserState>((set) => ({
             throw new Error(message);
         }
     },
-    verifyUser: async (id: string, verified: boolean) => {
+    verifyUser: async (id: string, verified: boolean, rejectionReason?: string) => {
         set({ isLoading: true, error: null });
         try {
-            const response = await api.patch(`${API_ROUTES.USER}/${id}/verify`, { verified });
+            const response = await api.patch(`${API_ROUTES.USER}/${id}/verify`, { verified, rejectionReason });
             set((state) => ({
                 users: state.users.map(u => u.id === id ? response.data : u),
                 isLoading: false
