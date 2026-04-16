@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -110,95 +113,97 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            Stack(
-              children: [
-                SizedBox(
-                  height: 760,
-                  width: double.infinity,
-                  child: CachedNetworkImage(
-                    imageUrl: _heroImage,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) =>
-                        Container(color: Colors.black87),
-                    errorWidget: (context, url, error) =>
-                        Container(color: Colors.black87),
+            ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 760),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CachedNetworkImage(
+                      imageUrl: _heroImage,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) =>
+                          Container(color: Colors.black87),
+                      errorWidget: (context, url, error) =>
+                          Container(color: Colors.black87),
+                    ),
                   ),
-                ),
-                Container(
-                  height: 760,
-                  color: Colors.black.withValues(alpha: 0.5),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 40, 20, 40),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 40),
-                      const Text(
-                        'Find Your Perfect Home or Car',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 40,
-                          fontWeight: FontWeight.w900,
-                          height: 1.08,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'The AI-powered platform for renting and purchasing properties and vehicles with absolute confidence.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w500,
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      _HomeSearchCard(
-                        showCars: _showCars,
-                        listingType: _listingType,
-                        priceRange: _priceRange,
-                        controller: _locationController,
-                        onTabChange: (showCars) => setState(() {
-                          _showCars = showCars;
-                          _listingType = 'rent';
-                          _priceRange = 'all';
-                        }),
-                        onListingTypeChanged: (value) =>
-                            setState(() => _listingType = value),
-                        onPriceRangeChanged: (value) =>
-                            setState(() => _priceRange = value),
-                        onSearch: _search,
-                      ),
-                      const SizedBox(height: 28),
-                      const _FeatureCard(
-                        icon: Icons.smart_toy_outlined,
-                        color: AppTheme.primary,
-                        title: 'AI-Powered Matching',
-                        message:
-                            'Smart recommendations based on your preferences and behavior',
-                      ),
-                      const SizedBox(height: 14),
-                      const _FeatureCard(
-                        icon: Icons.trending_up_rounded,
-                        color: AppTheme.secondary,
-                        title: 'Price Predictions',
-                        message:
-                            'AI-powered price predictions to help you make informed decisions',
-                      ),
-                      const SizedBox(height: 14),
-                      const _FeatureCard(
-                        icon: Icons.verified_user_outlined,
-                        color: AppTheme.accent,
-                        title: 'Verified Listings',
-                        message:
-                            'Safe and verified listings with trusted owners and agents',
-                      ),
-                    ],
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: Colors.black.withValues(alpha: 0.5),
+                    ),
                   ),
-                ),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 40, 20, 40),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 40),
+                        const Text(
+                          'Find Your Perfect Home or Car',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 40,
+                            fontWeight: FontWeight.w900,
+                            height: 1.08,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'The AI-powered platform for renting and purchasing properties and vehicles with absolute confidence.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        _HomeSearchCard(
+                          showCars: _showCars,
+                          listingType: _listingType,
+                          priceRange: _priceRange,
+                          controller: _locationController,
+                          onTabChange: (showCars) => setState(() {
+                            _showCars = showCars;
+                            _listingType = 'rent';
+                            _priceRange = 'all';
+                          }),
+                          onListingTypeChanged: (value) =>
+                              setState(() => _listingType = value),
+                          onPriceRangeChanged: (value) =>
+                              setState(() => _priceRange = value),
+                          onSearch: _search,
+                        ),
+                        const SizedBox(height: 28),
+                        const _FeatureCard(
+                          icon: Icons.smart_toy_outlined,
+                          color: AppTheme.primary,
+                          title: 'AI-Powered Matching',
+                          message:
+                              'Smart recommendations based on your preferences and behavior',
+                        ),
+                        const SizedBox(height: 14),
+                        const _FeatureCard(
+                          icon: Icons.trending_up_rounded,
+                          color: AppTheme.secondary,
+                          title: 'Price Predictions',
+                          message:
+                              'AI-powered price predictions to help you make informed decisions',
+                        ),
+                        const SizedBox(height: 14),
+                        const _FeatureCard(
+                          icon: Icons.verified_user_outlined,
+                          color: AppTheme.accent,
+                          title: 'Verified Listings',
+                          message:
+                              'Safe and verified listings with trusted owners and agents',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
             recommendationsAsync.when(
               data: (items) {
@@ -730,46 +735,59 @@ class _FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 62,
-            height: 62,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Icon(icon, color: Colors.white, size: 28),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x26000000),
+                blurRadius: 28,
+                offset: Offset(0, 10),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
+          child: Column(
+            children: [
+              Container(
+                width: 62,
+                height: 62,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(icon, color: Colors.white, size: 28),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  fontSize: 13,
+                  height: 1.5,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 13,
-              height: 1.5,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -804,154 +822,160 @@ class _SectionBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: mutedSection ? AppTheme.muted.withValues(alpha: 0.3) : null,
-        gradient: gradientBand
-            ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppTheme.accent.withValues(alpha: 0.05),
-                  AppTheme.secondary.withValues(alpha: 0.05),
-                ],
-              )
-            : null,
-        border: Border(
-          top: borderTop
-              ? BorderSide(color: AppTheme.border.withValues(alpha: 0.4))
-              : BorderSide.none,
-          bottom: borderBottom
-              ? BorderSide(color: AppTheme.border.withValues(alpha: 0.7))
-              : BorderSide.none,
+    final backgroundColor = gradientBand
+        ? null
+        : mutedSection
+        ? const Color(0xFFF7F7F8)
+        : Colors.white;
+
+    final backgroundGradient = gradientBand
+        ? const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFFF3FAF9),
+              Color(0xFFF4F5FB),
+            ],
+          )
+        : null;
+
+    return ClipRect(
+      child: Container(
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          gradient: backgroundGradient,
+          border: Border(
+            top: borderTop
+                ? BorderSide(color: AppTheme.border.withValues(alpha: 0.4))
+                : BorderSide.none,
+            bottom: borderBottom
+                ? BorderSide(color: AppTheme.border.withValues(alpha: 0.7))
+                : BorderSide.none,
+          ),
         ),
-      ),
-      child: Stack(
-        children: [
-          if (gradientBand)
-            Positioned(
-              top: -190,
-              right: -190,
-              child: Container(
-                width: 384,
-                height: 384,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.primary.withValues(alpha: 0.05),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primary.withValues(alpha: 0.08),
-                      blurRadius: 120,
-                      spreadRadius: 20,
+        child: Stack(
+          children: [
+            if (gradientBand)
+              Positioned(
+                top: -190,
+                right: -190,
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 48, sigmaY: 48),
+                  child: Container(
+                    width: 384,
+                    height: 384,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color(0xFFF3F7F6),
                     ),
+                  ),
+                ),
+              ),
+            _PageWidth(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: gradientBand ? 64 : 96),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 860;
+                        final titleWidget = plainTitle || highlight == null
+                            ? Text(
+                                title,
+                                style: const TextStyle(
+                                  fontSize: 38,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppTheme.foreground,
+                                  height: 1.1,
+                                ),
+                              )
+                            : RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(
+                                    fontSize: 38,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppTheme.foreground,
+                                    height: 1.1,
+                                  ),
+                                  children: [
+                                    TextSpan(text: '$title '),
+                                    TextSpan(
+                                      text: highlight,
+                                      style: const TextStyle(
+                                        color: AppTheme.primary,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                        final action = TextButton.icon(
+                          onPressed: onAction,
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.foreground,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          iconAlignment: IconAlignment.end,
+                          icon: const Icon(Icons.arrow_forward, size: 16),
+                          label: Text(
+                            actionLabel,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        );
+
+                        final textColumn = Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            titleWidget,
+                            const SizedBox(height: 10),
+                            Text(
+                              subtitle,
+                              style: const TextStyle(
+                                color: AppTheme.mutedForeground,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        );
+
+                        if (isWide) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(child: textColumn),
+                              const SizedBox(width: 20),
+                              action,
+                            ],
+                          );
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            textColumn,
+                            const SizedBox(height: 18),
+                            action,
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 48),
+                    child,
                   ],
                 ),
               ),
             ),
-          _PageWidth(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: gradientBand ? 64 : 96),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= 860;
-                    final titleWidget = plainTitle || highlight == null
-                        ? Text(
-                            title,
-                            style: const TextStyle(
-                              fontSize: 38,
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.foreground,
-                              height: 1.1,
-                            ),
-                          )
-                        : RichText(
-                            text: TextSpan(
-                              style: const TextStyle(
-                                fontSize: 38,
-                                fontWeight: FontWeight.w900,
-                                color: AppTheme.foreground,
-                                height: 1.1,
-                              ),
-                              children: [
-                                TextSpan(text: '$title '),
-                                TextSpan(
-                                  text: highlight,
-                                  style: const TextStyle(
-                                    color: AppTheme.primary,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-
-                    final action = TextButton.icon(
-                      onPressed: onAction,
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppTheme.foreground,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 14,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      iconAlignment: IconAlignment.end,
-                      icon: const Icon(Icons.arrow_forward, size: 16),
-                      label: Text(
-                        actionLabel,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    );
-
-                    final textColumn = Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        titleWidget,
-                        const SizedBox(height: 10),
-                        Text(
-                          subtitle,
-                          style: const TextStyle(
-                            color: AppTheme.mutedForeground,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    );
-
-                    if (isWide) {
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(child: textColumn),
-                          const SizedBox(width: 20),
-                          action,
-                        ],
-                      );
-                    }
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        textColumn,
-                        const SizedBox(height: 18),
-                        action,
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 48),
-                child,
-              ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -989,29 +1013,130 @@ class _CardRail extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        double cardWidth;
-        if (constraints.maxWidth >= 1200) {
-          cardWidth = (constraints.maxWidth - 48) / 3;
-        } else if (constraints.maxWidth >= 760) {
-          cardWidth = (constraints.maxWidth - 24) / 2;
-        } else {
-          cardWidth = constraints.maxWidth * 0.86;
-        }
+        final viewportFraction = constraints.maxWidth <= 430
+            ? 1.0
+            : constraints.maxWidth >= 1200
+            ? 0.34
+            : constraints.maxWidth >= 760
+            ? 0.52
+            : 0.88;
+        final gap = constraints.maxWidth <= 430 ? 0.0 : 24.0;
 
-        return SizedBox(
-          height: 408,
-          child: ListView.separated(
-            padding: EdgeInsets.zero,
-            scrollDirection: Axis.horizontal,
-            itemCount: items.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 24),
-            itemBuilder: (context, index) => SizedBox(
-              width: cardWidth,
-              child: _HomeCard(property: items[index]),
-            ),
-          ),
+        return _AutoSlidingRail(
+          items: items,
+          viewportFraction: viewportFraction,
+          gap: gap,
         );
       },
+    );
+  }
+}
+
+class _AutoSlidingRail extends StatefulWidget {
+  const _AutoSlidingRail({
+    required this.items,
+    required this.viewportFraction,
+    required this.gap,
+  });
+
+  final List<PropertyModel> items;
+  final double viewportFraction;
+  final double gap;
+
+  @override
+  State<_AutoSlidingRail> createState() => _AutoSlidingRailState();
+}
+
+class _AutoSlidingRailState extends State<_AutoSlidingRail> {
+  late PageController _controller;
+  Timer? _timer;
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController(viewportFraction: widget.viewportFraction);
+    _startAutoSlide();
+  }
+
+  @override
+  void didUpdateWidget(covariant _AutoSlidingRail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.viewportFraction != widget.viewportFraction) {
+      final initialPage = widget.items.isEmpty
+          ? 0
+          : (_currentIndex >= widget.items.length ? 0 : _currentIndex);
+      _controller.dispose();
+      _controller = PageController(
+        initialPage: initialPage,
+        viewportFraction: widget.viewportFraction,
+      );
+      _startAutoSlide();
+    }
+
+    if (oldWidget.items.length != widget.items.length) {
+      if (_currentIndex >= widget.items.length) {
+        _currentIndex = 0;
+      }
+      _startAutoSlide();
+    }
+  }
+
+  void _startAutoSlide() {
+    _timer?.cancel();
+
+    if (widget.items.length <= 1) {
+      return;
+    }
+
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || !_controller.hasClients) {
+        return;
+      }
+
+      final nextIndex = (_currentIndex + 1) % widget.items.length;
+      _controller.animateToPage(
+        nextIndex,
+        duration: const Duration(milliseconds: 550),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.items.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return SizedBox(
+      height: 408,
+      child: PageView.builder(
+        controller: _controller,
+        padEnds: widget.viewportFraction < 1,
+        clipBehavior: Clip.none,
+        itemCount: widget.items.length,
+        onPageChanged: (index) {
+          _currentIndex = index;
+        },
+        itemBuilder: (context, index) {
+          final isSingleCard = widget.viewportFraction == 1.0;
+          return Padding(
+            padding: EdgeInsets.only(
+              right: isSingleCard ? 0 : widget.gap,
+            ),
+            child: _HomeCard(property: widget.items[index]),
+          );
+        },
+      ),
     );
   }
 }

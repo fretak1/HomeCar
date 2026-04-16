@@ -59,7 +59,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [ownerSearchOpen, setOwnerSearchOpen] = useState(false);
     const [ownerSearchQuery, setOwnerSearchQuery] = useState('');
-    const { createLease } = useLeaseStore();
+    const { leases, fetchLeases, createLease } = useLeaseStore();
     const { currentUser, users: allUsers, fetchUsers } = useUserStore();
     const { properties: allProperties, fetchProperties, fetchPropertiesByOwnerId } = usePropertyStore();
     const { applications, fetchApplications } = useApplicationStore();
@@ -72,6 +72,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                 fetchProperties({ listedById: currentUser.id });
             }
             fetchApplications({ managerId: currentUser.id });
+            fetchLeases(currentUser.id);
         }
         fetchUsers();
     }, [currentUser, role, fetchPropertiesByOwnerId, fetchProperties, fetchUsers, fetchApplications]);
@@ -81,7 +82,6 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
             ownerId: '',
             tenantId: '',
             propertyId: '',
-            leaseType: 'LongTerm' as const,
             startDate: '',
             endDate: '',
             paymentModel: 'Recurring' as const,
@@ -96,6 +96,20 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
     const propertyId = watch('propertyId');
     const startDate = watch('startDate');
     const endDate = watch('endDate');
+    const paymentModel = watch('paymentModel');
+    // Automation: Force Recurring if duration > 1 year
+    const isLongTerm = useMemo(() => {
+        if (!startDate || !endDate) return false;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        return differenceInDays(end, start) > 365;
+    }, [startDate, endDate]);
+
+    useEffect(() => {
+        if (isLongTerm && paymentModel !== 'Recurring') {
+            setValue('paymentModel', 'Recurring');
+        }
+    }, [isLongTerm, paymentModel, setValue]);
 
     // For agents and owners, filter customers who have an ACCEPTED application with the logged-in user (manager)
     const acceptedApplicantIds = applications
@@ -120,9 +134,16 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
 
     const filteredProperties = useMemo(() => {
         const source = Array.isArray(propertySource) ? propertySource : [];
-        return source.filter(p => p.listingType.includes('RENT'));
-    }, [propertySource]);
-    const paymentModel = watch('paymentModel');
+        const activeLeasePropertyIds = leases
+            .filter(l => l.status === 'ACTIVE')
+            .map(l => l.propertyId);
+
+        return source.filter(p =>
+            p.listingType.includes('RENT') &&
+            !activeLeasePropertyIds.includes(p.id)
+        );
+    }, [propertySource, leases]);
+
     useEffect(() => {
         if (!propertyId) return;
 
@@ -136,8 +157,8 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                 const end = new Date(endDate);
 
                 // Calculate months difference based on fixed 30-day periods
-                const diffInDays = differenceInDays(end, start);
-                const totalMonths = Math.max(1, Math.floor(diffInDays / 30));
+                const diffInDaysValue = differenceInDays(end, start);
+                const totalMonths = Math.max(1, Math.floor(diffInDaysValue / 30));
 
                 if (paymentModel === 'Recurring') {
                     setValue('totalPrice', (price * totalMonths).toString());
@@ -157,7 +178,6 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
         setIsSubmitting(true);
         try {
             await createLease({
-                leaseType: data.leaseType,
                 startDate: data.startDate,
                 endDate: data.endDate,
                 totalPrice: parseFloat(data.totalPrice),
@@ -370,48 +390,6 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <FormField
                             control={form.control}
-                            name="leaseType"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Lease Type</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
-                                                <SelectValue placeholder="Select type" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent className="rounded-xl">
-                                            <SelectItem value="ShortTerm">Short Term</SelectItem>
-                                            <SelectItem value="LongTerm">Long Term</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="paymentModel"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Payment Model</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
-                                                <SelectValue placeholder="Select frequency" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent className="rounded-xl">
-                                            <SelectItem value="OneTime">One-Time Payment</SelectItem>
-                                            <SelectItem value="Recurring">Recurring (Monthly)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
                             name="startDate"
                             rules={{ required: 'Start date is required' }}
                             render={({ field }) => (
@@ -442,6 +420,31 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                         </div>
                                     </FormControl>
                                     <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="paymentModel"
+                            render={({ field }) => (
+                                <FormItem className="md:col-span-2">
+                                    <FormLabel>Payment Model</FormLabel>
+                                    <Select 
+                                        onValueChange={field.onChange} 
+                                        value={field.value}
+                                        disabled={!startDate || !endDate || isLongTerm}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
+                                                <SelectValue placeholder={(!startDate || !endDate) ? "Select dates first..." : "Select frequency"} />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="OneTime">One-Time Payment</SelectItem>
+                                            <SelectItem value="Recurring">Recurring (Monthly)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </FormItem>
                             )}
                         />

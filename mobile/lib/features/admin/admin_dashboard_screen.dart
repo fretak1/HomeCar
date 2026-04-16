@@ -3,187 +3,367 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../shared/widgets/glass_card.dart';
-import '../admin/providers/admin_provider.dart';
 import '../applications/providers/application_provider.dart';
 import '../auth/models/user_model.dart';
+import '../auth/providers/auth_provider.dart';
+import '../dashboard/widgets/dashboard_utils.dart';
+import '../dashboard/widgets/role_dashboard_scaffold.dart';
+import '../leases/models/lease_model.dart';
 import '../leases/providers/lease_provider.dart';
 import '../listings/models/property_model.dart';
-import '../maintenance/providers/maintenance_provider.dart';
+import '../listings/repositories/listing_repository.dart';
+import '../transactions/models/transaction_model.dart';
 import '../transactions/providers/transaction_provider.dart';
+import 'providers/admin_provider.dart';
 
-class AdminDashboardScreen extends ConsumerWidget {
-  const AdminDashboardScreen({Key? key}) : super(key: key);
+final adminAllAssetsProvider = FutureProvider<List<PropertyModel>>((ref) async {
+  final user = ref.watch(authProvider).user;
+  if (user == null || !user.isAdmin) {
+    return const <PropertyModel>[];
+  }
+
+  return ref.watch(listingRepositoryProvider).getProperties();
+});
+
+class AdminDashboardScreen extends ConsumerStatefulWidget {
+  const AdminDashboardScreen({super.key});
+
+  @override
+  ConsumerState<AdminDashboardScreen> createState() =>
+      _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
+  String _propertyQuery = '';
+  String _propertyFilter = 'all';
+  String _transactionFilter = 'all';
+  String _leaseFilter = 'all';
+  String _verificationFilter = 'all';
+
+  @override
+  Widget build(BuildContext context) {
+    final users = ref.watch(adminUsersProvider).valueOrNull ?? const <UserModel>[];
+    final allAssets =
+        ref.watch(adminAllAssetsProvider).valueOrNull ?? const <PropertyModel>[];
+    final transactions =
+        ref.watch(transactionsProvider).valueOrNull ?? const <TransactionModel>[];
+    final overview = ref.watch(adminOverviewProvider);
+
+    final homeCount = allAssets.where((item) => item.isHome).length;
+    final carCount = allAssets.where((item) => item.isCar).length;
+    final now = DateTime.now();
+    final monthlyRevenue = transactions
+        .where(
+          (item) =>
+              item.isCompleted &&
+              item.createdAt.month == now.month &&
+              item.createdAt.year == now.year,
+        )
+        .fold<double>(0, (sum, item) => sum + item.amount);
+
+    return RoleDashboardScaffold(
+      title: 'Admin Dashboard',
+      subtitle:
+          'Monitor marketplace activity, moderation queues, transactions, leases, and verification reviews.',
+      stats: [
+        DashboardStatItem(
+          label: 'Total Users',
+          value: '${users.length}',
+          icon: Icons.group_outlined,
+        ),
+        DashboardStatItem(
+          label: 'Total Homes',
+          value: '$homeCount',
+          icon: Icons.home_work_outlined,
+        ),
+        DashboardStatItem(
+          label: 'Total Cars',
+          value: '$carCount',
+          icon: Icons.directions_car_outlined,
+          iconColor: const Color(0xFF1D4ED8),
+          iconBackground: const Color(0xFFE0E7FF),
+        ),
+        DashboardStatItem(
+          label: 'Monthly Revenue',
+          value: formatDashboardMoney(monthlyRevenue),
+          icon: Icons.account_balance_wallet_outlined,
+          iconColor: const Color(0xFF059669),
+          iconBackground: const Color(0xFFDCFCE7),
+        ),
+      ],
+      tabs: [
+        DashboardTabItem(
+          label: 'Overview',
+          child: _AdminOverviewTab(overview: overview),
+        ),
+        DashboardTabItem(
+          label: 'Properties',
+          child: _AdminPropertiesTab(
+            query: _propertyQuery,
+            filter: _propertyFilter,
+            onQueryChanged: (value) => setState(() => _propertyQuery = value),
+            onFilterChanged: (value) => setState(() => _propertyFilter = value),
+          ),
+        ),
+        DashboardTabItem(
+          label: 'Transactions',
+          child: _AdminTransactionsTab(
+            filter: _transactionFilter,
+            onFilterChanged: (value) =>
+                setState(() => _transactionFilter = value),
+          ),
+        ),
+        DashboardTabItem(
+          label: 'Leases',
+          child: _AdminLeasesTab(
+            filter: _leaseFilter,
+            onFilterChanged: (value) => setState(() => _leaseFilter = value),
+          ),
+        ),
+        DashboardTabItem(
+          label: 'Verifications',
+          child: _AdminVerificationsTab(
+            filter: _verificationFilter,
+            onFilterChanged: (value) =>
+                setState(() => _verificationFilter = value),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AdminOverviewTab extends ConsumerWidget {
+  const _AdminOverviewTab({required this.overview});
+
+  final AdminOverviewData overview;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final overview = ref.watch(adminOverviewProvider);
-    final usersAsync = ref.watch(adminUsersProvider);
-    final propertiesAsync = ref.watch(pendingPropertiesProvider);
+    final pendingPropertiesAsync = ref.watch(pendingPropertiesProvider);
+    final pendingAgentsAsync = ref.watch(pendingAgentsProvider);
     final transactions =
-        ref.watch(transactionsProvider).valueOrNull ?? const [];
-    final leases = ref.watch(leasesProvider).valueOrNull ?? const [];
-    final maintenance =
-        ref.watch(maintenanceRequestsProvider).valueOrNull ?? const [];
-    final applications =
-        ref.watch(allApplicationsProvider).valueOrNull ?? const [];
-    final actionState = ref.watch(adminVerificationProvider);
+        ref.watch(transactionsProvider).valueOrNull ??
+        const <TransactionModel>[];
+    final leases =
+        ref.watch(leasesProvider).valueOrNull ?? const <LeaseModel>[];
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
-        actions: [
-          IconButton(
-            onPressed: () {
-              ref.invalidate(adminUsersProvider);
-              ref.invalidate(pendingPropertiesProvider);
-              ref.invalidate(transactionsProvider);
-              ref.invalidate(leasesProvider);
-              ref.invalidate(maintenanceRequestsProvider);
-              ref.invalidate(allApplicationsProvider);
-            },
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          GridView.count(
-            crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            childAspectRatio: 1.4,
+    return DashboardRefreshList(
+      onRefresh: () async {
+        ref.invalidate(adminUsersProvider);
+        ref.invalidate(pendingPropertiesProvider);
+        ref.invalidate(pendingAgentsProvider);
+        ref.invalidate(adminAllAssetsProvider);
+        ref.invalidate(transactionsProvider);
+        ref.invalidate(leasesProvider);
+        ref.invalidate(allApplicationsProvider);
+        await ref.read(adminUsersProvider.future);
+      },
+      children: [
+        DashboardSectionCard(
+          title: 'Activity snapshot',
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 12,
             children: [
-              _StatCard(
-                label: 'Users',
-                value: '${overview.totalUsers}',
-                icon: Icons.group_outlined,
-              ),
-              _StatCard(
-                label: 'Pending Agents',
-                value: '${overview.pendingAgents}',
+              DashboardMetricTile(
                 icon: Icons.badge_outlined,
+                label: '${overview.pendingAgents} pending agents',
               ),
-              _StatCard(
-                label: 'Pending Properties',
-                value: '${overview.pendingProperties}',
+              DashboardMetricTile(
                 icon: Icons.approval_outlined,
+                label: '${overview.pendingProperties} pending properties',
               ),
-              _StatCard(
-                label: 'Transactions',
-                value: '${overview.totalTransactions}',
+              DashboardMetricTile(
                 icon: Icons.payments_outlined,
+                label: '${transactions.length} transactions tracked',
               ),
-              _StatCard(
-                label: 'Leases',
-                value: '${overview.totalLeases}',
+              DashboardMetricTile(
                 icon: Icons.description_outlined,
+                label: '${leases.length} lease records',
               ),
-              _StatCard(
-                label: 'Maintenance',
-                value: '${overview.totalMaintenanceRequests}',
-                icon: Icons.build_outlined,
+              DashboardMetricTile(
+                icon: Icons.assignment_outlined,
+                label: '${overview.totalApplications} applications',
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          Text(
-            'Pending Property Verifications',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 12),
-          propertiesAsync.when(
-            data: (properties) => properties.isEmpty
-                ? const _SectionEmpty(
-                    message: 'No pending property verifications.',
+        ),
+        pendingPropertiesAsync.when(
+          data: (properties) => DashboardSectionCard(
+            title: 'Pending property verifications',
+            trailing: TextButton(
+              onPressed: () => DefaultTabController.of(context)?.animateTo(4),
+              child: const Text('View all'),
+            ),
+            child: properties.isEmpty
+                ? const Text(
+                    'No pending property verifications right now.',
+                    style: TextStyle(color: AppTheme.mutedForeground),
                   )
                 : Column(
-                    children: properties.take(5).map((property) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _PendingPropertyCard(
-                          property: property,
-                          isLoading: actionState.isLoading,
-                        ),
-                      );
-                    }).toList(),
+                    children: [
+                      for (final property in properties.take(4)) ...[
+                        _AdminPropertyRow(property: property),
+                        if (property != properties.take(4).last)
+                          const SizedBox(height: 12),
+                      ],
+                    ],
                   ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => _SectionEmpty(
-              message: error.toString().replaceFirst('Exception: ', ''),
-            ),
           ),
-          const SizedBox(height: 20),
-          Text(
-            'Pending Agent Verifications',
-            style: Theme.of(context).textTheme.titleLarge,
+          loading: () =>
+              const DashboardLoadingState(label: 'Loading pending properties...'),
+          error: (error, _) => DashboardEmptyState(
+            title: 'Pending properties unavailable',
+            message: error.toString().replaceFirst('Exception: ', ''),
           ),
-          const SizedBox(height: 12),
-          usersAsync.when(
-            data: (users) {
-              final pendingAgents = users
-                  .where((user) => user.isAgent && !user.verified)
-                  .take(5)
-                  .toList();
-              if (pendingAgents.isEmpty) {
-                return const _SectionEmpty(
-                  message: 'No pending agent verifications.',
-                );
-              }
-              return Column(
-                children: pendingAgents
-                    .map(
-                      (user) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _PendingAgentCard(
-                          user: user,
-                          isLoading: actionState.isLoading,
-                        ),
+        ),
+        pendingAgentsAsync.when(
+          data: (agents) => DashboardSectionCard(
+            title: 'Pending agent verifications',
+            child: agents.isEmpty
+                ? const Text(
+                    'No pending agent reviews right now.',
+                    style: TextStyle(color: AppTheme.mutedForeground),
+                  )
+                : Column(
+                    children: [
+                      for (final user in agents.take(4)) ...[
+                        _AdminUserRow(user: user),
+                        if (user != agents.take(4).last)
+                          const SizedBox(height: 12),
+                      ],
+                    ],
+                  ),
+          ),
+          loading: () =>
+              const DashboardLoadingState(label: 'Loading pending agents...'),
+          error: (error, _) => DashboardEmptyState(
+            title: 'Pending agents unavailable',
+            message: error.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AdminPropertiesTab extends ConsumerWidget {
+  const _AdminPropertiesTab({
+    required this.query,
+    required this.filter,
+    required this.onQueryChanged,
+    required this.onFilterChanged,
+  });
+
+  final String query;
+  final String filter;
+  final ValueChanged<String> onQueryChanged;
+  final ValueChanged<String> onFilterChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final assetsAsync = ref.watch(adminAllAssetsProvider);
+
+    return assetsAsync.when(
+      data: (assets) {
+        final normalizedQuery = query.trim().toLowerCase();
+        final filtered = assets.where((asset) {
+          final matchesQuery = normalizedQuery.isEmpty ||
+              asset.title.toLowerCase().contains(normalizedQuery) ||
+              asset.locationLabel.toLowerCase().contains(normalizedQuery);
+          final matchesFilter = switch (filter) {
+            'pending' => !asset.isVerified,
+            'homes' => asset.isHome,
+            'cars' => asset.isCar,
+            _ => true,
+          };
+          return matchesQuery && matchesFilter;
+        }).toList(growable: false);
+
+        return DashboardRefreshList(
+          onRefresh: () async {
+            ref.invalidate(adminAllAssetsProvider);
+            await ref.read(adminAllAssetsProvider.future);
+          },
+          children: [
+            DashboardSectionCard(
+              title: 'Marketplace moderation',
+              child: Column(
+                children: [
+                  TextField(
+                    onChanged: onQueryChanged,
+                    decoration: InputDecoration(
+                      hintText: 'Search by title or location',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      filled: true,
+                      fillColor: AppTheme.inputBackground,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppTheme.border),
                       ),
-                    )
-                    .toList(),
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => _SectionEmpty(
-              message: error.toString().replaceFirst('Exception: ', ''),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppTheme.border),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _AdminFilterChip(
+                        label: 'All',
+                        selected: filter == 'all',
+                        onTap: () => onFilterChanged('all'),
+                      ),
+                      _AdminFilterChip(
+                        label: 'Pending',
+                        selected: filter == 'pending',
+                        onTap: () => onFilterChanged('pending'),
+                      ),
+                      _AdminFilterChip(
+                        label: 'Homes',
+                        selected: filter == 'homes',
+                        onTap: () => onFilterChanged('homes'),
+                      ),
+                      _AdminFilterChip(
+                        label: 'Cars',
+                        selected: filter == 'cars',
+                        onTap: () => onFilterChanged('cars'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Activity Snapshot',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 12),
-          GlassCard(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _SnapshotRow(
-                  label: 'Verified users',
-                  value: '${overview.verifiedUsers}',
-                ),
-                _SnapshotRow(
-                  label: 'Applications',
-                  value: '${applications.length}',
-                ),
-                _SnapshotRow(label: 'Recent leases', value: '${leases.length}'),
-                _SnapshotRow(
-                  label: 'Open maintenance',
-                  value:
-                      '${maintenance.where((item) => !item.isCompleted).length}',
-                ),
-                _SnapshotRow(
-                  label: 'Revenue tracked',
-                  value:
-                      '${transactions.fold<double>(0.0, (sum, item) => sum + item.amount).toStringAsFixed(0)} ETB',
-                ),
-              ],
-            ),
+            if (filtered.isEmpty)
+              const DashboardEmptyState(
+                title: 'No listings match the current filter',
+                message: 'Try a different search or moderation filter.',
+              )
+            else
+              for (final property in filtered)
+                _AdminPropertyRow(property: property),
+          ],
+        );
+      },
+      loading: () => DashboardRefreshList(
+        onRefresh: _noopRefresh,
+        children: const [
+          DashboardLoadingState(label: 'Loading properties...'),
+        ],
+      ),
+      error: (error, _) => DashboardRefreshList(
+        onRefresh: () async {
+          ref.invalidate(adminAllAssetsProvider);
+          await ref.read(adminAllAssetsProvider.future);
+        },
+        children: [
+          DashboardEmptyState(
+            title: 'Property moderation unavailable',
+            message: error.toString().replaceFirst('Exception: ', ''),
           ),
         ],
       ),
@@ -191,318 +371,499 @@ class AdminDashboardScreen extends ConsumerWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
+class _AdminTransactionsTab extends ConsumerWidget {
+  const _AdminTransactionsTab({
+    required this.filter,
+    required this.onFilterChanged,
+  });
+
+  final String filter;
+  final ValueChanged<String> onFilterChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final transactionsAsync = ref.watch(transactionsProvider);
+
+    return transactionsAsync.when(
+      data: (transactions) {
+        final filtered = transactions.where((item) {
+          return switch (filter) {
+            'completed' => item.isCompleted,
+            'pending' => !item.isCompleted,
+            _ => true,
+          };
+        }).toList(growable: false);
+
+        return DashboardRefreshList(
+          onRefresh: () async {
+            ref.invalidate(transactionsProvider);
+            await ref.read(transactionsProvider.future);
+          },
+          children: [
+            DashboardSectionCard(
+              title: 'Transaction ledger',
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _AdminFilterChip(
+                    label: 'All',
+                    selected: filter == 'all',
+                    onTap: () => onFilterChanged('all'),
+                  ),
+                  _AdminFilterChip(
+                    label: 'Completed',
+                    selected: filter == 'completed',
+                    onTap: () => onFilterChanged('completed'),
+                  ),
+                  _AdminFilterChip(
+                    label: 'Pending',
+                    selected: filter == 'pending',
+                    onTap: () => onFilterChanged('pending'),
+                  ),
+                ],
+              ),
+            ),
+            if (filtered.isEmpty)
+              const DashboardEmptyState(
+                title: 'No transactions for this filter',
+                message: 'Switch the filter to inspect more payment activity.',
+              )
+            else
+              for (final transaction in filtered)
+                _AdminTransactionRow(transaction: transaction),
+          ],
+        );
+      },
+      loading: () => DashboardRefreshList(
+        onRefresh: _noopRefresh,
+        children: const [
+          DashboardLoadingState(label: 'Loading transactions...'),
+        ],
+      ),
+      error: (error, _) => DashboardRefreshList(
+        onRefresh: () async {
+          ref.invalidate(transactionsProvider);
+          await ref.read(transactionsProvider.future);
+        },
+        children: [
+          DashboardEmptyState(
+            title: 'Transactions unavailable',
+            message: error.toString().replaceFirst('Exception: ', ''),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminLeasesTab extends ConsumerWidget {
+  const _AdminLeasesTab({
+    required this.filter,
+    required this.onFilterChanged,
+  });
+
+  final String filter;
+  final ValueChanged<String> onFilterChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final leasesAsync = ref.watch(leasesProvider);
+
+    return leasesAsync.when(
+      data: (leases) {
+        final filtered = leases.where((item) {
+          return switch (filter) {
+            'active' => item.isActive,
+            'pending' => item.isPending,
+            'cancellation' => item.isCancellationPending,
+            _ => true,
+          };
+        }).toList(growable: false);
+
+        return DashboardRefreshList(
+          onRefresh: () async {
+            ref.invalidate(leasesProvider);
+            await ref.read(leasesProvider.future);
+          },
+          children: [
+            DashboardSectionCard(
+              title: 'Lease monitoring',
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _AdminFilterChip(
+                    label: 'All',
+                    selected: filter == 'all',
+                    onTap: () => onFilterChanged('all'),
+                  ),
+                  _AdminFilterChip(
+                    label: 'Active',
+                    selected: filter == 'active',
+                    onTap: () => onFilterChanged('active'),
+                  ),
+                  _AdminFilterChip(
+                    label: 'Pending',
+                    selected: filter == 'pending',
+                    onTap: () => onFilterChanged('pending'),
+                  ),
+                  _AdminFilterChip(
+                    label: 'Cancellation',
+                    selected: filter == 'cancellation',
+                    onTap: () => onFilterChanged('cancellation'),
+                  ),
+                ],
+              ),
+            ),
+            if (filtered.isEmpty)
+              const DashboardEmptyState(
+                title: 'No leases for this filter',
+                message: 'Adjust the lease status filter to inspect more agreements.',
+              )
+            else
+              for (final lease in filtered)
+                _AdminLeaseRow(lease: lease),
+          ],
+        );
+      },
+      loading: () => DashboardRefreshList(
+        onRefresh: _noopRefresh,
+        children: const [
+          DashboardLoadingState(label: 'Loading leases...'),
+        ],
+      ),
+      error: (error, _) => DashboardRefreshList(
+        onRefresh: () async {
+          ref.invalidate(leasesProvider);
+          await ref.read(leasesProvider.future);
+        },
+        children: [
+          DashboardEmptyState(
+            title: 'Leases unavailable',
+            message: error.toString().replaceFirst('Exception: ', ''),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdminVerificationsTab extends ConsumerWidget {
+  const _AdminVerificationsTab({
+    required this.filter,
+    required this.onFilterChanged,
+  });
+
+  final String filter;
+  final ValueChanged<String> onFilterChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pendingPropertiesAsync = ref.watch(pendingPropertiesProvider);
+    final pendingAgentsAsync = ref.watch(pendingAgentsProvider);
+
+    return DashboardRefreshList(
+      onRefresh: () async {
+        ref.invalidate(pendingPropertiesProvider);
+        ref.invalidate(pendingAgentsProvider);
+        await ref.read(pendingPropertiesProvider.future);
+      },
+      children: [
+        DashboardSectionCard(
+          title: 'Verification queues',
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _AdminFilterChip(
+                label: 'All',
+                selected: filter == 'all',
+                onTap: () => onFilterChanged('all'),
+              ),
+              _AdminFilterChip(
+                label: 'Properties',
+                selected: filter == 'properties',
+                onTap: () => onFilterChanged('properties'),
+              ),
+              _AdminFilterChip(
+                label: 'Agents',
+                selected: filter == 'agents',
+                onTap: () => onFilterChanged('agents'),
+              ),
+            ],
+          ),
+        ),
+        if (filter != 'agents')
+          pendingPropertiesAsync.when(
+            data: (properties) => DashboardSectionCard(
+              title: 'Property verifications',
+              child: properties.isEmpty
+                  ? const Text(
+                      'No pending property documents.',
+                      style: TextStyle(color: AppTheme.mutedForeground),
+                    )
+                  : Column(
+                      children: [
+                        for (final property in properties)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _AdminPropertyRow(property: property),
+                          ),
+                      ],
+                    ),
+            ),
+            loading: () => const DashboardLoadingState(
+              label: 'Loading property verifications...',
+            ),
+            error: (error, _) => DashboardEmptyState(
+              title: 'Property verifications unavailable',
+              message: error.toString().replaceFirst('Exception: ', ''),
+            ),
+          ),
+        if (filter != 'properties')
+          pendingAgentsAsync.when(
+            data: (agents) => DashboardSectionCard(
+              title: 'Agent verifications',
+              child: agents.isEmpty
+                  ? const Text(
+                      'No pending agent documents.',
+                      style: TextStyle(color: AppTheme.mutedForeground),
+                    )
+                  : Column(
+                      children: [
+                        for (final user in agents)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _AdminUserRow(user: user),
+                          ),
+                      ],
+                    ),
+            ),
+            loading: () => const DashboardLoadingState(
+              label: 'Loading agent verifications...',
+            ),
+            error: (error, _) => DashboardEmptyState(
+              title: 'Agent verifications unavailable',
+              message: error.toString().replaceFirst('Exception: ', ''),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _AdminPropertyRow extends StatelessWidget {
+  const _AdminPropertyRow({required this.property});
+
+  final PropertyModel property;
+
+  @override
+  Widget build(BuildContext context) {
+    return DashboardEntityCard(
+      title: property.title,
+      subtitle: property.locationLabel,
+      imageUrl: property.mainImage,
+      imageIcon:
+          property.isCar ? Icons.directions_car_outlined : Icons.home_work_outlined,
+      status: DashboardStatusPill(
+        label: property.isVerified ? 'Verified' : 'Pending review',
+        color: property.isVerified
+            ? const Color(0xFF059669)
+            : const Color(0xFFD97706),
+      ),
+      metrics: [
+        DashboardMetricTile(
+          icon: Icons.sell_outlined,
+          label: formatDashboardMoney(property.price),
+        ),
+        DashboardMetricTile(
+          icon: Icons.category_outlined,
+          label: property.isCar
+              ? prettyDashboardLabel(property.brand ?? 'Car')
+              : prettyDashboardLabel(property.propertyType ?? 'Property'),
+        ),
+      ],
+      actions: [
+        FilledButton.icon(
+          onPressed: () => context.push('/admin/properties/${property.id}'),
+          icon: const Icon(Icons.fact_check_outlined, size: 18),
+          label: const Text('Review'),
+        ),
+        OutlinedButton.icon(
+          onPressed: () => context.push('/property-detail', extra: property),
+          icon: const Icon(Icons.visibility_outlined, size: 18),
+          label: const Text('View'),
+        ),
+      ],
+    );
+  }
+}
+
+class _AdminUserRow extends StatelessWidget {
+  const _AdminUserRow({required this.user});
+
+  final UserModel user;
+
+  @override
+  Widget build(BuildContext context) {
+    return DashboardEntityCard(
+      title: user.name,
+      subtitle: user.email,
+      imageUrl: user.profileImage,
+      imageIcon: Icons.person_outline_rounded,
+      status: DashboardStatusPill(
+        label: user.verified ? 'Verified' : 'Pending review',
+        color: user.verified
+            ? const Color(0xFF059669)
+            : const Color(0xFFD97706),
+      ),
+      metrics: [
+        DashboardMetricTile(
+          icon: Icons.badge_outlined,
+          label: prettyDashboardLabel(user.role),
+        ),
+        DashboardMetricTile(
+          icon: Icons.calendar_today_outlined,
+          label: formatDashboardDate(user.createdAt),
+        ),
+      ],
+      actions: [
+        FilledButton.icon(
+          onPressed: () => context.push('/admin/agents/${user.id}'),
+          icon: const Icon(Icons.verified_user_outlined, size: 18),
+          label: const Text('Review'),
+        ),
+      ],
+    );
+  }
+}
+
+class _AdminTransactionRow extends StatelessWidget {
+  const _AdminTransactionRow({required this.transaction});
+
+  final TransactionModel transaction;
+
+  @override
+  Widget build(BuildContext context) {
+    return DashboardEntityCard(
+      title:
+          transaction.property?.title ?? prettyDashboardLabel(transaction.type),
+      subtitle:
+          transaction.property?.locationLabel ?? formatDashboardDate(transaction.createdAt),
+      imageIcon: Icons.payments_outlined,
+      status: DashboardStatusPill(
+        label: prettyDashboardLabel(transaction.status),
+        color: dashboardStatusColor(transaction.status),
+      ),
+      body: Text(
+        'Payer: ${transaction.payer?.name ?? 'Unknown'}  •  Payee: ${transaction.payee?.name ?? 'Unknown'}',
+        style: const TextStyle(
+          color: AppTheme.foreground,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      metrics: [
+        DashboardMetricTile(
+          icon: Icons.account_balance_wallet_outlined,
+          label: formatDashboardMoney(transaction.amount),
+        ),
+        DashboardMetricTile(
+          icon: Icons.receipt_long_outlined,
+          label: prettyDashboardLabel(transaction.type),
+        ),
+      ],
+      actions: [
+        if (transaction.isCompleted)
+          FilledButton.icon(
+            onPressed: () => context.push(
+              '/transactions/receipt/${transaction.id}',
+              extra: transaction,
+            ),
+            icon: const Icon(Icons.receipt_long_outlined, size: 18),
+            label: const Text('Receipt'),
+          ),
+      ],
+    );
+  }
+}
+
+class _AdminLeaseRow extends StatelessWidget {
+  const _AdminLeaseRow({required this.lease});
+
+  final LeaseModel lease;
+
+  @override
+  Widget build(BuildContext context) {
+    return DashboardEntityCard(
+      title: lease.property?.title ?? 'Lease agreement',
+      subtitle: lease.property?.locationLabel ?? 'Property information unavailable',
+      imageUrl: lease.property?.mainImage,
+      imageIcon: Icons.description_outlined,
+      status: DashboardStatusPill(
+        label: prettyDashboardLabel(lease.status),
+        color: dashboardStatusColor(lease.status),
+      ),
+      body: Text(
+        'Customer: ${lease.customer?.name ?? 'Unknown'}  •  Owner: ${lease.owner?.name ?? 'Unknown'}',
+        style: const TextStyle(
+          color: AppTheme.foreground,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      metrics: [
+        DashboardMetricTile(
+          icon: Icons.payments_outlined,
+          label: formatDashboardMoney(lease.recurringAmount ?? lease.totalPrice),
+        ),
+        DashboardMetricTile(
+          icon: Icons.calendar_today_outlined,
+          label:
+              '${formatDashboardDate(lease.startDate)} - ${formatDashboardDate(lease.endDate)}',
+        ),
+      ],
+      actions: [
+        FilledButton.icon(
+          onPressed: () => context.push('/leases/${lease.id}'),
+          icon: const Icon(Icons.visibility_outlined, size: 18),
+          label: const Text('View detail'),
+        ),
+      ],
+    );
+  }
+}
+
+class _AdminFilterChip extends StatelessWidget {
+  const _AdminFilterChip({
     required this.label,
-    required this.value,
-    required this.icon,
+    required this.selected,
+    required this.onTap,
   });
 
   final String label;
-  final String value;
-  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: AppTheme.secondary),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Colors.white70)),
-        ],
+    return ChoiceChip(
+      selected: selected,
+      label: Text(label),
+      onSelected: (_) => onTap(),
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : AppTheme.foreground,
+        fontWeight: FontWeight.w700,
+      ),
+      selectedColor: AppTheme.primary,
+      backgroundColor: const Color(0xFFF8FAFC),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(999),
+        side: BorderSide(
+          color: selected ? AppTheme.primary : AppTheme.border,
+        ),
       ),
     );
   }
 }
 
-class _PendingPropertyCard extends ConsumerWidget {
-  const _PendingPropertyCard({required this.property, required this.isLoading});
-
-  final PropertyModel property;
-  final bool isLoading;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            property.title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            property.locationLabel,
-            style: const TextStyle(color: Colors.white70),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${property.price.toStringAsFixed(0)} ETB',
-            style: const TextStyle(color: AppTheme.secondary),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: () => context.push('/admin/properties/${property.id}'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: const BorderSide(color: Colors.white24),
-            ),
-            child: const Text('Review Details'),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () => _verify(context, ref, true),
-                  child: const Text('Approve'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () => _verify(context, ref, false),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                  ),
-                  child: const Text('Reject'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _verify(
-    BuildContext context,
-    WidgetRef ref,
-    bool approved,
-  ) async {
-    String? reason;
-    if (!approved) {
-      reason = await _askForReason(
-        context,
-        'Why are you rejecting this property?',
-      );
-      if (!context.mounted) return;
-      if (reason == null) return;
-    }
-    try {
-      await ref
-          .read(adminVerificationProvider.notifier)
-          .verifyProperty(
-            propertyId: property.id,
-            isVerified: approved,
-            rejectionReason: reason,
-          );
-      ref.invalidate(pendingPropertiesProvider);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Property ${approved ? 'approved' : 'rejected'}'),
-        ),
-      );
-    } catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString().replaceFirst('Exception: ', '')),
-        ),
-      );
-    }
-  }
-}
-
-class _PendingAgentCard extends ConsumerWidget {
-  const _PendingAgentCard({required this.user, required this.isLoading});
-
-  final UserModel user;
-  final bool isLoading;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            user.name,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          const SizedBox(height: 6),
-          Text(user.email, style: const TextStyle(color: Colors.white70)),
-          const SizedBox(height: 6),
-          Text(
-            user.createdAt != null
-                ? 'Joined ${user.createdAt!.day}/${user.createdAt!.month}/${user.createdAt!.year}'
-                : 'Pending review',
-            style: const TextStyle(color: Colors.white54),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: () => context.push('/admin/agents/${user.id}'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: const BorderSide(color: Colors.white24),
-            ),
-            child: const Text('Review Details'),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () => _verify(context, ref, true),
-                  child: const Text('Approve'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: isLoading
-                      ? null
-                      : () => _verify(context, ref, false),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                  ),
-                  child: const Text('Reject'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _verify(
-    BuildContext context,
-    WidgetRef ref,
-    bool approved,
-  ) async {
-    String? reason;
-    if (!approved) {
-      reason = await _askForReason(
-        context,
-        'Why are you rejecting this agent?',
-      );
-      if (!context.mounted) return;
-      if (reason == null) return;
-    }
-    try {
-      await ref
-          .read(adminVerificationProvider.notifier)
-          .verifyUser(
-            userId: user.id,
-            verified: approved,
-            rejectionReason: reason,
-          );
-      ref.invalidate(adminUsersProvider);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Agent ${approved ? 'approved' : 'rejected'}')),
-      );
-    } catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.toString().replaceFirst('Exception: ', '')),
-        ),
-      );
-    }
-  }
-}
-
-class _SnapshotRow extends StatelessWidget {
-  const _SnapshotRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(label, style: const TextStyle(color: Colors.white70)),
-          ),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionEmpty extends StatelessWidget {
-  const _SectionEmpty({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(18),
-      child: Text(message, style: const TextStyle(color: Colors.white70)),
-    );
-  }
-}
-
-Future<String?> _askForReason(BuildContext context, String title) async {
-  final controller = TextEditingController();
-  final result = await showDialog<String>(
-    context: context,
-    builder: (dialogContext) => AlertDialog(
-      backgroundColor: const Color(0xFF1E293B),
-      title: Text(title),
-      content: TextField(
-        controller: controller,
-        minLines: 3,
-        maxLines: 5,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: 'Optional rejection reason',
-          hintStyle: const TextStyle(color: Colors.white38),
-          filled: true,
-          fillColor: Colors.white.withOpacity(0.06),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogContext).pop(),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () => Navigator.of(dialogContext).pop(controller.text),
-          child: const Text('Submit'),
-        ),
-      ],
-    ),
-  );
-  controller.dispose();
-  return result;
-}
+Future<void> _noopRefresh() async {}

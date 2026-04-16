@@ -12,10 +12,12 @@ import '../chat/providers/chat_provider.dart';
 import '../chat/repositories/chat_repository.dart';
 import '../reviews/models/review_model.dart';
 import '../reviews/providers/review_provider.dart';
-import '../../shared/widgets/glass_card.dart';
+import '../transactions/models/transaction_model.dart';
+import '../transactions/providers/transaction_provider.dart';
 import '../favorites/providers/favorite_provider.dart';
 import 'models/property_model.dart';
 import 'repositories/listing_repository.dart';
+import 'widgets/search_map_panel.dart';
 
 final propertyDetailProvider = FutureProvider.family<PropertyModel, String>((
   ref,
@@ -99,12 +101,19 @@ class _PropertyDetailsView extends ConsumerWidget {
     );
     final reviewsAsync = ref.watch(propertyReviewsProvider(property.id));
     final reviewActionState = ref.watch(reviewActionProvider);
+    final transactions = ref.watch(transactionsProvider).valueOrNull ??
+        const <TransactionModel>[];
     final isCustomer = currentUser?.role.toUpperCase() == 'CUSTOMER';
     final isOwnListing =
         currentUser != null &&
         property.owner != null &&
         currentUser.id == property.owner!.id;
     final canApply = isCustomer && !isOwnListing && property.owner != null;
+    final canReview = isCustomer &&
+        transactions.any(
+          (transaction) =>
+              transaction.propertyId == property.id && transaction.isCompleted,
+        );
     final canPayForListing =
         existingApplication?.isAccepted == true &&
         property.owner?.chapaSubaccountId != null &&
@@ -133,41 +142,158 @@ class _PropertyDetailsView extends ConsumerWidget {
         specs.add(MapEntry('Mileage', '${property.mileage} km'));
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 350,
-            width: double.infinity,
-            child: property.images.isNotEmpty
-                ? PageView.builder(
-                    itemCount: property.images.length,
-                    itemBuilder: (context, index) {
-                      return CachedNetworkImage(
-                        imageUrl: property.images[index],
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) =>
-                            const Center(child: CircularProgressIndicator()),
-                        errorWidget: (_, __, ___) =>
-                            const Icon(Icons.error, color: Colors.white54),
-                      );
-                    },
-                  )
-                : Container(
-                    color: Colors.white12,
-                    child: const Center(
-                      child: Icon(
-                        Icons.image_not_supported,
-                        color: Colors.white54,
-                        size: 60,
-                      ),
+    return _buildWebDetailLayout(
+      context: context,
+      ref: ref,
+      currentUser: currentUser,
+      applicationsAsync: applicationsAsync,
+      submissionState: submissionState,
+      existingApplication: existingApplication,
+      reviewsAsync: reviewsAsync,
+      reviewActionState: reviewActionState,
+      specs: specs,
+      canApply: canApply,
+      canReview: canReview,
+      isOwnListing: isOwnListing,
+      canPayForListing: canPayForListing,
+    );
+
+    return Container(
+      color: const Color(0xFFF8FAFC),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1180),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: AppTheme.border),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x14000000),
+                          blurRadius: 30,
+                          offset: Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          height: 420,
+                          width: double.infinity,
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(28),
+                            ),
+                            child: property.images.isNotEmpty
+                                ? PageView.builder(
+                                    itemCount: property.images.length,
+                                    itemBuilder: (context, index) {
+                                      return CachedNetworkImage(
+                                        imageUrl: property.images[index],
+                                        fit: BoxFit.cover,
+                                        placeholder: (_, __) => Container(
+                                          color: const Color(0xFFF3F4F6),
+                                          child: const Center(
+                                            child: CircularProgressIndicator(
+                                              color: AppTheme.primary,
+                                            ),
+                                          ),
+                                        ),
+                                        errorWidget: (_, __, ___) =>
+                                            const Center(
+                                              child: Icon(
+                                                Icons.broken_image_outlined,
+                                                color: AppTheme
+                                                    .mutedForeground,
+                                              ),
+                                            ),
+                                      );
+                                    },
+                                  )
+                                : Container(
+                                    color: const Color(0xFFF3F4F6),
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.image_not_supported_outlined,
+                                        color: AppTheme.mutedForeground,
+                                        size: 60,
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        if (property.images.length > 1)
+                          Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: SizedBox(
+                              height: 88,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: property.images.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(width: 12),
+                                itemBuilder: (context, index) {
+                                  return ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: CachedNetworkImage(
+                                      imageUrl: property.images[index],
+                                      width: 110,
+                                      height: 88,
+                                      fit: BoxFit.cover,
+                                      placeholder: (_, __) => Container(
+                                        width: 110,
+                                        height: 88,
+                                        color: const Color(0xFFF3F4F6),
+                                      ),
+                                      errorWidget: (_, __, ___) => Container(
+                                        width: 110,
+                                        height: 88,
+                                        color: const Color(0xFFF3F4F6),
+                                        child: const Icon(
+                                          Icons.image_outlined,
+                                          color: AppTheme.mutedForeground,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1180),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: AppTheme.border),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x14000000),
+                          blurRadius: 28,
+                          offset: Offset(0, 14),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -176,9 +302,12 @@ class _PropertyDetailsView extends ConsumerWidget {
                     Expanded(
                       child: Text(
                         property.title,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.displayLarge?.copyWith(fontSize: 28),
+                        style: const TextStyle(
+                          fontSize: 30,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.foreground,
+                          height: 1.1,
+                        ),
                       ),
                     ),
                     if (property.isVerified)
@@ -196,15 +325,31 @@ class _PropertyDetailsView extends ConsumerWidget {
                 Text(
                   '${property.price.toStringAsFixed(0)} ETB',
                   style: const TextStyle(
-                    color: AppTheme.secondary,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primary,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  property.locationLabel,
-                  style: const TextStyle(color: Colors.white60),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 18,
+                      color: AppTheme.primary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        property.locationLabel,
+                        style: const TextStyle(
+                          color: AppTheme.mutedForeground,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 if (property.reviewCount > 0) ...[
                   const SizedBox(height: 8),
@@ -214,16 +359,20 @@ class _PropertyDetailsView extends ConsumerWidget {
                       const SizedBox(width: 6),
                       Text(
                         '${property.rating.toStringAsFixed(1)} (${property.reviewCount} reviews)',
-                        style: const TextStyle(color: Colors.white70),
+                        style: const TextStyle(color: AppTheme.mutedForeground),
                       ),
                     ],
                   ),
                 ],
                 const SizedBox(height: 20),
                 if (specs.isNotEmpty) ...[
-                  Text(
+                  const Text(
                     'Highlights',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.foreground,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -231,10 +380,15 @@ class _PropertyDetailsView extends ConsumerWidget {
                     runSpacing: 12,
                     children: specs
                         .map(
-                          (entry) => GlassCard(
+                          (entry) => Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 10,
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppTheme.border),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,15 +397,17 @@ class _PropertyDetailsView extends ConsumerWidget {
                                 Text(
                                   entry.key,
                                   style: const TextStyle(
-                                    color: Colors.white54,
+                                    color: AppTheme.mutedForeground,
                                     fontSize: 11,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   entry.value,
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.foreground,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
                               ],
@@ -263,21 +419,34 @@ class _PropertyDetailsView extends ConsumerWidget {
                   const SizedBox(height: 24),
                 ],
                 if (property.owner != null) ...[
-                  Text(
+                  const Text(
                     'Owner / Lister',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.foreground,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  GlassCard(
+                  InkWell(
                     onTap: property.owner!.id.isEmpty
                         ? null
                         : () => context.push(
                             '/profile/view/${property.owner!.id}',
                           ),
-                    child: Row(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppTheme.border),
+                      ),
+                      child: Row(
                       children: [
                         CircleAvatar(
                           radius: 24,
+                          backgroundColor: const Color(0xFFE8F3EF),
                           backgroundImage: property.owner!.profileImage != null
                               ? CachedNetworkImageProvider(
                                   property.owner!.profileImage!,
@@ -298,39 +467,57 @@ class _PropertyDetailsView extends ConsumerWidget {
                               Text(
                                 property.owner!.name,
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.foreground,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                               if (property.owner!.role != null)
                                 Text(
                                   property.owner!.role!,
                                   style: const TextStyle(
-                                    color: Colors.white54,
+                                    color: AppTheme.mutedForeground,
                                     fontSize: 12,
                                   ),
                                 ),
                             ],
                           ),
                         ),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppTheme.mutedForeground,
+                        ),
                       ],
                     ),
                   ),
+                  ),
                   const SizedBox(height: 24),
                 ],
-                Text(
+                const Text(
                   'Description',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.foreground,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   property.description,
-                  style: const TextStyle(color: Colors.white70, height: 1.5),
+                  style: const TextStyle(
+                    color: AppTheme.mutedForeground,
+                    height: 1.65,
+                    fontSize: 15,
+                  ),
                 ),
                 if (property.amenities.isNotEmpty) ...[
                   const SizedBox(height: 24),
                   Text(
-                    'Features',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    property.isHome ? 'Amenities' : 'Features',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.foreground,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Wrap(
@@ -340,15 +527,26 @@ class _PropertyDetailsView extends ConsumerWidget {
                         .map(
                           (amenity) => Chip(
                             label: Text(amenity),
-                            backgroundColor: Colors.white10,
-                            labelStyle: const TextStyle(color: Colors.white),
+                            backgroundColor: const Color(0xFFF8FAFC),
+                            side: const BorderSide(color: AppTheme.border),
+                            labelStyle: const TextStyle(
+                              color: AppTheme.foreground,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         )
                         .toList(),
                   ),
                 ],
                 const SizedBox(height: 24),
-                Text('Reviews', style: Theme.of(context).textTheme.titleLarge),
+                const Text(
+                  'Reviews',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.foreground,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 reviewsAsync.when(
                   data: (reviews) {
@@ -365,49 +563,42 @@ class _PropertyDetailsView extends ConsumerWidget {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (currentUser != null)
+                        if (canReview)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: reviewActionState.isLoading
-                                    ? null
-                                    : () => _showReviewDialog(
-                                        context,
-                                        ref,
-                                        existingReview: myReview,
-                                      ),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white,
-                                  side: const BorderSide(color: Colors.white24),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                ),
-                                icon: Icon(
-                                  myReview == null
-                                      ? Icons.rate_review_outlined
-                                      : Icons.edit_outlined,
-                                ),
-                                label: Text(
-                                  myReview == null
-                                      ? 'Write a Review'
-                                      : 'Update Your Review',
-                                ),
-                              ),
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _ReviewComposerCard(
+                              existingReview: myReview,
+                              isSubmitting: reviewActionState.isLoading,
+                              onSubmit: (rating, comment) async {
+                                await ref
+                                    .read(reviewActionProvider.notifier)
+                                    .submitReview(
+                                      propertyId: property.id,
+                                      rating: rating,
+                                      comment: comment,
+                                    );
+                                ref.invalidate(propertyDetailProvider(property.id));
+                              },
                             ),
                           ),
                         if (reviews.isEmpty)
-                          const GlassCard(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(vertical: 18),
-                              child: Center(
-                                child: Text(
-                                  'No reviews yet. Completed customers can leave one after payment.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.white54),
-                                ),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 20,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: AppTheme.border),
+                            ),
+                            child: const Text(
+                              'No reviews yet. Completed customers can leave one after payment.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppTheme.mutedForeground,
+                                height: 1.5,
                               ),
                             ),
                           )
@@ -419,15 +610,7 @@ class _PropertyDetailsView extends ConsumerWidget {
                                     padding: const EdgeInsets.only(bottom: 12),
                                     child: _ReviewCard(
                                       review: review,
-                                      canDelete:
-                                          currentUser?.id == review.reviewerId,
-                                      onDelete: reviewActionState.isLoading
-                                          ? null
-                                          : () => _deleteReview(
-                                              context,
-                                              ref,
-                                              review.id,
-                                            ),
+                                      canDelete: false,
                                     ),
                                   ),
                                 )
@@ -508,10 +691,11 @@ class _PropertyDetailsView extends ConsumerWidget {
                                 : 'Hello, I would like more details about ${property.title}.',
                           ),
                     style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.primary,
                       side: const BorderSide(color: AppTheme.primary),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                     ),
                     child: Text(
@@ -520,13 +704,950 @@ class _PropertyDetailsView extends ConsumerWidget {
                           : property.isHome
                           ? 'Book Viewing'
                           : 'Ask About Vehicle',
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(
+                        color: AppTheme.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 40),
               ],
             ),
+          ),
+        ),
+      ),
+    ),
+          ),
+        ],
+      ),
+      ),
+    );
+  }
+
+  String _formatListingTypeLabel(String value) {
+    final normalized = value.replaceAll('_', ' ').toUpperCase();
+    switch (normalized) {
+      case 'RENT':
+        return 'For Rent';
+      case 'BUY':
+        return 'For Sale';
+      case 'LEASE':
+        return 'Lease';
+      default:
+        return normalized
+            .toLowerCase()
+            .split(' ')
+            .map(
+              (part) => part.isEmpty
+                  ? part
+                  : '${part[0].toUpperCase()}${part.substring(1)}',
+            )
+            .join(' ');
+    }
+  }
+
+  Widget _buildSectionCard({
+    required Widget child,
+    EdgeInsets padding = const EdgeInsets.all(24),
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppTheme.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 28,
+            offset: Offset(0, 14),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildWebDetailLayout({
+    required BuildContext context,
+    required WidgetRef ref,
+    required dynamic currentUser,
+    required AsyncValue<List<PropertyApplication>> applicationsAsync,
+    required ApplicationSubmissionState submissionState,
+    required PropertyApplication? existingApplication,
+    required AsyncValue<List<ReviewModel>> reviewsAsync,
+    required ReviewActionState reviewActionState,
+    required List<MapEntry<String, String>> specs,
+    required bool canApply,
+    required bool canReview,
+    required bool isOwnListing,
+    required bool canPayForListing,
+  }) {
+    final listingTypeLabels = property.listingTypes.isEmpty
+        ? <String>[property.isHome ? 'For Sale' : 'Buy']
+        : property.listingTypes.map(_formatListingTypeLabel).toList();
+
+    return Container(
+      color: const Color(0xFFF8FAFC),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1180),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 980;
+                    if (!isWide) {
+                      return Column(
+                        children: [
+                          _buildGalleryCard(),
+                          const SizedBox(height: 20),
+                          _buildBookingCard(
+                            context: context,
+                            ref: ref,
+                            currentUser: currentUser,
+                            applicationsAsync: applicationsAsync,
+                            submissionState: submissionState,
+                            existingApplication: existingApplication,
+                            canApply: canApply,
+                            isOwnListing: isOwnListing,
+                            canPayForListing: canPayForListing,
+                          ),
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 2, child: _buildGalleryCard()),
+                        const SizedBox(width: 24),
+                        Expanded(
+                          child: _buildBookingCard(
+                            context: context,
+                            ref: ref,
+                            currentUser: currentUser,
+                            applicationsAsync: applicationsAsync,
+                            submissionState: submissionState,
+                            existingApplication: existingApplication,
+                            canApply: canApply,
+                            isOwnListing: isOwnListing,
+                            canPayForListing: canPayForListing,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isWide = constraints.maxWidth >= 980;
+                    final mainColumn = Column(
+                      children: [
+                        _buildInfoCard(specs: specs),
+                        const SizedBox(height: 20),
+                        if (property.amenities.isNotEmpty) ...[
+                          _buildAmenitiesCard(),
+                          const SizedBox(height: 20),
+                        ],
+                        _buildReviewsCard(
+                          ref: ref,
+                          currentUser: currentUser,
+                          reviewsAsync: reviewsAsync,
+                          reviewActionState: reviewActionState,
+                          canReview: canReview,
+                        ),
+                      ],
+                    );
+                    final sideColumn = Column(
+                      children: [
+                        _buildMapCard(),
+                        const SizedBox(height: 20),
+                        _buildAvailabilityCard(
+                          listingTypeLabels: listingTypeLabels,
+                        ),
+                      ],
+                    );
+
+                    if (!isWide) {
+                      return Column(
+                        children: [
+                          mainColumn,
+                          const SizedBox(height: 20),
+                          sideColumn,
+                        ],
+                      );
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 2, child: mainColumn),
+                        const SizedBox(width: 24),
+                        Expanded(child: sideColumn),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGalleryCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppTheme.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 30,
+            offset: Offset(0, 14),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 420,
+            width: double.infinity,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+              child: property.images.isNotEmpty
+                  ? PageView.builder(
+                      itemCount: property.images.length,
+                      itemBuilder: (context, index) {
+                        return CachedNetworkImage(
+                          imageUrl: property.images[index],
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(
+                            color: const Color(0xFFF3F4F6),
+                            child: const Center(
+                              child: CircularProgressIndicator(
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) => const Center(
+                            child: Icon(
+                              Icons.broken_image_outlined,
+                              color: AppTheme.mutedForeground,
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  : Container(
+                      color: const Color(0xFFF3F4F6),
+                      child: const Center(
+                        child: Icon(
+                          Icons.image_not_supported_outlined,
+                          color: AppTheme.mutedForeground,
+                          size: 60,
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+          if (property.images.length > 1)
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: SizedBox(
+                height: 88,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: property.images.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: CachedNetworkImage(
+                        imageUrl: property.images[index],
+                        width: 110,
+                        height: 88,
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                          width: 110,
+                          height: 88,
+                          color: const Color(0xFFF3F4F6),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          width: 110,
+                          height: 88,
+                          color: const Color(0xFFF3F4F6),
+                          child: const Icon(
+                            Icons.image_outlined,
+                            color: AppTheme.mutedForeground,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookingCard({
+    required BuildContext context,
+    required WidgetRef ref,
+    required dynamic currentUser,
+    required AsyncValue<List<PropertyApplication>> applicationsAsync,
+    required ApplicationSubmissionState submissionState,
+    required PropertyApplication? existingApplication,
+    required bool canApply,
+    required bool isOwnListing,
+    required bool canPayForListing,
+  }) {
+    final primaryAction = _buildPrimaryAction(
+      context: context,
+      ref: ref,
+      isAuthenticated: currentUser != null,
+      isCheckingApplications: applicationsAsync.isLoading,
+      canApply: canApply,
+      canPayForListing: canPayForListing,
+      existingApplication: existingApplication,
+      isSubmitting: submissionState.isSubmitting,
+    );
+    final primaryLabel = _buildPrimaryLabel(
+      property: property,
+      existingApplication: existingApplication,
+      isSubmitting: submissionState.isSubmitting,
+      canPayForListing: canPayForListing,
+      isAuthenticated: currentUser != null,
+      canApply: canApply,
+    );
+    final ownerRoleLabel = property.owner?.role?.isNotEmpty == true
+        ? property.owner!.role!
+        : 'Property Owner';
+    final messageLabel = existingApplication != null
+        ? 'Message Owner'
+        : property.isHome
+        ? 'Book Viewing'
+        : 'Ask About Vehicle';
+
+    return _buildSectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'ETB ${property.price.toStringAsFixed(0)}',
+            style: const TextStyle(
+              color: AppTheme.primary,
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          if (property.listingTypes.any((type) => type.toUpperCase() == 'RENT'))
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                '/month',
+                style: TextStyle(
+                  color: AppTheme.mutedForeground,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          const SizedBox(height: 20),
+          if (canApply && applicationsAsync.isLoading) ...[
+            const LinearProgressIndicator(minHeight: 2),
+            const SizedBox(height: 16),
+          ],
+          if (existingApplication != null) ...[
+            _ApplicationStatusBanner(
+              application: existingApplication,
+              canPayForListing: canPayForListing,
+            ),
+            const SizedBox(height: 16),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: primaryAction,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: Icon(
+                canPayForListing
+                    ? Icons.lock_outline
+                    : existingApplication == null
+                    ? Icons.calendar_today_outlined
+                    : Icons.schedule_outlined,
+              ),
+              label: Text(
+                primaryLabel,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: property.owner == null || isOwnListing
+                  ? null
+                  : () => _openConversation(
+                      context,
+                      ref,
+                      existingApplication != null
+                          ? 'Hello, I am following up on my application for ${property.title}.'
+                          : property.isHome
+                          ? 'Hello, I would like to arrange a viewing for ${property.title}.'
+                          : 'Hello, I would like more details about ${property.title}.',
+                    ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.primary,
+                side: const BorderSide(color: AppTheme.primary),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: const Icon(Icons.message_outlined),
+              label: Text(
+                messageLabel,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+          if (property.owner != null) ...[
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.only(top: 20),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: AppTheme.border)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                        backgroundImage: property.owner!.profileImage != null
+                            ? CachedNetworkImageProvider(
+                                property.owner!.profileImage!,
+                              )
+                            : null,
+                        child: property.owner!.profileImage == null
+                            ? Text(
+                                property.owner!.name.characters.first
+                                    .toUpperCase(),
+                                style: const TextStyle(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              property.owner!.name,
+                              style: const TextStyle(
+                                color: AppTheme.foreground,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              ownerRoleLabel,
+                              style: const TextStyle(
+                                color: AppTheme.mutedForeground,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: property.owner!.id.isEmpty
+                          ? null
+                          : () => context.push(
+                              '/profile/view/${property.owner!.id}',
+                            ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.primary,
+                        side: BorderSide(
+                          color: AppTheme.primary.withValues(alpha: 0.2),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      icon: const Icon(Icons.person_outline_rounded),
+                      label: Text(
+                        property.owner!.role == 'AGENT'
+                            ? 'See Agent Profile'
+                            : 'See Owner Profile',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoCard({required List<MapEntry<String, String>> specs}) {
+    final status = (property.status ?? 'AVAILABLE').toUpperCase();
+    final statusBackground = status == 'AVAILABLE'
+        ? const Color(0xFFDCFCE7)
+        : status == 'SOLD' || status == 'RENTED'
+        ? const Color(0xFFFFE4E6)
+        : const Color(0xFFFEF3C7);
+    final statusForeground = status == 'AVAILABLE'
+        ? const Color(0xFF166534)
+        : status == 'SOLD' || status == 'RENTED'
+        ? const Color(0xFFBE123C)
+        : const Color(0xFF92400E);
+
+    return _buildSectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      property.title,
+                      style: const TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.foreground,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 18,
+                          color: AppTheme.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            property.locationLabel,
+                            style: const TextStyle(
+                              color: AppTheme.mutedForeground,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          color: Colors.amber,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${property.rating.toStringAsFixed(1)} (${property.reviewCount} reviews)',
+                          style: const TextStyle(
+                            color: AppTheme.mutedForeground,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: statusBackground,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  status.toLowerCase(),
+                  style: TextStyle(
+                    color: statusForeground,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Wrap(
+              spacing: 24,
+              runSpacing: 16,
+              children: property.isHome
+                  ? [
+                      _InlineStat(
+                        icon: Icons.bed_outlined,
+                        label: '${property.bedrooms ?? 0} Bedrooms',
+                      ),
+                      _InlineStat(
+                        icon: Icons.bathtub_outlined,
+                        label: '${property.bathrooms ?? 0} Bathrooms',
+                      ),
+                      _InlineStat(
+                        icon: Icons.square_foot_outlined,
+                        label:
+                            '${(property.area ?? 0).toStringAsFixed(0)} sq m',
+                      ),
+                    ]
+                  : [
+                      _InlineStat(
+                        icon: Icons.directions_car_outlined,
+                        label: property.brand ?? 'Vehicle',
+                      ),
+                      _InlineStat(
+                        icon: Icons.calendar_month_outlined,
+                        label: '${property.year ?? '-'}',
+                      ),
+                      _InlineStat(
+                        icon: Icons.settings_outlined,
+                        label: property.transmission ?? 'Transmission',
+                      ),
+                    ],
+            ),
+          ),
+          if (specs.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Text(
+              'Highlights',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.foreground,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: specs
+                  .map(
+                    (entry) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppTheme.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            entry.key,
+                            style: const TextStyle(
+                              color: AppTheme.mutedForeground,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            entry.value,
+                            style: const TextStyle(
+                              color: AppTheme.foreground,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+          const SizedBox(height: 24),
+          const Text(
+            'Description',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.foreground,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            property.description,
+            style: const TextStyle(
+              color: AppTheme.mutedForeground,
+              height: 1.65,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAmenitiesCard() {
+    return _buildSectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            property.isHome ? 'Amenities' : 'Features',
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.foreground,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 18,
+            runSpacing: 16,
+            children: property.amenities
+                .map(
+                  (amenity) => SizedBox(
+                    width: 180,
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          color: AppTheme.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            amenity,
+                            style: const TextStyle(
+                              color: AppTheme.foreground,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewsCard({
+    required WidgetRef ref,
+    required dynamic currentUser,
+    required AsyncValue<List<ReviewModel>> reviewsAsync,
+    required ReviewActionState reviewActionState,
+    required bool canReview,
+  }) {
+    return _buildSectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Reviews',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.foreground,
+            ),
+          ),
+          const SizedBox(height: 16),
+          reviewsAsync.when(
+            data: (reviews) {
+              ReviewModel? myReview;
+              if (currentUser != null) {
+                for (final review in reviews) {
+                  if (review.reviewerId == currentUser.id) {
+                    myReview = review;
+                    break;
+                  }
+                }
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (canReview)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: _ReviewComposerCard(
+                        existingReview: myReview,
+                        isSubmitting: reviewActionState.isLoading,
+                        onSubmit: (rating, comment) async {
+                          await ref
+                              .read(reviewActionProvider.notifier)
+                              .submitReview(
+                                propertyId: property.id,
+                                rating: rating,
+                                comment: comment,
+                              );
+                          ref.invalidate(propertyDetailProvider(property.id));
+                        },
+                      ),
+                    ),
+                  if (reviews.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 20,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: AppTheme.border),
+                      ),
+                      child: const Text(
+                        'No reviews yet. Completed customers can leave one after payment.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppTheme.mutedForeground,
+                          height: 1.5,
+                        ),
+                      ),
+                    )
+                  else
+                    Column(
+                      children: reviews
+                          .map(
+                            (review) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _ReviewCard(
+                                review: review,
+                                canDelete: false,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                ],
+              );
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, _) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                error.toString().replaceFirst('Exception: ', ''),
+                style: const TextStyle(color: Colors.redAccent),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMapCard() {
+    return _buildSectionCard(
+      padding: const EdgeInsets.all(0),
+      child: SizedBox(
+        height: 300,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: SearchMapPanel(properties: [property]),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvailabilityCard({required List<String> listingTypeLabels}) {
+    return _buildSectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Available For',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: AppTheme.foreground,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Column(
+            children: listingTypeLabels
+                .map(
+                  (label) => Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.primary.withValues(alpha: 0.25),
+                      ),
+                      color: AppTheme.primary.withValues(alpha: 0.04),
+                    ),
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppTheme.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ],
       ),
@@ -624,22 +1745,22 @@ class _PropertyDetailsView extends ConsumerWidget {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
+          backgroundColor: Colors.white,
           title: const Text('Send Application'),
           content: TextField(
             controller: controller,
             minLines: 4,
             maxLines: 6,
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: AppTheme.foreground),
             decoration: InputDecoration(
               hintText:
                   'Tell the owner why you are interested in this listing.',
-              hintStyle: const TextStyle(color: Colors.white38),
+              hintStyle: const TextStyle(color: AppTheme.mutedForeground),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.06),
+              fillColor: const Color(0xFFF8FAFC),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+                borderSide: const BorderSide(color: AppTheme.border),
               ),
             ),
           ),
@@ -773,7 +1894,7 @@ class _PropertyDetailsView extends ConsumerWidget {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              backgroundColor: const Color(0xFF1E293B),
+              backgroundColor: Colors.white,
               title: Text(
                 existingReview == null ? 'Write a Review' : 'Update Review',
               ),
@@ -784,7 +1905,7 @@ class _PropertyDetailsView extends ConsumerWidget {
                   children: [
                     const Text(
                       'Your rating',
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle(color: AppTheme.mutedForeground),
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -805,15 +1926,17 @@ class _PropertyDetailsView extends ConsumerWidget {
                       controller: controller,
                       minLines: 4,
                       maxLines: 6,
-                      style: const TextStyle(color: Colors.white),
+                      style: const TextStyle(color: AppTheme.foreground),
                       decoration: InputDecoration(
                         hintText: 'What stood out about this property?',
-                        hintStyle: const TextStyle(color: Colors.white38),
+                        hintStyle: const TextStyle(
+                          color: AppTheme.mutedForeground,
+                        ),
                         filled: true,
-                        fillColor: Colors.white.withOpacity(0.06),
+                        fillColor: const Color(0xFFF8FAFC),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+                          borderSide: const BorderSide(color: AppTheme.border),
                         ),
                       ),
                     ),
@@ -870,7 +1993,7 @@ class _PropertyDetailsView extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: Colors.white,
         title: const Text('Delete Review'),
         content: const Text('This will remove your review from the property.'),
         actions: [
@@ -904,6 +2027,34 @@ class _PropertyDetailsView extends ConsumerWidget {
       if (!context.mounted) return;
       _showMessage(context, error.toString().replaceFirst('Exception: ', ''));
     }
+  }
+}
+
+class _InlineStat extends StatelessWidget {
+  const _InlineStat({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 18, color: AppTheme.primary),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppTheme.foreground,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -946,7 +2097,7 @@ class _ApplicationStatusBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accentColor.withOpacity(0.35)),
+        border: Border.all(color: accentColor.withOpacity(0.22)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -975,9 +2126,204 @@ class _ApplicationStatusBanner extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   message,
-                  style: const TextStyle(color: Colors.white70, height: 1.4),
+                  style: const TextStyle(
+                    color: AppTheme.mutedForeground,
+                    height: 1.4,
+                  ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewComposerCard extends ConsumerStatefulWidget {
+  const _ReviewComposerCard({
+    required this.isSubmitting,
+    required this.onSubmit,
+    this.existingReview,
+  });
+
+  final ReviewModel? existingReview;
+  final bool isSubmitting;
+  final Future<void> Function(int rating, String comment) onSubmit;
+
+  @override
+  ConsumerState<_ReviewComposerCard> createState() =>
+      _ReviewComposerCardState();
+}
+
+class _ReviewComposerCardState extends ConsumerState<_ReviewComposerCard> {
+  late final TextEditingController _controller;
+  int _rating = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: widget.existingReview?.comment ?? '',
+    );
+    _rating = widget.existingReview?.rating ?? 0;
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReviewComposerCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.existingReview?.id != widget.existingReview?.id) {
+      _controller.text = widget.existingReview?.comment ?? '';
+      _rating = widget.existingReview?.rating ?? 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.existingReview != null;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppTheme.primary.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppTheme.primary.withValues(alpha: 0.18),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isEditing ? Icons.edit_outlined : Icons.star_rounded,
+                color: isEditing ? AppTheme.primary : Colors.amber,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isEditing ? 'Update Your Review' : 'Write a Review',
+                  style: const TextStyle(
+                    color: AppTheme.foreground,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            isEditing
+                ? 'You have already reviewed this property. Update your rating or comment below.'
+                : 'Share your experience with this property to help other customers.',
+            style: const TextStyle(
+              color: AppTheme.mutedForeground,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.72),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+            ),
+            child: Column(
+              children: [
+                const Text(
+                  'Your Rating',
+                  style: TextStyle(
+                    color: AppTheme.mutedForeground,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    final star = index + 1;
+                    return IconButton(
+                      onPressed: widget.isSubmitting
+                          ? null
+                          : () => setState(() => _rating = star),
+                      icon: Icon(
+                        star <= _rating ? Icons.star : Icons.star_border,
+                        color: Colors.amber,
+                        size: 30,
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _controller,
+            minLines: 4,
+            maxLines: 6,
+            enabled: !widget.isSubmitting,
+            style: const TextStyle(color: AppTheme.foreground),
+            decoration: InputDecoration(
+              hintText: 'What did you like or dislike about this property?',
+              hintStyle: const TextStyle(color: AppTheme.mutedForeground),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: AppTheme.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: AppTheme.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: AppTheme.primary),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: widget.isSubmitting || _rating == 0
+                  ? null
+                  : () async {
+                      await widget.onSubmit(_rating, _controller.text.trim());
+                    },
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              icon: widget.isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.send_rounded, size: 18),
+              label: Text(isEditing ? 'Update Review' : 'Submit Review'),
             ),
           ),
         ],
@@ -1001,8 +2347,14 @@ class _ReviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final author = review.author;
     final createdAt = review.createdAt;
-    return GlassCard(
-      padding: const EdgeInsets.all(14),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1016,7 +2368,7 @@ class _ReviewCard extends StatelessWidget {
                         author!.profileImage!.isNotEmpty
                     ? CachedNetworkImageProvider(author.profileImage!)
                     : null,
-                backgroundColor: Colors.white12,
+                backgroundColor: const Color(0xFFE8F3EF),
                 child:
                     author == null ||
                         author.profileImage == null ||
@@ -1035,7 +2387,10 @@ class _ReviewCard extends StatelessWidget {
                   children: [
                     Text(
                       author?.name ?? 'Customer',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: AppTheme.foreground,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Row(
@@ -1067,14 +2422,20 @@ class _ReviewCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               review.comment!,
-              style: const TextStyle(color: Colors.white70, height: 1.45),
+              style: const TextStyle(
+                color: AppTheme.mutedForeground,
+                height: 1.55,
+              ),
             ),
           ],
           if (createdAt != null) ...[
             const SizedBox(height: 10),
             Text(
               '${createdAt.day}/${createdAt.month}/${createdAt.year}',
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
+              style: const TextStyle(
+                color: AppTheme.mutedForeground,
+                fontSize: 12,
+              ),
             ),
           ],
         ],

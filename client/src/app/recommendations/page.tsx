@@ -19,7 +19,7 @@ export default function RecommendationsPage() {
     }, [currentUser?.id, fetchRecommendations]);
 
     return (
-        <div className="min-h-screen bg-slate-50 pt-16 pb-16">
+        <div className="min-h-screen bg-slate-50 pt-16 pb-16 relative overflow-hidden">
             {/* Dynamic Background Elements */}
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl -mr-64 -mt-64" />
             <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/5 rounded-full blur-3xl -ml-64 -mb-64" />
@@ -31,21 +31,23 @@ export default function RecommendationsPage() {
                             <h1 className="text-4xl md:text-5xl font-black text-foreground tracking-tight">
                                 Your <span className="text-primary italic">Exclusive</span> Matches
                             </h1>
-                            <p className="text-muted-foreground mt-4 text-lg max-w-2xl font-medium">
-                                We've analyzed thousands of listings to find the ones that perfectly match your lifestyle and preferences.
+                            <p className="text-muted-foreground mt-4 text-lg max-w-2xl font-medium leading-relaxed">
+                                Our <span className="text-primary font-bold">neural engine</span> has analyzed your behavior and location preferences to curate these high-precision matches.
                             </p>
                         </div>
                     </div>
                 </div>
 
                 {isRecommendationLoading ? (
-                    <div className="py-32 flex flex-col items-center justify-center space-y-6">
+                    <div className="py-32 flex flex-col items-center justify-center space-y-8">
                         <div className="relative">
-                            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                            <div className="absolute -inset-4 bg-primary/20 blur-xl rounded-full animate-pulse" />
+                            <Loader2 className="h-16 w-16 animate-spin text-primary relative z-10" />
+                            <BotIcon className="h-8 w-8 text-primary absolute inset-0 m-auto z-20" />
                         </div>
-                        <div className="text-center">
-                            <h3 className="text-xl font-bold text-foreground">Analyzing your preferences...</h3>
-                            <p className="text-muted-foreground">Synthetically matching properties based on your unique behavior.</p>
+                        <div className="text-center space-y-2">
+                            <h3 className="text-2xl font-black text-foreground tracking-tight uppercase">Scanning Neural Pathway</h3>
+                            <p className="text-muted-foreground font-mono text-sm animate-pulse uppercase tracking-[0.2em]">Tracing Intent Signals...</p>
                         </div>
                     </div>
                 ) : recommendations.length > 0 ? (
@@ -80,5 +82,29 @@ export default function RecommendationsPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+function BotIcon(props: any) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M12 8V4H8" />
+            <rect width="16" height="12" x="4" y="8" rx="2" />
+            <path d="M2 14h2" />
+            <path d="M20 14h2" />
+            <path d="M15 13v2" />
+            <path d="M9 13v2" />
+        </svg>
     );
 }

@@ -8,27 +8,37 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useGlobalStore } from "@/store/useGlobalStore";
 import { Label } from "@/components/ui/label";
+import { ethiopiaLocations } from "@/lib/ethiopiaLocations";
 
 const FiltersBar = () => {
     const {
         filters,
         isFiltersFullOpen,
-        viewMode,
         toggleFiltersFullOpen,
-        setViewMode,
         setFilters,
     } = useGlobalStore();
 
     const [isOpen, setIsOpen] = useState(false);
 
-    const displayLocation = [filters.region, filters.city].filter(Boolean).join(", ") || "Location";
+    const displayLocation = [filters.subCity, filters.city, filters.region].filter(Boolean).filter(v => v !== 'any').join(", ") || "Location";
 
+    const updateLocation = (key: 'region' | 'city' | 'subCity', value: string) => {
+        const updates: Partial<typeof filters> = { [key]: value };
+        
+        // Cascading resets
+        if (key === 'region') {
+            updates.city = 'any';
+            updates.subCity = 'any';
+        } else if (key === 'city') {
+            updates.subCity = 'any';
+        }
+        
+        setFilters(updates);
+    };
 
     function cn(...args: any[]) {
         return args.filter(Boolean).join(" ");
     }
-
-
 
     return (
         <div className="flex flex-col lg:flex-row items-center w-full py-4 gap-4">
@@ -66,45 +76,66 @@ const FiltersBar = () => {
                             variant="outline"
                             className={cn(
                                 "h-10 px-4 rounded-full border shadow-sm flex items-center gap-2 transition-all min-w-[140px] justify-between",
-                                (filters.region || filters.city || filters.subCity) ? "bg-primary/5 border-primary/30 text-primary hover:bg-primary/10" : "bg-background border-border hover:bg-muted/50"
+                                (filters.region && filters.region !== 'any') ? "bg-primary/5 border-primary/30 text-primary hover:bg-primary/10" : "bg-background border-border hover:bg-muted/50"
                             )}
                         >
                             <div className="flex items-center gap-2 truncate">
-                                <MapPin className={cn("w-4 h-4 shrink-0", (filters.region || filters.city || filters.subCity) ? "text-primary" : "text-muted-foreground")} />
+                                <MapPin className={cn("w-4 h-4 shrink-0", (filters.region && filters.region !== 'any') ? "text-primary" : "text-muted-foreground")} />
                                 <span className="truncate">{displayLocation}</span>
                             </div>
                             <ChevronDown className={cn("w-4 h-4 shrink-0 transition-transform duration-200", isOpen && "rotate-180")} />
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-[320px] p-6 rounded-2xl shadow-xl border-border" align="start" sideOffset={8}>
-                        <div className="space-y-5">
+                        <div className="space-y-6">
                             <div className="space-y-2">
-                                <Label className="text-sm font-semibold text-foreground ml-1">Region</Label>
-                                <Input
-                                    placeholder="Select Region"
-                                    value={filters.region}
-                                    onChange={(e) => setFilters({ region: e.target.value })}
-                                    className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
-                                />
+                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Region</Label>
+                                <Select value={filters.region || 'any'} onValueChange={(v) => updateLocation('region', v)}>
+                                    <SelectTrigger className="h-11 bg-muted/40 border-none rounded-xl focus:ring-1 focus:ring-primary shadow-none">
+                                        <SelectValue placeholder="All Regions" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-border shadow-2xl">
+                                        <SelectItem value="any">All Regions</SelectItem>
+                                        {Object.keys(ethiopiaLocations).map(r => (
+                                            <SelectItem key={r} value={r}>{r}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-semibold text-foreground ml-1">City</Label>
-                                <Input
-                                    placeholder="Select City"
-                                    value={filters.city}
-                                    onChange={(e) => setFilters({ city: e.target.value })}
-                                    className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-semibold text-foreground ml-1">Sub City</Label>
-                                <Input
-                                    placeholder="Select Sub city ..."
-                                    value={filters.subCity}
-                                    onChange={(e) => setFilters({ subCity: e.target.value })}
-                                    className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
-                                />
-                            </div>
+
+                            {filters.region && filters.region !== 'any' && ethiopiaLocations[filters.region] && (
+                                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">City</Label>
+                                    <Select value={filters.city || 'any'} onValueChange={(v) => updateLocation('city', v)}>
+                                        <SelectTrigger className="h-11 bg-muted/40 border-none rounded-xl focus:ring-1 focus:ring-primary shadow-none">
+                                            <SelectValue placeholder="All Cities" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl border-border shadow-2xl">
+                                            <SelectItem value="any">All Cities</SelectItem>
+                                            {Object.keys(ethiopiaLocations[filters.region]).map(c => (
+                                                <SelectItem key={c} value={c}>{c}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+
+                            {filters.city && filters.city !== 'any' && filters.region && ethiopiaLocations[filters.region]?.[filters.city] && (
+                                <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Sub City</Label>
+                                    <Select value={filters.subCity || 'any'} onValueChange={(v) => updateLocation('subCity', v)}>
+                                        <SelectTrigger className="h-11 bg-muted/40 border-none rounded-xl focus:ring-1 focus:ring-primary shadow-none">
+                                            <SelectValue placeholder="Select Sub City" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl border-border shadow-2xl">
+                                            <SelectItem value="any">All Sub Cities</SelectItem>
+                                            {Object.keys(ethiopiaLocations[filters.region][filters.city]).map(sc => (
+                                                <SelectItem key={sc} value={sc}>{sc}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                         </div>
                     </PopoverContent>
                 </Popover>
@@ -127,19 +158,8 @@ const FiltersBar = () => {
                 </Select>
             </div>
 
-            {/* View Mode & Sort Section */}
+            {/* Sort Section */}
             <div className="flex items-center gap-2 shrink-0">
-                <Button
-                    variant="outline"
-                    className="rounded-full h-10 px-4 border shadow-sm transition-all flex items-center gap-2 font-medium bg-background border-border hover:bg-muted/50"
-                    onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                >
-                    {viewMode === 'grid' ? <List className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
-                    <span className="hidden sm:inline">{viewMode === 'grid' ? 'List' : 'Grid'}</span>
-                </Button>
-
-                <div className="h-6 w-px bg-border hidden sm:block mx-1 shrink-0"></div>
-
                 <Select value={filters.sort} onValueChange={(v) => setFilters({ sort: v })}>
                     <SelectTrigger className="w-[140px] md:w-[160px] h-10 rounded-full border shadow-sm bg-background border-border hover:bg-muted/50 font-medium">
                         <SelectValue placeholder="Sort By" />

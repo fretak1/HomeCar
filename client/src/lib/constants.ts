@@ -21,7 +21,6 @@ import {
 export const NAVBAR_HEIGHT = 64;
 
 export const PropertyTypeIcons = {
-    House: Home,
     Apartment: Building,
     Condominium: Building,
     Villa: Castle,

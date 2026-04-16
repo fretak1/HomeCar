@@ -10,7 +10,7 @@ import CardCompact from "./CardCompact";
 const Listings = () => {
     const { user } = useAuth();
     const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
-    const { viewMode, filters, searchType } = useGlobalStore();
+    const { viewMode, filters, searchType, isFiltersFullOpen } = useGlobalStore();
     const { properties, isLoading, error } = usePropertyStore();
 
     const handleFavoriteToggle = async (itemId: string) => {
@@ -55,30 +55,20 @@ const Listings = () => {
                         <p className="text-sm text-gray-400 mt-1">Try adjusting your filters</p>
                     </div>
                 ) : (
-                    <div className="flex flex-col gap-4">
-                        {items.map((item: any) =>
-                            viewMode === 'grid' ? (
-                                <Card
-                                    key={item.id}
-                                    item={item}
-                                    type={searchType === 'property' ? 'property' : 'vehicle'}
-                                    isFavorite={isFavorite(item.id)}
-                                    onFavoriteToggle={() => handleFavoriteToggle(item.id)}
-                                    showFavoriteButton={!!user}
-                                    itemLink={`/${searchType === 'property' ? 'property' : 'vehicle'}/${item.id}`}
-                                />
-                            ) : (
-                                <CardCompact
-                                    key={item.id}
-                                    item={item}
-                                    type={searchType === 'property' ? 'property' : 'vehicle'}
-                                    isFavorite={isFavorite(item.id)}
-                                    onFavoriteToggle={() => handleFavoriteToggle(item.id)}
-                                    showFavoriteButton={!!user}
-                                    itemLink={`/${searchType === 'property' ? 'property' : 'vehicle'}/${item.id}`}
-                                />
-                            )
-                        )}
+                    <div className={
+                        `grid gap-6 ${isFiltersFullOpen ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2'}` 
+                    }>
+                        {items.map((item: any) => (
+                            <Card
+                                key={item.id}
+                                item={item}
+                                type={searchType === 'property' ? 'property' : 'vehicle'}
+                                isFavorite={isFavorite(item.id)}
+                                onFavoriteToggle={() => handleFavoriteToggle(item.id)}
+                                showFavoriteButton={!!user}
+                                itemLink={`/${searchType === 'property' ? 'property' : 'vehicle'}/${item.id}`}
+                            />
+                        ))}
                     </div>
                 )}
             </div>

@@ -10,7 +10,7 @@ import {
     getSignedUrl,
     viewDocument
 } from '../controllers/propertyController.js';
-import { authenticate, isAdmin } from '../middleware/auth.js';
+import { authenticate, isAdmin, optionalAuthenticate } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
 
 const router = Router();
@@ -22,7 +22,7 @@ const uploadFields = upload.fields([
 ]);
 
 router.post('/create', authenticate, uploadFields, createProperty);
-router.get('/', getProperties);
+router.get('/', optionalAuthenticate, getProperties);
 router.get('/owner/:ownerId', authenticate, getPropertiesByOwnerId);
 router.get('/:id', getPropertyById);
 router.patch('/:id', authenticate, uploadFields, updateProperty);
@@ -32,4 +32,3 @@ router.patch('/:id/verify', authenticate, isAdmin, verifyProperty);
 router.delete('/:id', authenticate, deleteProperty);
 
 export default router;
-

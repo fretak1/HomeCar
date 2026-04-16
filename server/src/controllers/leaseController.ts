@@ -10,19 +10,12 @@ export const getLeases = async (req: Request, res: Response) => {
 
         if (userId) {
             // If explicit userId provided, show leases for that user
-            // If it's the user's own ID and they are an agent, also show managed property leases
-            if (userId === user.id && user.role === 'AGENT') {
-                where.OR = [
-                    { ownerId: userId },
-                    { customerId: userId },
-                    { property: { listedById: userId } }
-                ];
-            } else {
-                where.OR = [
-                    { ownerId: userId },
-                    { customerId: userId }
-                ];
-            }
+            // We include owner, customer, and managed property leases (for agents)
+            where.OR = [
+                { ownerId: userId },
+                { customerId: userId },
+                { property: { listedById: userId } }
+            ];
         } else if (user.role === 'ADMIN') {
             // Admin with no userId sees all leases
         } else if (user.role === 'AGENT') {
@@ -46,7 +39,14 @@ export const getLeases = async (req: Request, res: Response) => {
                 property: {
                     include: {
                         images: true,
-                        location: true
+                        location: true,
+                        listedBy: {
+                            select: {
+                                id: true,
+                                name: true,
+                                profileImage: true
+                            }
+                        }
                     }
                 },
                 customer: {
@@ -100,7 +100,6 @@ export const createLease = async (req: Request, res: Response) => {
 
         const lease = await prisma.lease.create({
             data: {
-                leaseType: data.leaseType,
                 startDate: new Date(data.startDate),
                 endDate: new Date(data.endDate),
                 totalPrice,

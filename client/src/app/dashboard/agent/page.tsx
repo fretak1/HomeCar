@@ -320,6 +320,11 @@ export default function AgentDashboardPage() {
                                                                     <p className="text-sm font-bold text-foreground">ETB {app.price != null ? app.price.toLocaleString() : 'N/A'}{(app as any).listingType === 'buy' ? '' : '/mo'}</p>
                                                                 </div>
                                                             </div>
+                                                            {app.message && (
+                                                                <div className="mt-3 p-3 bg-muted/10 border-l-2 border-[#005a41]/40 rounded-r-lg">
+                                                                    <p className="text-xs text-muted-foreground italic line-clamp-2">"{app.message}"</p>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
 
@@ -439,7 +444,7 @@ export default function AgentDashboardPage() {
                                                                 <div className="space-y-1">
                                                                     <h3 className="text-foreground font-bold">{property.title}</h3>
                                                                     <p className="text-xs text-muted-foreground">
-                                                                        {formatLocation(property)}
+                                                                        {formatLocation(property.location || property)}
                                                                     </p>
                                                                     <div className="flex flex-col gap-1.5 pt-1">
                                                                         <div className="flex items-center text-xs font-semibold text-[#005a41]">
@@ -489,9 +494,17 @@ export default function AgentDashboardPage() {
                                                                         ETB {(lease.recurringAmount || lease.totalPrice || property.price).toLocaleString()}
                                                                     </p>
                                                                     <p className="text-[10px] text-muted-foreground font-bold">{lease.recurringAmount ? '/month' : 'Total Contract'}</p>
+                                                                    
                                                                 </div>
 
-                                                                <div className="flex flex-col items-end gap-1.5">
+                                                                <div className="flex flex-row items-end gap-8">
+                                                                    <div className="mt-2">
+                                                                        <Link href={`/dashboard/agent/lease/${lease.id}`}>
+                                                                            <Button variant="outline" size="sm" className="h-7 text-[10px] font-bold text-primary border-primary hover:bg-primary hover:text-white uppercase transition-colors">
+                                                                                View Details
+                                                                            </Button>
+                                                                        </Link>
+                                                                    </div>
                                                                     <Badge className={cn(
                                                                         "font-bold uppercase tracking-wider text-[10px] border-none shadow-sm",
                                                                         lease.status === 'ACTIVE' ? "bg-[#005a41] text-white" :
@@ -499,7 +512,6 @@ export default function AgentDashboardPage() {
                                                                     )}>
                                                                         {lease.status}
                                                                     </Badge>
-                                                                    <p className="text-[10px] text-muted-foreground font-medium">Ref: {lease.id}</p>
                                                                 </div>
                                                             </div>
                                                         </div>

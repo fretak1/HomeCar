@@ -1,6 +1,6 @@
 'use client';
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Heart, Maximize, Bath, Bed, Calendar, Gauge, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ interface CardProps {
 }
 
 const Card = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, itemLink, type }: CardProps) => {
+    const router = useRouter();
     if (!item) return null;
     const isProperty = type === 'property';
 
@@ -24,7 +25,10 @@ const Card = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, itemLink
         : [item.location?.subcity, item.location?.city].filter(Boolean).join(', ') || 'Addis Ababa';
 
     return (
-        <div className="group relative bg-card rounded-2xl border border-border overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary/20 flex flex-col h-full">
+        <div 
+            className="group relative bg-card rounded-2xl border border-border overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-primary/20 flex flex-col h-full cursor-pointer"
+            onClick={() => router.push(itemLink)}
+        >
             {/* Image Container */}
             <div className="relative aspect-[4/3] overflow-hidden">
                 <img
@@ -49,6 +53,7 @@ const Card = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, itemLink
                         className="absolute top-3 right-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white border border-white/20"
                         onClick={(e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             onFavoriteToggle();
                         }}
                     >
@@ -59,20 +64,24 @@ const Card = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, itemLink
 
             {/* Content */}
             <div className="p-4 flex flex-col flex-1 gap-3">
-                <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                        <h3 className="font-semibold text-lg line-clamp-1 group-hover:text-primary transition-colors">
-                            <Link href={itemLink}>{item.title}</Link>
+                <div className="flex flex-col justify-between items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-lg leading-tight group-hover:text-primary transition-colors truncate">
+                            {item.title}
                         </h3>
-                        <p className="text-muted-foreground text-sm flex items-center gap-1 mt-1">
+                        <p className="text-muted-foreground text-xs flex items-center gap-1 mt-1 truncate">
                             {locationString}
                         </p>
                     </div>
-                    <div className="text-right shrink-0">
-                        <p className="font-bold text-xl text-primary">
-                            ETB {item.price.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{isProperty ? '/month' : '/buy'}</p>
+                    <div className="shrink-0 pt-0.5">
+                        <div className="flex flex-col items-start sm:items-end">
+                            <span className="font-black text-xl text-primary tracking-tight">
+                                ETB {item.price.toLocaleString()}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest leading-none">
+                                {isProperty ? 'per month' : 'total price'}
+                            </span>
+                        </div>
                     </div>
                 </div>
 

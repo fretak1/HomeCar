@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { MapPin, Bed, Bath, Square, Star, Pencil, Trash2, Heart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,7 +25,11 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!currentUser || disabled) return; // Prevent action if not logged in or disabled
+    if (!currentUser) {
+      toast.error("Please log in to add favorites");
+      return;
+    }
+    if (disabled) return;
 
     if (favorite) {
       await removeFavorite(property.id);
@@ -55,15 +60,32 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
           />
 
 
-          <div className="absolute top-4 left-4 flex flex-wrap gap-1">
-            {property.listingType?.map((type) => (
+          {/* Top Left Corner (Listing Type: Rent / Buy) */}
+          <div className="absolute top-4 left-4 z-10 flex flex-col items-start gap-1.5 pt-0.5 pl-0.5">
+            {property.listingType?.filter(type => 
+              type.toUpperCase() !== property.status.toUpperCase() && 
+              type.toUpperCase() !== 'AVAILABLE'
+            ).map((type) => (
               <Badge
                 key={type}
-                className="bg-white/90 text-[#005a41] border-none text-[10px] font-bold uppercase tracking-wider px-2"
+                className="bg-white/90 text-[#005a41] border-none shadow-sm text-[10px] font-black uppercase tracking-widest px-2 py-0.5 gap-1"
               >
                 {type.replace('_', ' ')}
               </Badge>
             ))}
+          </div>
+
+          <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1.5 pt-0.5 pr-0.5">
+            {/* Display status */}
+            <Badge className={cn(
+              "border-none shadow-md text-[10px] font-black uppercase tracking-widest px-2 py-0.5",
+              property.status === 'AVAILABLE' ? "bg-emerald-500 text-white" :
+              (property.status === 'RENTED' || property.status === 'BOOKED' ? "bg-amber-500 text-white" : "bg-rose-500 text-white")
+            )}>
+              {property.status}
+            </Badge>
+
+            {/* Verification status */}
             {!property.isVerified && (
               <Badge
                 className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] font-bold uppercase tracking-wider px-2"
@@ -71,22 +93,24 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
                 Pending Verification
               </Badge>
             )}
-          </div>
 
-          {/* Hide heart icon for owners of the property */}
-          {currentUser?.id !== property.ownerId && (
-            <div className="absolute top-4 right-4 z-10">
+            {/* Heart icon */}
+            {currentUser?.id !== property.ownerId && (
               <Button
                 variant="secondary"
                 size="icon"
                 disabled={disabled}
-                className={`h-8 w-8 rounded-full bg-white/90 shadow-sm hover:bg-white transition-all duration-200 ${!disabled && 'hover:scale-110'} ${favorite ? 'text-rose-500' : 'text-gray-500'}`}
+                className={cn(
+                  "h-8 w-8 rounded-full bg-white/90 shadow-md hover:bg-white transition-all duration-200 mt-1",
+                  !disabled && 'hover:scale-110',
+                  favorite ? 'text-rose-500' : 'text-gray-500'
+                )}
                 onClick={handleFavoriteClick}
               >
-                <Heart className={`h-4 w-4 ${favorite ? 'fill-current' : ''}`} />
+                <Heart className={cn("h-4 w-4", favorite && "fill-current")} />
               </Button>
-            </div>
-          )}
+            )}
+          </div>
 
         </div>
 

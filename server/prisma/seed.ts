@@ -173,7 +173,6 @@ async function main() {
     // 7. Create Leases
     await prisma.lease.create({
         data: {
-            leaseType: 'Residential',
             startDate: new Date(),
             endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
             totalPrice: 384000,

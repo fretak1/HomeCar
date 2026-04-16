@@ -492,6 +492,11 @@ export default function CustomerDashboardPage() {
                                                                         <p className="text-sm font-bold text-foreground">ETB {app.price != null ? app.price.toLocaleString() : 'N/A'}{app.listingType === 'rent' ? '/mo' : ''}</p>
                                                                     </div>
                                                                 </div>
+                                                                {app.message && (
+                                                                    <div className="mt-3 p-3 bg-muted/10 border-l-2 border-[#005a41]/40 rounded-r-lg">
+                                                                        <p className="text-xs text-muted-foreground italic line-clamp-2">"{app.message}"</p>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
 
@@ -655,10 +660,10 @@ export default function CustomerDashboardPage() {
                                                                 >
                                                                     <h4 className="text-sm font-semibold text-foreground flex items-center">
                                                                         <DollarSign className="h-4 w-4 mr-1 text-primary" />
-                                                                        Monthly Payment Schedule
+                                                                        {lease.recurringAmount ? 'Monthly Payment Schedule' : 'Lease Payment Settlement'}
                                                                     </h4>
                                                                     <div className="flex items-center space-x-2">
-                                                                        <Badge variant="outline" className="text-[10px] uppercase">{(lease as any).paymentModel || 'MONTHLY'}</Badge>
+                                                                        <Badge variant="outline" className="text-[10px] uppercase">{lease.recurringAmount ? 'MONTHLY' : 'ONE-TIME'}</Badge>
                                                                         {expandedSchedules.includes(lease.id) ? (
                                                                             <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                                                                         ) : (
@@ -675,9 +680,9 @@ export default function CustomerDashboardPage() {
 
                                                                             return (
                                                                                 <div className="space-y-4">
-                                                                                    {Array.from({ length: totalLeaseMonths }).map((_, i) => {
-                                                                                        const periodStart = addDays(startDate, i * 30);
-                                                                                        const periodEnd = addDays(periodStart, 30);
+                                                                                    {Array.from({ length: lease.recurringAmount ? totalLeaseMonths : 1 }).map((_, i) => {
+                                                                                        const periodStart = lease.recurringAmount ? addDays(startDate, i * 30) : startDate;
+                                                                                        const periodEnd = lease.recurringAmount ? addDays(periodStart, 30) : new Date(lease.endDate);
                                                                                         const isMonthPast = isBefore(periodEnd, now);
                                                                                         const isCurrentMonth = isWithinInterval(now, { start: periodStart, end: periodEnd });
                                                                                         const monthLabel = format(periodStart, 'MMM-yyyy');
@@ -689,9 +694,10 @@ export default function CustomerDashboardPage() {
                                                                                         const isPaid = transaction?.status === 'COMPLETED';
                                                                                         const isPending = transaction?.status === 'PENDING';
 
-                                                                                        const daysInThisMonth = 30;
-                                                                                        const daysPassedThisMonth = isMonthPast ? 30 : isCurrentMonth ? Math.max(0, differenceInDays(now, periodStart)) : 0;
-                                                                                        const daysFilled = Math.min(30, Math.max(0, daysPassedThisMonth));
+                                                                                        const daysInThisMonth = lease.recurringAmount ? 30 : Math.max(1, differenceInDays(periodEnd, periodStart));
+                                                                                        const daysPassedThisMonth = isMonthPast ? daysInThisMonth : isCurrentMonth ? Math.max(0, differenceInDays(now, periodStart)) : 0;
+                                                                                        const daysFilled = Math.min(daysInThisMonth, Math.max(0, daysPassedThisMonth));
+                                                                                        const progressPercentage = (daysFilled / daysInThisMonth) * 100;
 
                                                                                         return (
                                                                                             <div
@@ -720,16 +726,16 @@ export default function CustomerDashboardPage() {
 
                                                                                                     <div className="flex-1 space-y-2">
                                                                                                         <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
-                                                                                                            <span>Billing Progress (Fixed 30 Days)</span>
+                                                                                                            <span>{lease.recurringAmount ? 'Billing Progress (Fixed 30 Days)' : 'Lease Term Progress'}</span>
                                                                                                             <span className={isMonthPast ? 'text-green-600' : isCurrentMonth ? 'text-primary' : ''}>
-                                                                                                                {daysFilled}/30 Days
+                                                                                                                {lease.recurringAmount ? `${daysFilled}/30 Days` : `${Math.round(progressPercentage)}%`}
                                                                                                             </span>
                                                                                                         </div>
                                                                                                         <div className="flex gap-0.5 h-3">
-                                                                                                            {Array.from({ length: 30 }).map((_, d) => (
+                                                                                                            {Array.from({ length: lease.recurringAmount ? 30 : 50 }).map((_, d) => (
                                                                                                                 <div
                                                                                                                     key={d}
-                                                                                                                    className={`h-full w-full rounded-[1px] transition-all duration-700 ${d < daysFilled
+                                                                                                                    className={`h-full w-full rounded-[1px] transition-all duration-700 ${d < (lease.recurringAmount ? daysFilled : (progressPercentage / 2))
                                                                                                                         ? (isMonthPast ? 'bg-green-500 shadow-[0_0_2px_rgba(34,197,94,0.3)]' : 'bg-primary shadow-[0_0_3px_rgba(0,128,0,0.2)] animate-pulse')
                                                                                                                         : 'bg-muted-foreground/20'
                                                                                                                         }`}

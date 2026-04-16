@@ -2,7 +2,7 @@
 
 import { cn, formatEnumString } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { X, Fuel, Settings2 } from "lucide-react";
+import { X, Fuel, Settings2, Filter } from "lucide-react";
 import { AmenityIcons, PropertyTypeIcons } from "@/lib/constants";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -14,6 +14,26 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useGlobalStore, Filters } from "@/store/useGlobalStore";
+import { ethiopiaLocations } from "@/lib/ethiopiaLocations";
+
+const CAR_BRANDS_AND_MODELS: Record<string, string[]> = {
+    'Audi': ['A3', 'A4', 'A6', 'Q3', 'Q5', 'Q7', 'e-tron'],
+    'BMW': ['3 Series', '5 Series', '7 Series', 'X3', 'X5', 'X7'],
+    'Chevrolet': ['Silverado', 'Equinox', 'Tahoe', 'Malibu', 'Cruze'],
+    'Ford': ['F-150', 'Escape', 'Explorer', 'Focus', 'Mustang', 'Ranger'],
+    'Honda': ['Civic', 'Accord', 'CR-V', 'HR-V', 'Pilot', 'Fit'],
+    'Hyundai': ['Elantra', 'Sonata', 'Tucson', 'Santa Fe', 'Kona', 'Creta'],
+    'Kia': ['Rio', 'Cerato', 'Sportage', 'Sorento', 'Picanto'],
+    'Lexus': ['IS', 'ES', 'RX', 'NX', 'LX'],
+    'Mercedes-Benz': ['C-Class', 'E-Class', 'S-Class', 'GLC', 'GLE', 'G-Class'],
+    'Mitsubishi': ['Lancer', 'Pajero', 'Outlander', 'L200', 'Mirage'],
+    'Nissan': ['Altima', 'Sentra', 'Rogue', 'Pathfinder', 'Patrol', 'Leaf'],
+    'Suzuki': ['Swift', 'Dzire', 'Vitara', 'Jimny', 'Ertiga'],
+    'Tesla': ['Model S', 'Model 3', 'Model X', 'Model Y', 'Cybertruck'],
+    'Toyota': ['Corolla', 'Camry', 'RAV4', 'Highlander', 'Land Cruiser', 'Hilux', 'Vitz', 'Yaris', 'Prius'],
+    'Volkswagen': ['Golf', 'Jetta', 'Passat', 'Tiguan', 'ID.4', 'Amarok'],
+    'Other': ['Other']
+};
 
 const FiltersFull = () => {
     const { filters, setFilters, searchType, toggleFiltersFullOpen } = useGlobalStore();
@@ -22,11 +42,22 @@ const FiltersFull = () => {
         setFilters(newFilters);
     };
 
+    const updateLocation = (key: 'region' | 'city' | 'subCity', value: string) => {
+        const updates: Partial<Filters> = { [key]: value };
+        if (key === 'region') {
+            updates.city = 'any';
+            updates.subCity = 'any';
+        } else if (key === 'city') {
+            updates.subCity = 'any';
+        }
+        setFilters(updates);
+    };
+
     return (
         <div className="bg-card h-full overflow-y-auto px-4 pt-4 pb-20 custom-scrollbar border-r border-border shadow-sm">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="font-semibold text-lg flex items-center gap-2">
-                    <FilterIcon className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold text-lg flex items-center gap-2 text-foreground">
+                    <Filter className="w-5 h-5 text-primary" />
                     Filters
                 </h3>
                 <Button variant="ghost" size="icon" className="md:hidden" onClick={toggleFiltersFullOpen}>
@@ -36,11 +67,13 @@ const FiltersFull = () => {
 
             <div className="flex flex-col space-y-8 pr-2">
 
+                
+
                 {/* Content Header */}
                 <div className="flex items-center justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
                         <div className="w-1 h-4 bg-primary rounded-full"></div>
-                        <Label className="text-sm font-bold text-foreground uppercase tracking-wider">
+                        <Label className="text-[10px] font-black uppercase text-muted-foreground/70 tracking-widest">
                             {searchType === 'property' ? 'Property' : 'Vehicle'} Details
                         </Label>
                     </div>
@@ -52,56 +85,55 @@ const FiltersFull = () => {
                         <span>Price Range</span>
                         <span className="text-primary normal-case">ETB</span>
                     </div>
-                    <Slider
-                        min={0}
-                        max={searchType === 'property' ? 50000 : 5000000}
-                        step={searchType === 'property' ? 500 : 50000}
-                        value={[
-                            filters.priceRange[0] ?? 0,
-                            filters.priceRange[1] ?? (searchType === 'property' ? 50000 : 5000000),
-                        ]}
-                        onValueChange={(value: any) =>
-                            updateFilter({
-                                priceRange: value as [number | null, number | null],
-                            })
-                        }
-                    />
-                    <div className="grid grid-cols-2 gap-3 mt-4">
-                        <Select
-                            value={filters.priceRange[0]?.toString() || "any"}
-                            onValueChange={(v) => {
-                                const min = v === "any" ? null : Number(v);
-                                updateFilter({ priceRange: [min, filters.priceRange[1]] });
-                            }}
-                        >
-                            <SelectTrigger className="rounded-xl h-10">
-                                <SelectValue placeholder="Min Price" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="any">No Min</SelectItem>
-                                {(searchType === 'property' ? [500, 1000, 2500, 5000, 10000, 25000] : [50000, 100000, 250000, 500000, 1000000, 2500000]).map(p => (
-                                    <SelectItem key={p} value={p.toString()}>ETB {p.toLocaleString()}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
 
-                        <Select
-                            value={filters.priceRange[1]?.toString() || "any"}
-                            onValueChange={(v) => {
-                                const max = v === "any" ? null : Number(v);
-                                updateFilter({ priceRange: [filters.priceRange[0], max] });
-                            }}
-                        >
-                            <SelectTrigger className="rounded-xl h-10">
-                                <SelectValue placeholder="Max Price" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="any">No Max</SelectItem>
-                                {(searchType === 'property' ? [1000, 2500, 5000, 10000, 25000, 50000] : [100000, 250000, 500000, 1000000, 2500000, 5000000]).map(p => (
-                                    <SelectItem key={p} value={p.toString()}>ETB {p.toLocaleString()}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    <div className="flex flex-col gap-5">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground/70 ml-1 tracking-widest">Minimum Price</Label>
+                            <Select
+                                value={filters.priceRange[0]?.toString() || "any"}
+                                onValueChange={(v) => {
+                                    const min = v === "any" ? null : Number(v);
+                                    updateFilter({ priceRange: [min, filters.priceRange[1]] });
+                                }}
+                            >
+                                <SelectTrigger className="rounded-xl h-12 bg-muted/20 border-border/50 hover:bg-muted/30 transition-colors">
+                                    <SelectValue placeholder="No Minimum" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl shadow-2xl">
+                                    <SelectItem value="any">No Minimum</SelectItem>
+                                    {(searchType === 'property' 
+                                        ? [500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000, 50000000] 
+                                        : [50000, 100000, 250000, 500000, 1000000, 2500000, 5000000, 10000000, 25000000, 50000000]
+                                    ).map(p => (
+                                        <SelectItem key={p} value={p.toString()}>ETB {p.toLocaleString()}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground/70 ml-1 tracking-widest">Maximum Price</Label>
+                            <Select
+                                value={filters.priceRange[1]?.toString() || "any"}
+                                onValueChange={(v) => {
+                                    const max = v === "any" ? null : Number(v);
+                                    updateFilter({ priceRange: [filters.priceRange[0], max] });
+                                }}
+                            >
+                                <SelectTrigger className="rounded-xl h-12 bg-muted/20 border-border/50 hover:bg-muted/30 transition-colors">
+                                    <SelectValue placeholder="No Maximum" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl shadow-2xl">
+                                    <SelectItem value="any">No Maximum</SelectItem>
+                                    {(searchType === 'property' 
+                                        ? [1000, 5000, 10000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000, 50000000, 100000000] 
+                                        : [100000, 500000, 1000000, 2500000, 5000000, 10000000, 25000000, 50000000, 100000000]
+                                    ).map(p => (
+                                        <SelectItem key={p} value={p.toString()}>ETB {p.toLocaleString()}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </div>
 
@@ -203,7 +235,12 @@ const FiltersFull = () => {
                                 </SelectContent>
                             </Select>
 
-                            <Select value={filters.brand || 'any'} onValueChange={v => updateFilter({ brand: v })}>
+                            <Select 
+                                value={filters.brand || 'any'} 
+                                onValueChange={v => {
+                                    updateFilter({ brand: v, model: 'any' }); // Reset model when brand changes
+                                }}
+                            >
                                 <SelectTrigger className="rounded-xl h-12">
                                     <div className="flex items-center gap-3">
                                         <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center text-[8px] font-bold">B</div>
@@ -212,37 +249,90 @@ const FiltersFull = () => {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="any">All Brands</SelectItem>
-                                    {['Toyota', 'Mercedes', 'Tesla', 'Hyundai', 'Suzuki', 'Ford'].map(brand => (
+                                    {Object.keys(CAR_BRANDS_AND_MODELS).sort().map(brand => (
                                         <SelectItem key={brand} value={brand}>{brand}</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
+
+                            {filters.brand && filters.brand !== 'any' && CAR_BRANDS_AND_MODELS[filters.brand] && (
+                                <Select value={filters.model || 'any'} onValueChange={v => updateFilter({ model: v })}>
+                                    <SelectTrigger className="rounded-xl h-12">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center text-[8px] font-bold">M</div>
+                                            <SelectValue placeholder="Vehicle Model" />
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="any">All Models</SelectItem>
+                                        {CAR_BRANDS_AND_MODELS[filters.brand].map(model => (
+                                            <SelectItem key={model} value={model}>{model}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
                         </div>
 
-                        <div className="space-y-4">
-                            <Label className="text-xs font-bold text-muted-foreground uppercase">Production Year</Label>
-                            <Slider
-                                min={1990}
-                                max={2025}
-                                step={1}
-                                value={[filters.year[0] || 1990, filters.year[1] || 2025]}
-                                onValueChange={(v) => updateFilter({ year: [v[0], v[1]] })}
-                            />
-                            <div className="flex justify-between text-xs font-medium">
-                                <span>{filters.year[0] || 1990}</span>
-                                <span>{filters.year[1] || 2025}</span>
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground/70 ml-1 tracking-widest">Production Year</Label>
+                            <div className="flex flex-col gap-3">
+                                <Select 
+                                    value={filters.year[0]?.toString() || "any"} 
+                                    onValueChange={v => {
+                                        const year = v === "any" ? 1980 : parseInt(v);
+                                        updateFilter({ year: [year, filters.year[1] || 2025] });
+                                    }}
+                                >
+                                    <SelectTrigger className="rounded-xl h-11 bg-muted/20 border-border/50">
+                                        <SelectValue placeholder="From Year" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[300px]">
+                                        <SelectItem value="any">From (Any)</SelectItem>
+                                        {Array.from({ length: 2025 - 1980 + 1 }, (_, i) => (2025 - i).toString()).map(y => (
+                                            <SelectItem key={y} value={y}>{y}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                <Select 
+                                    value={filters.year[1]?.toString() || "any"} 
+                                    onValueChange={v => {
+                                        const year = v === "any" ? 2025 : parseInt(v);
+                                        updateFilter({ year: [filters.year[0] || 1980, year] });
+                                    }}
+                                >
+                                    <SelectTrigger className="rounded-xl h-11 bg-muted/20 border-border/50">
+                                        <SelectValue placeholder="To Year" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[300px]">
+                                        <SelectItem value="any">To (Any)</SelectItem>
+                                        {Array.from({ length: 2025 - 1980 + 1 }, (_, i) => (2025 - i).toString()).map(y => (
+                                            <SelectItem key={y} value={y}>{y}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <Label className="text-xs font-bold text-muted-foreground uppercase">Max Mileage (km)</Label>
-                            <Slider
-                                max={200000}
-                                step={5000}
-                                value={[filters.mileage || 200000]}
-                                onValueChange={([v]) => updateFilter({ mileage: v })}
-                            />
-                            <div className="text-right text-xs font-medium">{filters.mileage ? filters.mileage.toLocaleString() : '200,000+'} km</div>
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground/70 ml-1 tracking-widest">Max Mileage (km)</Label>
+                            <Select 
+                                value={filters.mileage?.toString() || "any"} 
+                                onValueChange={v => {
+                                    const mileage = v === "any" ? null : parseInt(v);
+                                    updateFilter({ mileage });
+                                }}
+                            >
+                                <SelectTrigger className="rounded-xl h-12 bg-muted/20 border-border/50">
+                                    <SelectValue placeholder="Any Mileage" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="any">Any Mileage</SelectItem>
+                                    {[0, 5000, 10000, 25000, 50000, 75000, 100000, 150000, 200000, 500000].map(m => (
+                                        <SelectItem key={m} value={m.toString()}>Up to {m.toLocaleString()} km</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div className="space-y-4">

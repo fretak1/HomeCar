@@ -1,7 +1,14 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
-const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8000/api/v1';
+const normalizeAiServiceUrl = (url: string) => {
+    const trimmed = url.trim().replace(/\/+$/, '');
+    return trimmed.endsWith('/api/v1') ? trimmed : `${trimmed}/api/v1`;
+};
+
+const AI_SERVICE_URL = normalizeAiServiceUrl(
+    process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8000',
+);
 
 interface SimilarListing {
     id: string;

@@ -4,71 +4,325 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../shared/widgets/glass_card.dart';
 import '../chat/providers/chat_provider.dart';
 import '../chat/repositories/chat_repository.dart';
+import '../dashboard/widgets/dashboard_page_scaffold.dart';
+import '../dashboard/widgets/dashboard_utils.dart';
+import '../dashboard/widgets/role_dashboard_scaffold.dart';
 import 'models/application_model.dart';
 import 'providers/application_provider.dart';
 
-class ManagedApplicationsScreen extends ConsumerWidget {
-  const ManagedApplicationsScreen({Key? key}) : super(key: key);
+class ManagedApplicationsScreen extends ConsumerStatefulWidget {
+  const ManagedApplicationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ManagedApplicationsScreen> createState() =>
+      _ManagedApplicationsScreenState();
+}
+
+class _ManagedApplicationsScreenState
+    extends ConsumerState<ManagedApplicationsScreen> {
+  String _query = '';
+  String _statusFilter = 'all';
+
+  @override
+  Widget build(BuildContext context) {
     final applicationsAsync = ref.watch(managedApplicationsProvider);
     final updateState = ref.watch(applicationStatusUpdateProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Listing Applications'),
-        actions: [
-          IconButton(
-            onPressed: () => ref.invalidate(managedApplicationsProvider),
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-      body: applicationsAsync.when(
-        data: (applications) {
-          if (applications.isEmpty) {
-            return ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(24),
-              children: const [
-                SizedBox(height: 80),
-                _EmptyManagedApplications(),
-              ],
-            );
-          }
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Column(
+          children: [
+            DashboardPageHeader(
+              title: 'Property Applications',
+              subtitle:
+                  'Review every customer application, update status, and turn approved inquiries into leases.',
+              onBack: () => Navigator.of(context).maybePop(),
+              action: OutlinedButton.icon(
+                onPressed: () => ref.invalidate(managedApplicationsProvider),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primary,
+                  side: const BorderSide(color: AppTheme.border),
+                ),
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Refresh'),
+              ),
+            ),
+            Expanded(
+              child: applicationsAsync.when(
+                data: (applications) {
+                  final filtered = applications.where((application) {
+                    final normalizedQuery = _query.trim().toLowerCase();
+                    final matchesQuery =
+                        normalizedQuery.isEmpty ||
+                        application.propertyTitle.toLowerCase().contains(
+                              normalizedQuery,
+                            ) ||
+                        application.propertyLocation.toLowerCase().contains(
+                              normalizedQuery,
+                            ) ||
+                        (application.customerName ?? '')
+                            .toLowerCase()
+                            .contains(normalizedQuery);
 
-          return RefreshIndicator(
-            onRefresh: () => ref.refresh(managedApplicationsProvider.future),
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-              itemCount: applications.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final application = applications[index];
-                return _ManagedApplicationCard(
-                  application: application,
-                  isUpdating: updateState.isLoading,
-                );
-              },
+                    final matchesStatus = switch (_statusFilter) {
+                      'pending' => application.isPending,
+                      'accepted' => application.isAccepted,
+                      'rejected' => application.isRejected,
+                      _ => true,
+                    };
+
+                    return matchesQuery && matchesStatus;
+                  }).toList(growable: false);
+
+                  final pending =
+                      applications.where((item) => item.isPending).length;
+                  final accepted =
+                      applications.where((item) => item.isAccepted).length;
+                  final rejected =
+                      applications.where((item) => item.isRejected).length;
+
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(managedApplicationsProvider);
+                      await ref.read(managedApplicationsProvider.future);
+                    },
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                      children: [
+                        Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1200),
+                            child: Column(
+                              children: [
+                                DashboardSectionCard(
+                                  title: 'Application pipeline',
+                                  child: Column(
+                                    children: [
+                                      LayoutBuilder(
+                                        builder: (context, constraints) {
+                                          final stacked =
+                                              constraints.maxWidth < 720;
+
+                                          return stacked
+                                              ? Column(
+                                                  children: [
+                                                    _ApplicationSearchField(
+                                                      initialValue: _query,
+                                                      onChanged: (value) =>
+                                                          setState(
+                                                            () => _query = value,
+                                                          ),
+                                                    ),
+                                                    const SizedBox(height: 14),
+                                                    _ApplicationFilterWrap(
+                                                      selected: _statusFilter,
+                                                      onChanged: (value) =>
+                                                          setState(
+                                                            () => _statusFilter =
+                                                                value,
+                                                          ),
+                                                    ),
+                                                  ],
+                                                )
+                                              : Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child:
+                                                          _ApplicationSearchField(
+                                                        initialValue: _query,
+                                                        onChanged: (value) =>
+                                                            setState(
+                                                              () =>
+                                                                  _query = value,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 16),
+                                                    Expanded(
+                                                      child: Align(
+                                                        alignment: Alignment
+                                                            .centerRight,
+                                                        child:
+                                                            _ApplicationFilterWrap(
+                                                          selected:
+                                                              _statusFilter,
+                                                          onChanged: (value) =>
+                                                              setState(
+                                                                () =>
+                                                                    _statusFilter =
+                                                                        value,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                );
+                                        },
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Wrap(
+                                        spacing: 12,
+                                        runSpacing: 12,
+                                        children: [
+                                          DashboardMetricTile(
+                                            icon:
+                                                Icons.hourglass_top_rounded,
+                                            label: '$pending pending',
+                                          ),
+                                          DashboardMetricTile(
+                                            icon:
+                                                Icons.check_circle_outline,
+                                            label: '$accepted accepted',
+                                          ),
+                                          DashboardMetricTile(
+                                            icon: Icons.close_rounded,
+                                            label: '$rejected rejected',
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                if (applications.isEmpty)
+                                  const DashboardEmptyState(
+                                    title: 'No applications yet',
+                                    message:
+                                        'When customers apply to your listings, their requests will appear here for review.',
+                                  )
+                                else if (filtered.isEmpty)
+                                  const DashboardEmptyState(
+                                    title: 'No applications match this filter',
+                                    message:
+                                        'Try another search term or switch the application status filter.',
+                                  )
+                                else
+                                  ...filtered.map(
+                                    (application) => Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 14,
+                                      ),
+                                      child: _ManagedApplicationCard(
+                                        application: application,
+                                        isUpdating: updateState.isLoading,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                loading: () => Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: 1200),
+                    child: Padding(
+                      padding: EdgeInsets.all(16),
+                      child: DashboardLoadingState(
+                        label: 'Loading applications...',
+                      ),
+                    ),
+                  ),
+                ),
+                error: (error, _) => Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1200),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: DashboardEmptyState(
+                        title: 'Applications unavailable',
+                        message: error.toString().replaceFirst(
+                              'Exception: ',
+                              '',
+                            ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              error.toString().replaceFirst('Exception: ', ''),
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.redAccent),
-            ),
-          ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class _ApplicationSearchField extends StatelessWidget {
+  const _ApplicationSearchField({
+    required this.initialValue,
+    required this.onChanged,
+  });
+
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      initialValue: initialValue,
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        hintText: 'Search by property, location, or applicant',
+        prefixIcon: const Icon(Icons.search_rounded),
+        filled: true,
+        fillColor: AppTheme.inputBackground,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppTheme.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: AppTheme.border),
+        ),
+      ),
+    );
+  }
+}
+
+class _ApplicationFilterWrap extends StatelessWidget {
+  const _ApplicationFilterWrap({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final String selected;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        DashboardFilterChip(
+          label: 'All',
+          selected: selected == 'all',
+          onTap: () => onChanged('all'),
+        ),
+        DashboardFilterChip(
+          label: 'Pending',
+          selected: selected == 'pending',
+          onTap: () => onChanged('pending'),
+        ),
+        DashboardFilterChip(
+          label: 'Accepted',
+          selected: selected == 'accepted',
+          onTap: () => onChanged('accepted'),
+        ),
+        DashboardFilterChip(
+          label: 'Rejected',
+          selected: selected == 'rejected',
+          onTap: () => onChanged('rejected'),
+        ),
+      ],
     );
   }
 }
@@ -84,117 +338,130 @@ class _ManagedApplicationCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
+    return DashboardEntityCard(
+      title: application.propertyTitle,
+      subtitle: application.propertyLocation,
+      imageUrl: application.propertyImage,
+      imageIcon: application.assetType.toUpperCase() == 'CAR'
+          ? Icons.directions_car_outlined
+          : Icons.home_work_outlined,
+      status: DashboardStatusPill(
+        label: prettyDashboardLabel(application.status),
+        color: dashboardStatusColor(application.status),
+      ),
+      body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _Avatar(
-                name: application.customerName ?? 'C',
+              _ApplicantAvatar(
+                name: application.customerName ?? 'Customer',
                 imageUrl: application.customerProfileImage,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      application.customerName ?? 'Customer',
+                      application.customerName ?? 'Unknown applicant',
                       style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                        color: AppTheme.foreground,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      application.propertyTitle,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${application.listingLabel} - ${application.price.toStringAsFixed(0)} ETB',
-                      style: const TextStyle(color: AppTheme.secondary),
-                    ),
+                    if (application.customerEmail?.trim().isNotEmpty ??
+                        false)
+                      Text(
+                        application.customerEmail!,
+                        style: const TextStyle(
+                          color: AppTheme.mutedForeground,
+                        ),
+                      ),
                   ],
                 ),
               ),
-              _ManagerStatusChip(status: application.status),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            application.propertyLocation,
-            style: const TextStyle(color: Colors.white54, fontSize: 13),
-          ),
-          if (application.message != null &&
-              application.message!.trim().isNotEmpty) ...[
+          if (application.message?.trim().isNotEmpty ?? false) ...[
             const SizedBox(height: 12),
             Text(
               application.message!,
-              style: const TextStyle(color: Colors.white70, height: 1.5),
+              style: const TextStyle(
+                color: AppTheme.mutedForeground,
+                height: 1.5,
+              ),
             ),
           ],
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => _messageCustomer(context, ref),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white24),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text('Message'),
-                ),
-              ),
-              if (application.isAccepted) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      final created = await context.push(
-                        '/leases/create',
-                        extra: {'application': application},
-                      );
-                      if (created == true) {
-                        ref.invalidate(managedApplicationsProvider);
-                      }
-                    },
-                    child: const Text('Create Lease'),
-                  ),
-                ),
-              ],
-              if (application.isPending) ...[
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: isUpdating
-                        ? null
-                        : () => _updateStatus(context, ref, 'accepted'),
-                    child: const Text('Accept'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: isUpdating
-                        ? null
-                        : () => _updateStatus(context, ref, 'rejected'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                    ),
-                    child: const Text('Reject'),
-                  ),
-                ),
-              ],
-            ],
-          ),
         ],
       ),
+      metrics: [
+        DashboardMetricTile(
+          icon: Icons.sell_outlined,
+          label: formatDashboardMoney(application.price),
+        ),
+        DashboardMetricTile(
+          icon: Icons.category_outlined,
+          label: application.listingLabel,
+        ),
+        DashboardMetricTile(
+          icon: Icons.calendar_today_outlined,
+          label: application.dateLabel ?? 'Recently submitted',
+        ),
+      ],
+      actions: [
+        OutlinedButton.icon(
+          onPressed: () => _messageCustomer(context, ref),
+          icon: const Icon(Icons.chat_bubble_outline, size: 18),
+          label: const Text('Message'),
+        ),
+        if (application.isPending)
+          FilledButton.icon(
+            onPressed: isUpdating
+                ? null
+                : () => _updateStatus(context, ref, 'accepted'),
+            icon: const Icon(Icons.check_rounded, size: 18),
+            label: const Text('Accept'),
+          ),
+        if (application.isPending)
+          OutlinedButton.icon(
+            onPressed: isUpdating
+                ? null
+                : () => _updateStatus(context, ref, 'rejected'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFFDC2626),
+              side: const BorderSide(color: Color(0xFFFECACA)),
+            ),
+            icon: const Icon(Icons.close_rounded, size: 18),
+            label: const Text('Reject'),
+          ),
+        if (!application.isPending)
+          OutlinedButton.icon(
+            onPressed: isUpdating
+                ? null
+                : () => _updateStatus(context, ref, 'pending'),
+            icon: const Icon(Icons.restart_alt_rounded, size: 18),
+            label: const Text('Reset'),
+          ),
+        if (application.isAccepted)
+          FilledButton.icon(
+            onPressed: () async {
+              final created = await context.push(
+                '/leases/create',
+                extra: {'application': application},
+              );
+              if (created == true) {
+                ref.invalidate(managedApplicationsProvider);
+              }
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.note_add_outlined, size: 18),
+            label: const Text('Create lease'),
+          ),
+      ],
     );
   }
 
@@ -214,7 +481,11 @@ class _ManagedApplicationCard extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Application ${status == 'accepted' ? 'accepted' : 'rejected'}',
+            'Application ${status == 'accepted'
+                ? 'accepted'
+                : status == 'rejected'
+                    ? 'rejected'
+                    : 'reset to pending'}',
           ),
         ),
       );
@@ -237,9 +508,7 @@ class _ManagedApplicationCard extends ConsumerWidget {
     }
 
     try {
-      await ref
-          .read(chatRepositoryProvider)
-          .initiateChat(
+      await ref.read(chatRepositoryProvider).initiateChat(
             receiverId: application.customerId,
             content:
                 'Hello, I am following up on your application for ${application.propertyTitle}.',
@@ -270,8 +539,11 @@ class _ManagedApplicationCard extends ConsumerWidget {
   }
 }
 
-class _Avatar extends StatelessWidget {
-  const _Avatar({required this.name, this.imageUrl});
+class _ApplicantAvatar extends StatelessWidget {
+  const _ApplicantAvatar({
+    required this.name,
+    this.imageUrl,
+  });
 
   final String name;
   final String? imageUrl;
@@ -280,89 +552,20 @@ class _Avatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final trimmedImage = imageUrl?.trim();
     return CircleAvatar(
-      radius: 24,
-      backgroundColor: Colors.white12,
+      radius: 20,
+      backgroundColor: const Color(0xFFE8F3EF),
       backgroundImage: trimmedImage != null && trimmedImage.isNotEmpty
           ? CachedNetworkImageProvider(trimmedImage)
           : null,
       child: trimmedImage == null || trimmedImage.isEmpty
           ? Text(
-              name.isEmpty ? '?' : name.characters.first.toUpperCase(),
+              name.isEmpty ? '?' : name[0].toUpperCase(),
               style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+                color: AppTheme.primary,
+                fontWeight: FontWeight.w800,
               ),
             )
           : null,
-    );
-  }
-}
-
-class _ManagerStatusChip extends StatelessWidget {
-  const _ManagerStatusChip({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final normalized = status.toLowerCase();
-    final background = normalized == 'accepted'
-        ? const Color(0x1A10B981)
-        : normalized == 'rejected'
-        ? const Color(0x1AF43F5E)
-        : const Color(0x1AF59E0B);
-    final foreground = normalized == 'accepted'
-        ? const Color(0xFF34D399)
-        : normalized == 'rejected'
-        ? const Color(0xFFFB7185)
-        : const Color(0xFFFBBF24);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        normalized[0].toUpperCase() + normalized.substring(1),
-        style: TextStyle(
-          color: foreground,
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyManagedApplications extends StatelessWidget {
-  const _EmptyManagedApplications();
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-          Icon(
-            Icons.inbox_outlined,
-            color: AppTheme.secondary.withOpacity(0.95),
-            size: 42,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No applications yet',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            'Customer applications for your listings will show up here.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70, height: 1.5),
-          ),
-        ],
-      ),
     );
   }
 }

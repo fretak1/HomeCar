@@ -3,28 +3,26 @@ import re
 import json
 import asyncio
 from typing import List, Dict, Any, Optional
-from google import genai
-from google.genai import types
+from groq import Groq
 from app.database import get_connection
+from app.services.intent_parser import intent_parser
 
 SYSTEM_INSTRUCTION = """
-You are 'HomeCar AI', a perfect and universal assistant for Ethiopia's premier marketplace. 
-Your goal is to be the ultimate concierge for everything related to HomeCar, and a world-class expert on general knowledge.
+Language Rule (ABSOLUTE PRIORITY): You MUST respond ONLY in the language the user is currently using.
+- If the user speaks English, you MUST respond in English.
+- If the user speaks Amharic, you MUST respond in Amharic.
+NEVER switch languages unless explicitly told to. This rule overrides all other instructions.
 
-Search & Response Rules:
-1. Database Integrity: Use the 'Database Search Results' section to answer specific listing queries. If results are there, they ARE available.
-2. Market Trends & Consultancy: You ARE allowed to provide general market trends and consultancy for the Ethiopian market (real estate and cars) based on your training data. Combine this with the provided 'Database Search Results' and 'Market Trends' for a comprehensive answer.
-3. Universal Assistant: You can and MUST answer ALL and EVERY question accurately. This includes general knowledge (history, science, geography), advice, and platform-specific help.
-4. Platform Expert: Effectively explain how to use HomeCar (applying for properties, owner approval, Chapa payments, security features). 
-5. Comparative Analysis: Always calculate explicit mathematical differences for price comparisons using basic subtraction.
-6. Language Support: Always respond in the SAME LANGUAGE as the user (e.g., if asked in Amharic, respond in Amharic).
-7. Prices: Always state prices in ETB.
-8. Formatting: Bold listing names and use bullet points for lists.
-9. Clickable Links: Format listing titles as: [Title](/property/id).
-10. Fallbacks: If no listings match perfectly, suggest alternatives from the database OR provide helpful general advice.
+Context: You are 'HomeCar AI', a helpful assistant for a vehicle and property marketplace.
+Goal: Provide accurate information, database listings, and general knowledge.
+
+Formatting Rule: When providing property or car links, you MUST use the Markdown format: [Title](URL).
+- Example: [Modern Villa in Bole](/property/123)
+- DO NOT escape brackets or use extra bolding around the link unless requested.
 """
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
 
 class DynamicLookup:
     """Handles caching of database values to avoid expensive re-queries for every message."""
@@ -73,7 +71,7 @@ class DynamicLookup:
             cls.refresh()
         return cls._locations, cls._prop_types, cls._brands
 
-def _search_db(asset_type: Optional[str] = None, max_price: Optional[float] = None, min_price: Optional[float] = None, query_text: str = "", listing_intent: Optional[str] = None, bedrooms: Optional[int] = None, prop_type: Optional[str] = None, location: Optional[str] = None, bedrooms_min: bool = False, sort_mode: str = 'ASC', brand: Optional[str] = None) -> str:
+def _search_db(asset_type: Optional[str] = None, max_price: Optional[float] = None, min_price: Optional[float] = None, query_text: str = "", listing_intent: Optional[str] = None, bedrooms: Optional[int] = None, prop_type: Optional[str] = None, location: Optional[str] = None, bedrooms_min: bool = False, sort_mode: str = 'ASC', brand: Optional[str] = None, model: Optional[str] = None) -> str:
     """Run a database search and return formatted results in ETB."""
     try:
         conn = get_connection()
@@ -92,8 +90,13 @@ def _search_db(asset_type: Optional[str] = None, max_price: Optional[float] = No
             params.append(asset_type.upper())
         if prop_type:
             # Re-introduce partial matching for better flexibility
-            sql += ' AND p."propertyType" ILIKE %s'
-            params.append(f"%{prop_type}%")
+            if prop_type.upper() == 'HOUSE':
+                # Map 'house' to common residential types in the database
+                sql += ' AND (p."propertyType" ILIKE %s OR p."propertyType" ILIKE %s OR p."propertyType" ILIKE %s OR p."propertyType" ILIKE %s OR p."propertyType" ILIKE %s)'
+                params.extend(['%villa%', '%apartment%', '%condominium%', '%compound%', '%building%'])
+            else:
+                sql += ' AND p."propertyType" ILIKE %s'
+                params.append(f"%{prop_type}%")
         if location:
             sql += ' AND (l.city ILIKE %s OR l.subcity ILIKE %s OR l.village ILIKE %s)'
             params.extend([f"%{location}%", f"%{location}%", f"%{location}%"])
@@ -120,16 +123,20 @@ def _search_db(asset_type: Optional[str] = None, max_price: Optional[float] = No
             sql += ' AND p.brand ILIKE %s'
             params.append(f"%{brand}%")
 
+        if model:
+            sql += ' AND p.model ILIKE %s'
+            params.append(f"%{model}%")
+
         if query_text:
             query_words = [w.strip() for w in query_text.split() if len(w.strip()) > 1]
             if query_words:
                 for word in query_words:
-                    sql += " AND (p.title ILIKE %s OR p.description ILIKE %s OR p.brand ILIKE %s)"
-                    params.extend([f"%{word}%"] * 3)
+                    sql += " AND (p.title ILIKE %s OR p.description ILIKE %s OR p.brand ILIKE %s OR p.model ILIKE %s)"
+                    params.extend([f"%{word}%"] * 4)
         
         # Apply sorting
         order_direction = 'DESC' if sort_mode == 'DESC' else 'ASC'
-        sql += f" ORDER BY p.price {order_direction} LIMIT 50"
+        sql += f" ORDER BY p.price {order_direction} LIMIT 10"
         
         cur.execute(sql, params)
         rows = cur.fetchall()
@@ -211,339 +218,110 @@ def _get_market_data(asset_type: str, city: Optional[str] = None, prop_type: Opt
     except Exception as e:
         return f"Database error: {e}"
 
-def _build_context(message: str) -> str:
-    """Analyze message to detect intent and build context from database."""
-    clean_msg = message.lower()
+
+async def _build_context(message: str, history: List[Dict[str, str]] = []) -> str:
+    """Analyze message to detect intent using LLM Parser and build context from database."""
+    # Normalize common spelling variations
+    message_normalized = message.replace("Addis Abeba", "Addis Ababa")
+    clean_msg = message_normalized.lower()
     
-    # ... previous logic ...
+    # Use AI Parser for robust intent and filter extraction
+    parsed = await intent_parser.parse(message_normalized)
+    intent_tag = parsed.get("intent", "GENERAL")
+    is_search_intent = parsed.get("is_search", False)
     
-    # Intent Detection
-    # Use word boundaries to avoid 'currently' matching 'rent'
-    is_rent = any(re.search(rf'\b{word}\b', clean_msg) for word in ['rent', 'lease', 'monthly', 'per month'])
-    is_buy = any(re.search(rf'\b{word}\b', clean_msg) for word in ['buy', 'purchase', 'sale', 'for sale', 'total price'])
+    # Greedy Search Detection: If intent is specific, it's a search
+    if intent_tag in ["SEARCH_CAR", "SEARCH_HOME"]:
+        is_search_intent = True
+        
+    filters = parsed.get("filters", {})
     
-    intent = None
-    if is_rent and not is_buy: intent = 'RENT'
-    elif is_buy and not is_rent: intent = 'BUY'
+    # Extract params from AI Parser
+    intent = filters.get("listing_intent")
+    # Mapping fix: SALE -> BUY
+    if intent == "SALE": intent = "BUY"
     
-    # Load Dynamic Data
-    db_locations, db_types, db_brands = DynamicLookup.get_data()
-
-    # Global Ethiopia Locations (Knowledge Base)
-    GLOBAL_LOCATIONS = {
-        'Regions': ['afar', 'amhara', 'benishangul-gumuz', 'central ethiopia', 'gambela', 'harari', 'oromia', 'sidama', 'somali', 'south ethiopia', 'south west ethiopia', 'tigray'],
-        'Major Cities': ['bahir dar', 'gondar', 'dessie', 'kombolcha', 'debre birhan', 'adama', 'nazret', 'bishoftu', 'debre zeit', 'jimma', 'shashemene', 'nekemte', 'sebeta', 'awassa', 'hawassa', 'jijiga', 'bonga', 'mekele', 'mekelle', 'adigrat', 'axum', 'shire', 'dire dawa'],
-        'Addis Sub-Cities': ['addis ketema', 'akaki kality', 'arada', 'bole', 'gulele', 'kirkos', 'kolfe keraniyo', 'lideta', 'nifas silk-lafto', 'nefas silk', 'yeka'],
-        'Addis Neighborhoods': [
-            'ayat', 'summit', 'cmc', 'old airport', 'piazza', 'piassa', 'kazanchis', 'merkato', 'saris', 'kality', 'lafto', 'mexico', 
-            'olympia', 'gerji', 'megenagna', 'gotera', 'sar bet', 'lebu', 'jemo', 'bulbula', 'kotebe', 'ferensay', 'shola', '22', 
-            '4 kilo', '5 kilo', '6 kilo', 'bole arabsa', 'hayat', 'jackros', 'imperial', 'hayahulet', 'totot', 'salite mihret'
-        ]
-    }
-    all_global_locs = [loc for sublist in GLOBAL_LOCATIONS.values() for loc in sublist]
-
-    # Amharic Translation Map (Expanded for Global Knowledge)
-    AM_MAP = {
-        'አዲስ አበባ': 'addis', 'አዲስ አበበ': 'addis', 'ቦሌ': 'bole', 'የካ': 'yeka', 'አያት': 'ayat',
-        'ሰሚት': 'summit', 'ሊደታ': 'lideta', 'ቂርቆስ': 'kirkos', 'አራዳ': 'arada', 'አዲስ ከተማ': 'addis ketema',
-        'ጉለሌ': 'gulele', 'ኮልፌ ቀራኒዮ': 'kolfe keraniyo', 'ንፋስ ስልክ': 'nifas silk',
-        'ፒያሳ': 'piazza', 'ኦሊምፒያ': 'olympia',
-        'ካዛንቺስ': 'kazanchis', 'ገርጂ': 'gerji', 'መገናኛ': 'megenagna', 'ሜክሲኮ': 'mexico',
-        'ሳሪስ': 'saris', 'ላፍቶ': 'lafto', 'ቃሊቲ': 'kality', 'አቃቂ': 'akaki', 'ቃሊቲ': 'kality',
-        'አራት ኪሎ': '4 kilo', 'አምስት ኪሎ': '5 kilo', 'ስድስት ኪሎ': '6 kilo', 'ሀያ ሁለት': '22',
-        'ጎተራ': 'gotera', 'ለቡ': 'lebu', 'ጀሞ': 'jemo', 'ቡልቡላ': 'bulbula', 'ኮተቤ': 'kotebe',
-        'ፈረንሳይ': 'ferensay', 'ሾላ': 'shola', 'መገናኛ': 'megenagna', 'ሲኤምሲ': 'cmc',
-        'ባህር ዳር': 'bahir dar', 'ጎንደር': 'gondar', 'ደሴ': 'dessie', 'ኮምቦልቻ': 'kombolcha',
-        'ደብረ ብርሃን': 'debre birhan', 'አዳማ': 'adama', 'ናዝሬት': 'nazret', 'ቢሾፍቱ': 'bishoftu',
-        'ደብረ ዘይት': 'debre zeit', 'ጅማ': 'jimma', 'ሻሸመኔ': 'shashemene', 'ነቀምቴ': 'nekemte',
-        'ሰበታ': 'sebeta', 'ሀዋሳ': 'hawassa', 'ጂጂጋ': 'jijiga', 'ቦንጋ': 'bonga', 'መቀሌ': 'mekelle',
-        'አዲግራት': 'adigrat', 'አክሱም': 'axum', 'ሽሬ': 'shire', 'ድሬዳዋ': 'dire dawa',
-        # Additional types
-        'ቪላ': 'villa', 'አፓርታማ': 'apartment', 'ኮንዶሚኒየም': 'condominium', 'ኮንዶ': 'condo', 'ስቱዲዮ': 'studio',
-        'ታውን ሃውስ': 'townhouse', 'ህንፃ': 'building', 'ህፃን': 'building', '3*3': '3*3', '3*4': '3*4', '4*4': '4*4', '4*5': '4*5', '5*5': '5*5', '5*6': '5*6', '6*6': '6*6', '6*7': '6*7',
-        'ቶዮታ': 'toyota', 'ሱዙኪ': 'suzuki', 'መርሴዲስ': 'mercedes',
-        'ሃዩንዳይ': 'hyundai', 'ፎርድ': 'ford', 'ሆንዳ': 'honda', 'መርከስ': 'mercedes'
-    }
-
-    # Asset Detection
-    assets = []
-    if any(w in clean_msg for w in (['car', 'vehicle', 'suzuki', 'vitz', 'መኪና', 'ቶዮታ', 'ሱዙኪ'] + db_brands)): assets.append('CAR')
-    if any(w in clean_msg for w in (['house', 'apartment', 'home', 'villa', 'condo', 'studio', 'townhouse', 'ቤት', 'ቪላ', 'አፓርታማ'] + db_types)): assets.append('HOME')
+    assets = [filters.get("asset_type")] if filters.get("asset_type") else ["CAR", "HOME"]
+    if intent_tag == "SEARCH_CAR": assets = ["CAR"]
+    elif intent_tag == "SEARCH_HOME": assets = ["HOME"]
     
-    if not assets: assets = ['CAR', 'HOME']
-
-    # Property Type Detection
-    prop_type = None
-    prop_type_match = None
-    all_prop_types = list(set(db_types + ['apartment', 'villa', 'condo', 'studio', 'townhouse', 'guest house', 'compound', 'building', '3*3', '3*4', '4*4', '4*5', '5*5', '5*6', '6*6', '6*7']))
-    for t in all_prop_types:
-        if t in clean_msg:
-            prop_type = t
-            prop_type_match = t
-            break
-    if not prop_type:
-        for am, en in AM_MAP.items():
-            if am in clean_msg and any(pt in en for pt in ['villa', 'apartment', 'condo', 'studio', 'townhouse', 'building', '3*3', '3*4', '4*4', '4*5', '5*5', '5*6', '6*6', '6*7']):
-                prop_type = en
-                prop_type_match = am
-                break
-
-    # Brand Detection
-    brand = None
-    brand_match = None
-    sorted_brands = sorted(db_brands, key=len, reverse=True)
-    for b in sorted_brands:
-        if b in clean_msg:
-            brand = b
-            brand_match = b
-            break
-        parts = b.replace('-', ' ').split()
-        if any(len(p) > 3 and p in clean_msg for p in parts):
-            brand = b
-            brand_match = b # Best effort
-            break
-    if not brand:
-        for am, en in AM_MAP.items():
-            if am in clean_msg and en in [b.lower() for b in db_brands]:
-                brand = en
-                brand_match = am
-                break
-
-    # Location Detection
-    detected_locations = []
-    # Combine DB locations with Global Knowledge locations for robust detection
-    combined_locs = list(set(db_locations + all_global_locs))
-    sorted_locs = sorted(combined_locs, key=len, reverse=True)
-    taken_indices = set()
+    prop_type = filters.get("prop_type")
+    brand = filters.get("brand")
+    locations = filters.get("locations", [])
+    max_price = filters.get("price_max")
+    min_price = filters.get("price_min")
+    query_text = filters.get("query_text", "")
+    bedrooms = filters.get("bedrooms")
     
-    # Check Amharic Variations First (locations)
-    for am, en in AM_MAP.items():
-        # Optimization: Only check if the translation matches a known global or DB location
-        if en in combined_locs or en == 'addis':
-            for match in re.finditer(re.escape(am), clean_msg):
-                start, end = match.span()
-                if not any(i in taken_indices for i in range(start, end)):
-                    detected_locations.append((am, en))
-                    for i in range(start, end): taken_indices.add(i)
-
-    # Standard check
-    for s in sorted_locs:
-        for match in re.finditer(re.escape(s), clean_msg):
-            start, end = match.span()
-            # If this match overlaps with a previously detected (longer) location, skip it
-            if any(i in taken_indices for i in range(start, end)):
-                continue
-            
-            detected_locations.append((s, s))
-            for i in range(start, end): taken_indices.add(i)
+    # Keyword Cleaning: Avoid redundant searches if filter is already extracted
+    if bedrooms and query_text:
+        # Remove literal numbers followed by bedroom/br keywords
+        query_text = re.sub(rf'\b{bedrooms}\s*(bedroom|bedrooms|br|bed|beds)\b', '', query_text, flags=re.IGNORECASE).strip()
     
-    # Manual overrides for capital city variations
-    for variant in ['addis ababa', 'addis abeba']:
-        for match in re.finditer(re.escape(variant), clean_msg):
-            start, end = match.span()
-            if not any(i in taken_indices for i in range(start, end)):
-                detected_locations.append((variant, 'addis'))
-                for i in range(start, end): taken_indices.add(i)
-            
-    # Normalize and deduplicate locations by search_val
-    unique_locations = {}
-    for match_str, search_val in detected_locations:
-        if search_val not in unique_locations:
-            unique_locations[search_val] = match_str
+    current_brand = filters.get("brand")
+    current_model = filters.get("model") or filters.get("model_fragment")
     
-    # Bedroom Detection
-    bedrooms = None
-    beds_min = False
-    bed_match = re.search(r'(\d+)[\-\s\+]*?(?:bedroom|br|bed)', clean_msg)
-    if bed_match:
-        bedrooms = int(bed_match.group(1))
-        if re.search(rf'{bedrooms}\s*(?:\+|and\s+above|or\s+more|plus)', clean_msg):
-            beds_min = True
-
-    # Price Detection (Improved to handle 'million', 'm', 'k' and Amharic suffixes)
-    def _parse_price(text: str) -> Optional[float]:
-        if not text: return None
-        clean_val = text.replace(',', '')
-        try:
-            multiplier = 1
-            if re.search(r'(?:million|m|ሚሊዮን)', clean_msg.lower()): multiplier = 1_000_000
-            elif re.search(r'(?:k|thousand|ሺ)', clean_msg.lower()): multiplier = 1_000
-            
-            val_match = re.search(r'[\d.]+', clean_val)
-            if not val_match: return None
-            return float(val_match.group(0)) * multiplier
-        except: return None
-
-    max_price = None
-    min_price = None
-    
-    # English & Amharic (Prefix/Suffix)
-    max_match = re.search(r'(?:under|below|less than|max|up to|ከ)\s*([\d,.kbm\s]+(?:million|m|k|ሚሊዮን|ሺ)?)\s*(?:በታች)?', clean_msg)
-    if max_match and ('under' in clean_msg or 'below' in clean_msg or 'less than' in clean_msg or 'max' in clean_msg or 'up to' in clean_msg or 'በታች' in clean_msg):
-        max_price = _parse_price(max_match.group(1).strip())
-    
-    min_match = re.search(r'(?:above|more than|over|at least|min|ከ)\s*([\d,.kbm\s]+(?:million|m|k|ሚሊዮን|ሺ)?)\s*(?:በላይ)?', clean_msg)
-    if min_match and ('above' in clean_msg or 'more than' in clean_msg or 'over' in clean_msg or 'at least' in clean_msg or 'min' in clean_msg or 'በላይ' in clean_msg):
-        min_price = _parse_price(min_match.group(1).strip())
-
-    range_match = re.search(r'between\s*([\d,.kbm\s]+(?:million|m|k|ሚሊዮን|ሺ)?)\s*and\s*([\d,.kbm\s]+(?:million|m|k|ሚሊዮን|ሺ)?)', clean_msg)
-    if range_match:
-        min_price = _parse_price(range_match.group(1).strip())
-        max_price = _parse_price(range_match.group(2).strip())
-
     # Sorting Detection
     sort_mode = 'ASC'
-    sort_keywords = ['expensive', 'most', 'highest', 'top', 'priciest', 'premium', 'cheap', 'lowest', 'affordable', 'budget', 'cheapest', 'least']
     if any(w in clean_msg for w in ['expensive', 'most', 'highest', 'top', 'priciest', 'premium']): sort_mode = 'DESC'
     elif any(w in clean_msg for w in ['cheap', 'lowest', 'affordable', 'budget', 'cheapest', 'least']): sort_mode = 'ASC'
-
-    # Filter out common terms to make query_text cleaner
-    query_text = clean_msg
-    for search_val, match_str in unique_locations.items():
-        query_text = query_text.replace(match_str, '').replace(search_val, '')
-    if prop_type: query_text = query_text.replace(prop_type, '')
-    if brand: query_text = query_text.replace(brand, '')
-    
-    # Aggressive Price Cleaning: If a price was detected, remove all numbers and price keywords
-    if max_price or min_price:
-        query_text = re.sub(r'[\d,.]+', '', query_text)
-        price_keywords = ['million', 'm', 'k', 'thousand', 'under', 'below', 'less than', 'max', 'up to', 'above', 'more than', 'over', 'at least', 'min', 'between', 'and', 'ከ', 'በታች', 'በላይ', 'ሚሊዮን', 'ሺ']
-        for pk in price_keywords:
-            query_text = re.sub(rf'\b{pk}\b', '', query_text)
-
-    intent_words = ['rent', 'lease', 'monthly', 'buy', 'purchase', 'sale', 'for sale', 'total price', 'cars', 'homes', 'houses', 'apartment', 'apartments']
-    for iw in intent_words:
-        query_text = re.sub(rf'\b{iw}\b', '', query_text)
-        
-    if bed_match:
-        query_text = query_text.replace(bed_match.group(0), '')
-        query_text = re.sub(r'\s*(\+|and\s+above|or\s+more|plus)', '', query_text)
-
-    for sk in sort_keywords: query_text = re.sub(rf'\b{sk}\b', '', query_text)
-    
-    # Also strip common superlative endings/variations that might be left
-    superlatives = ['est', 'er']
-    for s in superlatives:
-        query_text = re.sub(rf'\b(cheap|high|low|price){s}\b', '', query_text)
-
-
-    # Remove specific matches to clean query_text
-    # Also remove any Amharic equivalents to avoid duplicates like 'Toyota (ቶዮታ)'
-    if prop_type:
-        query_text = query_text.replace(prop_type.lower(), '')
-        if prop_type_match: query_text = query_text.replace(prop_type_match, '')
-        for am, en in AM_MAP.items():
-            if en == prop_type.lower():
-                query_text = query_text.replace(am, '')
-                query_text = query_text.replace('የ' + am, '')
-    
-    if brand:
-        query_text = query_text.replace(brand.lower(), '')
-        if brand_match: query_text = query_text.replace(brand_match, '')
-        for am, en in AM_MAP.items():
-            if en == brand.lower():
-                query_text = query_text.replace(am, '')
-                query_text = query_text.replace('የ' + am, '')
-    
-
-    for search_val, match_str in unique_locations.items():
-        query_text = query_text.replace(match_str, '')
-        query_text = query_text.replace(search_val, '')
-        for am, en in AM_MAP.items():
-            if en == search_val.lower():
-                query_text = query_text.replace(am, '')
-                query_text = query_text.replace('የ' + am, '')
-
-
-    # Remove Amharic suffixes (plurals, definite markers, etc.)
-    # ዎችን (wochin), ዎችን (wochin), ቱን (tun), ውን (wn), ን (n)
-    query_text = re.sub(r'ዎችን\b', '', query_text)
-    query_text = re.sub(r'ዎች\b', '', query_text)
-    query_text = re.sub(r'ውን\b', '', query_text)
-    query_text = re.sub(r'ቱን\b', '', query_text)
-    query_text = re.sub(r'ን\b', '', query_text)
-
-    # Remove Amharic 'Ye-' prefix (of) if it remains attached to words
-    query_text = re.sub(r'(^|\s)የ(\w+)', r'\1\2', query_text)
-    # Generic prefix remover for common Amharic prep-prefixes
-    query_text = re.sub(r'(^|\s)(?:በ|ለ|ከ)(\w+)', r'\1\2', query_text)
-
-    # Remove digits that aren't years
-    query_text = re.sub(r'\b(?!(?:19|20)\d{2})[\d,.]+\b', '', query_text)
-    
-    cur_fillers = ['etb', 'birr', 'usd', 'price', 'budget', 'cost', 'trend', 'trends', 'average', 'avg', 'market', 'right', 'now', 'together', 'both', 'side', 'by', 'listing']
-    am_fillers = [
-        'የ', 'በ', 'ለ', 'ከ', 'ወደ', 'ጋር', 'ውስጥ', 'ላይ', 'አለ', 'አሉ', 'የለም', 'እፈልጋለሁ', 'እፈልጋለን', 'ማየት', 'አሳየኝ', 'አሳዩን', 
-        'አካባቢ', 'የሚሸጥ', 'የሚከራይ', 'ሚሸጥ', 'ሚከራይ', 'ቤት', 'ቤቶች', 'ኪራይ', 'መኪና', 'መኪናዎች', 'ዋጋ', 'ስንት', 'ነው', 'ናቸው', 'ምን', 'የት', 'መቼ', 'እንዴት',
-        'አማካኝ', 'በአሁኑ', 'ጊዜ', 'አሁን', 'ቦታ', 'ጥያቄ', 'የለኝም', 'የለንም', 'ነው', 'እስቲ', 'እባክህ', 'እባክሽን', 'እባካችሁ', 'ብር', 'መግዛት', 'እንደምን', 'ሰላም'
-    ]
-    fillers = [
-        'i', 'want', 'to', 'see', 'need', 'find', 'me', 'show', 'search', 'listings', 'for', 'under', 'above', 'with', 'in', 
-        'at', 'the', 'a', 'an', 'please', 'perfect', 'modern', 'between', 'and', 'car', 'cars', 'vehicle', 'vehicles',
-        'house', 'houses', 'home', 'homes', 'apartment', 'apartments', 'villa', 'villas', 'condo', 'condos', 'br',
-        'are', 'there', 'any', 'available', 'is', 'it', 'get', 'give', 'have', 'of', 'am', 'was', 'were', 'be', 'been',
-        'what', 'whats', 'what\'s', 'how', 'many', 'do', 'you', 'currently', 'today', 'latest', 'newest', 'all', 'every',
-        'tell', 'explain', 'suggest', 'help', 'can', 'should', 'know', 'who', 'where', 'when', 'why', 'hello', 'hi', 'thanks', 'thank'
-    ]
-    
-    for f in (fillers + cur_fillers + am_fillers): 
-        query_text = re.sub(rf'\b{f}\b', '', query_text)
-
-    # Remove contractions and possessives
-    query_text = re.sub(r"'(?:s|ve|re|m|ll|d|t)\b", '', query_text)
-    
-    query_text = " ".join(query_text.split()).strip()
-    # More aggressive punctuation cleaning (remove anything not alphanumeric or space)
-    query_text = re.sub(r'[^\w\s]', ' ', query_text).strip()
-    query_text = " ".join([w for w in query_text.split() if len(w) > 1]).strip()
 
     context = f"DATABASE SEARCH RESULTS FOR: '{message}'\n\n"
     
     # If multiple locations, provide results for each
-    loc_list = list(unique_locations.keys()) if unique_locations else [None]
+    loc_list = locations if locations else [None]
     
     for loc in loc_list:
         loc_label = f" in {loc.upper()}" if loc else ""
         context += f"--- RESULTS{loc_label} ---\n"
         for asset in assets:
-            # Isolate filters
             current_brand = brand if asset == 'CAR' else None
             current_prop_type = prop_type if asset == 'HOME' else None
-            current_bedrooms = bedrooms if asset == 'HOME' else None
             
-            results = _search_db(
-                asset_type=asset,
-                max_price=max_price,
-                min_price=min_price,
-                query_text=query_text,
-                listing_intent=intent,
-                bedrooms=current_bedrooms,
-                prop_type=current_prop_type,
-                location=loc,
-                bedrooms_min=beds_min,
-                sort_mode=sort_mode,
-                brand=current_brand
-            )
-            
-            # If it's a general question, we don't want to spam "NO LISTINGS FOUND"
-            # unless it was clearly meant to be a search.
-            search_indicators = ['car', 'house', 'price', 'listing', 'vitz', 'toyota', 'villa', 'apartment', 'etb', 'sale', 'rent']
-            is_search = any(w in clean_msg for w in search_indicators) or brand or prop_type or unique_locations
-            
-            if results == "NO LISTINGS FOUND IN DATABASE FOR THIS SEARCH." and not is_search:
-                results = "N/A (General conversation detected)"
+            results = ""
+            if is_search_intent:
+                results = _search_db(
+                    asset_type=asset,
+                    max_price=max_price,
+                    min_price=min_price,
+                    query_text=query_text,
+                    listing_intent=intent,
+                    bedrooms=bedrooms,
+                    prop_type=current_prop_type,
+                    location=loc,
+                    sort_mode=sort_mode,
+                    brand=current_brand,
+                    model=current_model
+                )
                 
-            context += f"--- {asset} LISTINGS{loc_label} ---\n{results}\n\n"
+                # TIERED FALLBACK:
+                if "NO LISTINGS FOUND" in results:
+                    # Tier 2: Try Brand-level fallback (dropping the specific model)
+                    if current_brand:
+                        brand_results = _search_db(asset_type=asset, brand=current_brand, location=loc, listing_intent=intent, sort_mode=sort_mode)
+                        if "NO LISTINGS FOUND" not in brand_results:
+                            results = f"I found no exact matches for that specific model. However, here are all available {current_brand.upper()} listings in this area:\n{brand_results}"
+                            
+                    # Tier 3: Broad location-level fallback
+                    if "NO LISTINGS FOUND" in results:
+                        fallback = _search_db(asset_type=asset, location=loc, listing_intent=intent, sort_mode=sort_mode)
+                        if "NO LISTINGS FOUND" not in fallback:
+                            results = f"No matches found for your specific query. However, here are all available {asset}s in this area:\n{fallback}"
+            else:
+                # For non-search intents, still provide some "Featured" listings to keep links visible
+                results = _search_db(asset_type=asset, location=loc, sort_mode='DESC') # Show newest
+                if "NO LISTINGS FOUND" in results:
+                    results = "Search our platform to see the latest amazing deals!"
 
-    context += f"MARKET TRENDS & AVERAGES:\n"
-    for loc in loc_list:
-        loc_label = f" ({loc.upper()})" if loc else ""
+            if is_search_intent:
+                context += f"--- {asset} LISTINGS ---\n{results}\n\n"
+            else:
+                context += f"--- FEATURED {asset} LISTINGS ---\n{results}\n\n"
+
+        # Market Trends
         for asset in assets:
-            # PropType trends only for HOME, Brand trends only for CAR
-            current_brand = brand if asset == 'CAR' else None
-            current_prop_type = prop_type if asset == 'HOME' else None
-            trends = _get_market_data(asset, loc, current_prop_type, current_brand)
-            context += f"{trends}\n"
+            results = _get_market_data(asset, loc, prop_type if asset == 'HOME' else None, brand if asset == 'CAR' else None)
+            context += f"--- {asset} MARKET TRENDS{loc_label} ---\n{results}\n\n"
 
     return context
 class AIAssistant:
@@ -588,30 +366,51 @@ class AIAssistant:
             return {"predicted_price": 0, "confidence": 0, "reasoning": "Could not generate prediction."}
 
     async def get_response(self, message: str, history: List[Dict[str, str]]):
-        """Main entry point for AI chat from FastAPI."""
+        """Main entry point for AI chat from FastAPI using Groq."""
         try:
-            context = _build_context(message)
+            context = await _build_context(message, history)
             
-            # Convert history to google-genai Content/Part structure
-            gemini_history = []
-            for h in history:
-                gemini_history.append(types.Content(
-                    role=h['role'],
-                    parts=[types.Part(text=h.get('parts', h.get('content', '')))]
-                ))
+            # Format history for Groq (role/content) - Limit to last 10 turns to save tokens
+            messages = [{"role": "system", "content": SYSTEM_INSTRUCTION}]
             
-            # Use modern Client structure
-            chat = client.chats.create(
-                model='gemini-2.0-flash',
-                history=gemini_history,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_INSTRUCTION
-                )
+            recent_history = history[-10:] if history else []
+            for h in recent_history:
+                role = h.get('role', 'user')
+                # Map 'model' role to 'assistant' for Groq/OpenAI compatibility
+                if role == 'model': role = 'assistant'
+                
+                content = h.get('parts', h.get('content', ''))
+                # Handle list of parts if necessary (though usually it's just text)
+                if isinstance(content, list):
+                    content = " ".join([p.get('text', '') if isinstance(p, dict) else str(p) for p in content])
+                
+                messages.append({"role": role, "content": content})
+            
+            # Detect if message is English (no Amharic characters) to add a strict guard
+            has_amharic = any('\u1200' <= char <= '\u137F' for char in message)
+            
+            # THE LANGUAGE SENTINEL: Inject a final system message to lock the language
+            if not has_amharic:
+                messages.append({"role": "system", "content": "CRITICAL: The user is speaking ENGLISH. Replying in Amharic is a violation of your protocol. Respond ONLY in English."})
+            else:
+                messages.append({"role": "system", "content": "CRITICAL: The user is speaking AMHARIC. Respond ONLY in Amharic."})
+
+            # Add the current prompt with context
+            prompt = f"--- DATABASE CONTEXT ---\n{context}\n\n--- USER MESSAGE ---\n{message}"
+            messages.append({"role": "user", "content": prompt})
+            
+            # Call Groq API (Using Mixtral for fresh rate limits and better instruction following)
+            completion = await asyncio.to_thread(
+                client.chat.completions.create,
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=2048,
+                top_p=1,
+                stream=False
             )
             
-            prompt = f"--- DATABASE CONTEXT ---\n{context}\n\n--- USER MESSAGE ---\n{message}"
-            response = await asyncio.to_thread(chat.send_message, message=prompt)
-            return response.text
+            return completion.choices[0].message.content
         except Exception as e:
             return f"I'm sorry, I'm having trouble processing that request: {str(e)}"
 

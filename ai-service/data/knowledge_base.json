@@ -1,0 +1,27 @@
+[
+  {
+    "question": "How do I pay for a car or home on HomeCar?",
+    "answer": "HomeCar uses Chapa for secure payments. You can pay using Telebirr, CBEBirr, or Bank Transfers through our platform. For car purchases, we recommend paying in person after inspection, while rentals can be secured directly through the 'Apply' button.",
+    "category": "payments"
+  },
+  {
+    "question": "Is my data secure on HomeCar?",
+    "answer": "Yes, your security is our priority. All transactions are encrypted, and your personal contact information is only shared with verified owners once they approve your application. Our system also checks for fraudulent listings daily.",
+    "category": "security"
+  },
+  {
+    "question": "How does the owner approval process work?",
+    "answer": "After you click 'Apply' on a listing, the owner receives your application. They can review your profile and then either 'Approve' or 'Decline'. If approved, you will receive their phone number to finalize the deal.",
+    "category": "usage"
+  },
+  {
+    "question": "What is HomeCar High-End Portfolio?",
+    "answer": "HomeCar is Ethiopia's most professional marketplace for cars and real estate. It features senior-level UI design, secure authentication, and a dedicated AI assistant to help you find the best deals in Addis Ababa and beyond.",
+    "category": "general"
+  },
+  {
+    "question": "Where are your offices located?",
+    "answer": "Our main headquarters are in Addis Ababa, Ethiopia, specifically around the Bole area. However, we are a digital-first platform serving all regions of Ethiopia.",
+    "category": "general"
+  }
+]

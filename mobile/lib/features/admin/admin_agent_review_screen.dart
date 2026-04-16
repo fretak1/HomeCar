@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/dio_client.dart';
 import '../../core/theme/app_theme.dart';
-import '../../shared/widgets/glass_card.dart';
 import '../auth/models/user_model.dart';
+import '../dashboard/widgets/dashboard_page_scaffold.dart';
+import '../dashboard/widgets/dashboard_utils.dart';
+import '../dashboard/widgets/role_dashboard_scaffold.dart';
 import 'providers/admin_provider.dart';
 
 class AdminAgentReviewScreen extends ConsumerWidget {
@@ -20,126 +22,80 @@ class AdminAgentReviewScreen extends ConsumerWidget {
     final actionState = ref.watch(adminVerificationProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Agent Verification Review')),
-      body: userAsync.when(
-        data: (user) => ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Column(
           children: [
-            _AgentHeaderCard(user: user),
-            const SizedBox(height: 16),
-            GlassCard(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Verification Assets',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  _DocumentPreviewCard(
-                    title: 'Identity selfie',
-                    subtitle: user.verificationPhoto?.isNotEmpty == true
-                        ? 'Uploaded by the agent for identity confirmation.'
-                        : 'No selfie uploaded yet.',
-                    source: user.verificationPhoto,
-                    fallbackIcon: Icons.camera_alt_outlined,
-                  ),
-                  const SizedBox(height: 14),
-                  _DocumentPreviewCard(
-                    title: 'Professional license',
-                    subtitle: user.licenseDocument != null
-                        ? 'Tap to review the submitted license file.'
-                        : 'No license uploaded yet.',
-                    source: user.licenseDocument?.url,
-                    fallbackIcon: Icons.badge_outlined,
-                    onOpen: user.licenseDocument == null
-                        ? null
-                        : () => context.push(
-                            '/admin/document',
-                            extra: {
-                              'title': '${user.name} license',
-                              'source': user.licenseDocument!.url,
-                            },
-                          ),
-                  ),
-                ],
-              ),
+            DashboardPageHeader(
+              title: 'Verify Agent License',
+              subtitle:
+                  'Review the agent profile, selfie verification, and license document before approving access.',
+              onBack: () => Navigator.of(context).maybePop(),
             ),
-            const SizedBox(height: 16),
-            GlassCard(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Review Decision',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Approve this agent once the selfie and license clearly match the account holder.',
-                    style: TextStyle(color: Colors.white70, height: 1.45),
-                  ),
-                  if (user.rejectionReason?.trim().isNotEmpty == true) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.redAccent.withOpacity(0.25),
-                        ),
-                      ),
-                      child: Text(
-                        user.rejectionReason!,
-                        style: const TextStyle(color: Colors.redAccent),
+            Expanded(
+              child: userAsync.when(
+                data: (user) => SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1100),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final stacked = constraints.maxWidth < 900;
+                          final profile = _AgentProfileColumn(
+                            user: user,
+                            actionState: actionState,
+                            onVerify: (approved) =>
+                                _verify(context, ref, user, approved),
+                          );
+                          final evidence = _AgentEvidenceColumn(user: user);
+
+                          if (stacked) {
+                            return Column(
+                              children: [
+                                profile,
+                                const SizedBox(height: 16),
+                                evidence,
+                              ],
+                            );
+                          }
+
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(child: profile),
+                              const SizedBox(width: 16),
+                              Expanded(child: evidence),
+                            ],
+                          );
+                        },
                       ),
                     ),
-                  ],
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: actionState.isLoading || user.verified
-                              ? null
-                              : () => _verify(context, ref, user, true),
-                          child: Text(
-                            user.verified ? 'Already Verified' : 'Approve',
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: actionState.isLoading
-                              ? null
-                              : () => _verify(context, ref, user, false),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
-                          ),
-                          child: const Text('Reject'),
-                        ),
-                      ),
-                    ],
                   ),
-                ],
+                ),
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: DashboardLoadingState(
+                      label: 'Loading agent review...',
+                    ),
+                  ),
+                ),
+                error: (error, _) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: DashboardEmptyState(
+                      title: 'Agent review unavailable',
+                      message: error.toString().replaceFirst(
+                            'Exception: ',
+                            '',
+                          ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              error.toString().replaceFirst('Exception: ', ''),
-              textAlign: TextAlign.center,
-            ),
-          ),
         ),
       ),
     );
@@ -163,9 +119,7 @@ class AdminAgentReviewScreen extends ConsumerWidget {
     }
 
     try {
-      await ref
-          .read(adminVerificationProvider.notifier)
-          .verifyUser(
+      await ref.read(adminVerificationProvider.notifier).verifyUser(
             userId: user.id,
             verified: approved,
             rejectionReason: reason,
@@ -193,10 +147,16 @@ class AdminAgentReviewScreen extends ConsumerWidget {
   }
 }
 
-class _AgentHeaderCard extends StatelessWidget {
-  const _AgentHeaderCard({required this.user});
+class _AgentProfileColumn extends StatelessWidget {
+  const _AgentProfileColumn({
+    required this.user,
+    required this.actionState,
+    required this.onVerify,
+  });
 
   final UserModel user;
+  final AdminVerificationState actionState;
+  final ValueChanged<bool> onVerify;
 
   @override
   Widget build(BuildContext context) {
@@ -207,192 +167,263 @@ class _AgentHeaderCard extends StatelessWidget {
         .take(2)
         .join();
 
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: AppTheme.secondary.withOpacity(0.18),
-            backgroundImage: user.profileImage?.isNotEmpty == true
-                ? CachedNetworkImageProvider(_resolveSource(user.profileImage!))
-                : null,
-            child: user.profileImage?.isNotEmpty == true
-                ? null
-                : Text(
-                    initials.isEmpty ? 'A' : initials,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+    return Column(
+      children: [
+        DashboardSectionCard(
+          child: Column(
+            children: [
+              CircleAvatar(
+                radius: 42,
+                backgroundColor: const Color(0xFFE8F3EF),
+                backgroundImage: user.profileImage?.isNotEmpty == true
+                    ? CachedNetworkImageProvider(_resolveSource(user.profileImage!))
+                    : null,
+                child: user.profileImage?.isNotEmpty == true
+                    ? null
+                    : Text(
+                        initials.isEmpty ? 'A' : initials,
+                        style: const TextStyle(
+                          color: AppTheme.primary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                user.name,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppTheme.foreground,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                user.email,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppTheme.mutedForeground),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                alignment: WrapAlignment.center,
+                children: [
+                  DashboardStatusPill(
+                    label: user.verified ? 'Verified' : 'Pending review',
+                    color: user.verified
+                        ? const Color(0xFF059669)
+                        : const Color(0xFFD97706),
                   ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(user.name, style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 6),
-                Text(user.email, style: const TextStyle(color: Colors.white70)),
-                if (user.phoneNumber?.trim().isNotEmpty == true) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    user.phoneNumber!,
-                    style: const TextStyle(color: Colors.white54),
+                  DashboardStatusPill(
+                    label: prettyDashboardLabel(user.role),
+                    color: AppTheme.primary,
                   ),
                 ],
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _StatusChip(
-                      label: user.verified ? 'Verified' : 'Pending',
-                      color: user.verified
-                          ? const Color(0xFF34D399)
-                          : const Color(0xFFFBBF24),
-                    ),
-                    _StatusChip(label: user.role, color: AppTheme.secondary),
-                    if (user.createdAt != null)
-                      _StatusChip(
-                        label:
-                            'Joined ${user.createdAt!.day}/${user.createdAt!.month}/${user.createdAt!.year}',
-                        color: Colors.white70,
-                        outlined: true,
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DocumentPreviewCard extends StatelessWidget {
-  const _DocumentPreviewCard({
-    required this.title,
-    required this.subtitle,
-    required this.fallbackIcon,
-    this.source,
-    this.onOpen,
-  });
-
-  final String title;
-  final String subtitle;
-  final String? source;
-  final IconData fallbackIcon;
-  final VoidCallback? onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasSource = source?.trim().isNotEmpty == true;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(fallbackIcon, color: AppTheme.secondary),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  DashboardMetricTile(
+                    icon: Icons.badge_outlined,
+                    label: prettyDashboardLabel(user.role),
+                  ),
+                  DashboardMetricTile(
+                    icon: Icons.calendar_today_outlined,
+                    label: user.createdAt == null
+                        ? 'Unknown date'
+                        : formatDashboardDate(user.createdAt),
+                  ),
+                ],
               ),
             ],
           ),
-          if (hasSource) ...[
-            const SizedBox(height: 14),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: AspectRatio(
-                aspectRatio: 16 / 10,
-                child: CachedNetworkImage(
-                  imageUrl: _resolveSource(source!),
-                  fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => Container(
-                    color: Colors.white.withOpacity(0.04),
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.description_outlined,
-                      color: Colors.white54,
-                      size: 40,
+        ),
+        const SizedBox(height: 16),
+        DashboardSectionCard(
+          title: 'Verification decision',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Approve this agent once the selfie and professional license clearly match the account holder.',
+                style: TextStyle(
+                  color: AppTheme.mutedForeground,
+                  height: 1.5,
+                ),
+              ),
+              if (user.rejectionReason?.trim().isNotEmpty == true) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEE2E2),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFFECACA)),
+                  ),
+                  child: Text(
+                    user.rejectionReason!,
+                    style: const TextStyle(
+                      color: Color(0xFFB91C1C),
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
+              ],
+              const SizedBox(height: 16),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final stacked = constraints.maxWidth < 460;
+                  final approve = FilledButton.icon(
+                    onPressed: actionState.isLoading || user.verified
+                        ? null
+                        : () => onVerify(true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: Text(
+                      user.verified ? 'Already verified' : 'Approve license',
+                    ),
+                  );
+                  final reject = OutlinedButton.icon(
+                    onPressed: actionState.isLoading ? null : () => onVerify(false),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFDC2626),
+                      side: const BorderSide(color: Color(0xFFFECACA)),
+                    ),
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    label: const Text('Reject'),
+                  );
+
+                  if (stacked) {
+                    return Column(
+                      children: [
+                        SizedBox(width: double.infinity, child: approve),
+                        const SizedBox(height: 12),
+                        SizedBox(width: double.infinity, child: reject),
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(child: approve),
+                      const SizedBox(width: 12),
+                      Expanded(child: reject),
+                    ],
+                  );
+                },
               ),
-            ),
-          ],
-          if (onOpen != null) ...[
-            const SizedBox(height: 14),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton(
-                onPressed: onOpen,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white24),
-                ),
-                child: const Text('Open Document'),
-              ),
-            ),
-          ],
-        ],
-      ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({
-    required this.label,
-    required this.color,
-    this.outlined = false,
-  });
+class _AgentEvidenceColumn extends StatelessWidget {
+  const _AgentEvidenceColumn({required this.user});
 
-  final String label;
-  final Color color;
-  final bool outlined;
+  final UserModel user;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: outlined ? Colors.transparent : color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(999),
-        border: outlined ? Border.all(color: Colors.white24) : null,
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: outlined ? Colors.white70 : color,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
+    return Column(
+      children: [
+        DashboardSectionCard(
+          title: 'Identity verification selfie',
+          child: _PreviewCard(
+            source: user.verificationPhoto,
+            emptyLabel: 'No verification selfie has been uploaded yet.',
+            icon: Icons.camera_alt_outlined,
+          ),
+        ),
+        const SizedBox(height: 16),
+        DashboardSectionCard(
+          title: 'Professional license document',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _PreviewCard(
+                source: user.licenseDocument?.url,
+                emptyLabel: 'No professional license document has been uploaded yet.',
+                icon: Icons.badge_outlined,
+              ),
+              if (user.licenseDocument != null) ...[
+                const SizedBox(height: 14),
+                FilledButton.icon(
+                  onPressed: () => context.push(
+                    '/admin/document',
+                    extra: {
+                      'title': '${user.name} license',
+                      'source': user.licenseDocument!.url,
+                    },
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                  label: const Text('Open document'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PreviewCard extends StatelessWidget {
+  const _PreviewCard({
+    required this.source,
+    required this.emptyLabel,
+    required this.icon,
+  });
+
+  final String? source;
+  final String emptyLabel;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    if (source?.trim().isEmpty ?? true) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Text(
+          emptyLabel,
+          style: const TextStyle(color: AppTheme.mutedForeground),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: CachedNetworkImage(
+        imageUrl: _resolveSource(source!),
+        height: 280,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorWidget: (_, __, ___) => Container(
+          height: 240,
+          color: const Color(0xFFF8FAFC),
+          alignment: Alignment.center,
+          child: Icon(icon, color: AppTheme.mutedForeground, size: 38),
         ),
       ),
     );
@@ -404,21 +435,25 @@ Future<String?> _askForReason(BuildContext context, String title) async {
   final result = await showDialog<String>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       title: Text(title),
       content: TextField(
         controller: controller,
         minLines: 3,
         maxLines: 5,
-        style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           hintText: 'Optional rejection reason',
-          hintStyle: const TextStyle(color: Colors.white38),
           filled: true,
-          fillColor: Colors.white.withOpacity(0.06),
+          fillColor: AppTheme.inputBackground,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppTheme.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppTheme.border),
           ),
         ),
       ),
@@ -427,8 +462,12 @@ Future<String?> _askForReason(BuildContext context, String title) async {
           onPressed: () => Navigator.of(dialogContext).pop(),
           child: const Text('Cancel'),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: () => Navigator.of(dialogContext).pop(controller.text),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppTheme.primary,
+            foregroundColor: Colors.white,
+          ),
           child: const Text('Submit'),
         ),
       ],

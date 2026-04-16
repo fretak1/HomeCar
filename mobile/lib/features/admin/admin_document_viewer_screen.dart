@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -29,10 +30,12 @@ class _AdminDocumentViewerScreenState extends State<AdminDocumentViewerScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..loadHtmlString(_buildHtml(_resolvedSource));
-    _isReady = true;
+    if (!kIsWeb && !_isNetworkImage && _imageBytes == null) {
+      _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..loadHtmlString(_buildHtml(_resolvedSource));
+      _isReady = true;
+    }
   }
 
   @override
@@ -40,17 +43,27 @@ class _AdminDocumentViewerScreenState extends State<AdminDocumentViewerScreen> {
     final imageBytes = _imageBytes;
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: Text(widget.title),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0F172A),
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+      ),
       body: widget.source.trim().isEmpty
           ? const Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
-                child: Text('Document source is unavailable.'),
+                child: Text(
+                  'Document source is unavailable.',
+                  style: TextStyle(color: Color(0xFF475569)),
+                ),
               ),
             )
           : imageBytes != null
           ? Container(
-              color: const Color(0xFF020617),
+              color: const Color(0xFFF8FAFC),
               alignment: Alignment.center,
               child: InteractiveViewer(
                 minScale: 1,
@@ -60,7 +73,7 @@ class _AdminDocumentViewerScreenState extends State<AdminDocumentViewerScreen> {
             )
           : _isNetworkImage
           ? Container(
-              color: const Color(0xFF020617),
+              color: const Color(0xFFF8FAFC),
               alignment: Alignment.center,
               child: InteractiveViewer(
                 minScale: 1,
@@ -74,13 +87,15 @@ class _AdminDocumentViewerScreenState extends State<AdminDocumentViewerScreen> {
                     padding: EdgeInsets.all(24),
                     child: Text(
                       'Failed to load this document preview.',
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle(color: Color(0xFF475569)),
                       textAlign: TextAlign.center,
                     ),
                   ),
                 ),
               ),
             )
+          : kIsWeb
+          ? _BrowserDocumentFallback(source: _resolvedSource)
           : !_isReady
           ? const Center(child: CircularProgressIndicator())
           : WebViewWidget(controller: _controller),
@@ -134,8 +149,8 @@ class _AdminDocumentViewerScreenState extends State<AdminDocumentViewerScreen> {
         margin: 0;
         padding: 0;
         height: 100%;
-        background: #020617;
-        color: #e2e8f0;
+        background: #f8fafc;
+        color: #0f172a;
         font-family: sans-serif;
       }
       iframe, embed {
@@ -160,5 +175,78 @@ class _AdminDocumentViewerScreenState extends State<AdminDocumentViewerScreen> {
   </body>
 </html>
 ''';
+  }
+}
+
+class _BrowserDocumentFallback extends StatelessWidget {
+  const _BrowserDocumentFallback({required this.source});
+
+  final String source;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF8FAFC),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x12000000),
+                blurRadius: 24,
+                offset: Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.open_in_browser_outlined,
+                  size: 40,
+                  color: Color(0xFF0F766E),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Document preview is not embedded in the browser build yet.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF0F172A),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'The browser app will stay stable here instead of crashing on WebView initialization.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF475569),
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SelectableText(
+                  source,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF0F766E),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -14,13 +14,21 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+import { ethiopiaLocations } from '@/lib/ethiopiaLocations';
+
 interface SearchBarProps {
   onSearch?: (filters: any) => void;
 }
 
 export function SearchBar({ onSearch }: SearchBarProps) {
   const router = useRouter();
-  const [location, setLocation] = useState('');
+  const [location, setLocation] = useState('any');
+  
+  // Extract all unique cities from the hierarchical data
+  const allCities = Object.values(ethiopiaLocations).flatMap(regionObj => 
+    Object.keys(regionObj)
+  ).sort();
+
   const [listingType, setListingType] = useState('rent');
   const [priceRange, setPriceRange] = useState('');
   const [activeTab, setActiveTab] = useState<'property' | 'vehicle'>('property');
@@ -57,7 +65,7 @@ export function SearchBar({ onSearch }: SearchBarProps) {
   const handleSearch = () => {
     const params = new URLSearchParams();
 
-    if (location) params.set('city', location.trim());
+    if (location && location !== 'any') params.set('city', location.trim());
     if (listingType) params.set('listingType', listingType);
     params.set('searchType', activeTab);
 
@@ -95,16 +103,22 @@ export function SearchBar({ onSearch }: SearchBarProps) {
         </TabsList>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              placeholder="City"
-              className="pl-10 h-12 bg-input-background border-border"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            />
-          </div>
-
+          <Select value={location} onValueChange={setLocation}>
+            <SelectTrigger className="h-12 bg-input-background border-border">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-muted-foreground" />
+                <SelectValue placeholder="Select City" />
+              </div>
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px] rounded-xl shadow-2xl">
+              <SelectItem value="any">Search All Cities</SelectItem>
+              {allCities.map((city) => (
+                <SelectItem key={city} value={city}>
+                  {city}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={listingType} onValueChange={setListingType}>
             <SelectTrigger className="h-12 bg-input-background border-border uppercase">
               <CategoryIcon className="h-5 w-5 mr-2 text-muted-foreground" />

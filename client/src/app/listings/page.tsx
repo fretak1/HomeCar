@@ -29,6 +29,7 @@ import { useUserStore } from '@/store/useUserStore';
 import { useInteractionStore } from '@/store/useInteractionStore';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ethiopiaLocations } from '@/lib/ethiopiaLocations';
 import FiltersFull from '../search/components/FiltersFull';
 
 export default function PropertyListingsPage() {
@@ -62,7 +63,21 @@ function ListingContent() {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [hasSyncedUrl, setHasSyncedUrl] = useState(false);
 
-    const displayLocation = [filters.region, filters.city, filters.subCity].filter(Boolean).join(", ") || "Location";
+    const displayLocation = [filters.subCity, filters.city, filters.region].filter(Boolean).filter(v => v !== 'any').join(", ") || "Location";
+
+    const updateLocation = (key: 'region' | 'city' | 'subCity', value: string) => {
+        const updates: Partial<typeof filters> = { [key]: value };
+        
+        // Cascading resets
+        if (key === 'region') {
+            updates.city = 'any';
+            updates.subCity = 'any';
+        } else if (key === 'city') {
+            updates.subCity = 'any';
+        }
+        
+        setFilters(updates);
+    };
 
     const resetFilters = () => {
         setFilters({
@@ -79,9 +94,9 @@ function ListingContent() {
             location: '',
             listingType: 'any',
             amenities: [],
-            region: '',
-            city: '',
-            subCity: ''
+            region: 'any',
+            city: 'any',
+            subCity: 'any'
         });
     };
 
@@ -221,34 +236,55 @@ function ListingContent() {
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[320px] p-6 rounded-2xl shadow-xl border-border" align="end" sideOffset={8}>
-                                    <div className="space-y-5">
+                                    <div className="space-y-6">
                                         <div className="space-y-2">
-                                            <Label className="text-sm font-semibold text-foreground ml-1">Region</Label>
-                                            <Input
-                                                placeholder="Select Region"
-                                                value={filters.region}
-                                                onChange={(e) => setFilters({ region: e.target.value })}
-                                                className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
-                                            />
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Region</Label>
+                                            <Select value={filters.region || 'any'} onValueChange={(v) => updateLocation('region', v)}>
+                                                <SelectTrigger className="h-11 bg-muted/40 border-none rounded-xl focus:ring-1 focus:ring-primary shadow-none">
+                                                    <SelectValue placeholder="All Regions" />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-border shadow-2xl">
+                                                    <SelectItem value="any">All Regions</SelectItem>
+                                                    {Object.keys(ethiopiaLocations).map(r => (
+                                                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-semibold text-foreground ml-1">City</Label>
-                                            <Input
-                                                placeholder="Select City"
-                                                value={filters.city}
-                                                onChange={(e) => setFilters({ city: e.target.value })}
-                                                className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-semibold text-foreground ml-1">Sub City</Label>
-                                            <Input
-                                                placeholder="Select Sub city ..."
-                                                value={filters.subCity}
-                                                onChange={(e) => setFilters({ subCity: e.target.value })}
-                                                className="h-11 bg-muted/40 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-primary placeholder:text-muted-foreground/50"
-                                            />
-                                        </div>
+
+                                        {filters.region && filters.region !== 'any' && (
+                                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">City</Label>
+                                                <Select value={filters.city || 'any'} onValueChange={(v) => updateLocation('city', v)}>
+                                                    <SelectTrigger className="h-11 bg-muted/40 border-none rounded-xl focus:ring-1 focus:ring-primary shadow-none">
+                                                        <SelectValue placeholder="All Cities" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl border-border shadow-2xl">
+                                                        <SelectItem value="any">All Cities</SelectItem>
+                                                        {Object.keys(ethiopiaLocations[filters.region]).map(c => (
+                                                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
+
+                                        {filters.city && filters.city !== 'any' && filters.region && ethiopiaLocations[filters.region]?.[filters.city] && (
+                                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Sub City</Label>
+                                                <Select value={filters.subCity || 'any'} onValueChange={(v) => updateLocation('subCity', v)}>
+                                                    <SelectTrigger className="h-11 bg-muted/40 border-none rounded-xl focus:ring-1 focus:ring-primary shadow-none">
+                                                        <SelectValue placeholder="Select Sub City" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl border-border shadow-2xl">
+                                                        <SelectItem value="any">All Sub Cities</SelectItem>
+                                                        {Object.keys(ethiopiaLocations[filters.region][filters.city]).map(sc => (
+                                                            <SelectItem key={sc} value={sc}>{sc}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
                                     </div>
                                 </PopoverContent>
                             </Popover>

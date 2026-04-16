@@ -13,6 +13,7 @@ import '../../features/applications/models/application_model.dart';
 import '../../features/applications/applications_screen.dart';
 import '../../features/applications/managed_applications_screen.dart';
 import '../../features/auth/forgot_password_screen.dart';
+import '../../features/auth/models/user_model.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/reset_password_screen.dart';
@@ -20,6 +21,9 @@ import '../../features/auth/signup_screen.dart';
 import '../../features/auth/verify_email_screen.dart';
 import '../../features/chat/chat_list_screen.dart';
 import '../../features/chat/chat_screen.dart';
+import '../../features/dashboard/agent_dashboard_screen.dart';
+import '../../features/dashboard/customer_dashboard_screen.dart';
+import '../../features/dashboard/owner_dashboard_screen.dart';
 import '../../features/dashboard/screens/my_listings_screen.dart';
 import '../../features/documents/documents_screen.dart';
 import '../../features/favorites/favorites_screen.dart';
@@ -47,6 +51,22 @@ import '../../features/transactions/receipt_preview_screen.dart';
 import '../../features/transactions/models/transaction_model.dart';
 import '../../features/transactions/transactions_screen.dart';
 import '../../shared/widgets/app_shell.dart';
+
+String? _dashboardPathForUser(UserModel? user) {
+  if (user == null) {
+    return null;
+  }
+  if (user.isAdmin) {
+    return '/dashboard/admin';
+  }
+  if (user.isOwner) {
+    return '/dashboard/owner';
+  }
+  if (user.isAgent) {
+    return '/dashboard/agent';
+  }
+  return '/dashboard/customer';
+}
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -77,6 +97,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         '/documents',
         '/transactions',
         '/payout-setup',
+        '/dashboard',
         '/ai-assistant',
         '/ai-insights',
         '/profile/edit',
@@ -110,6 +131,24 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (location.startsWith('/agent-verification') &&
           !(user?.isAgent ?? false)) {
         return '/home';
+      }
+
+      if (location == '/admin' && (user?.isAdmin ?? false)) {
+        return '/dashboard/admin';
+      }
+
+      if (location == '/dashboard') {
+        return _dashboardPathForUser(user) ?? '/login';
+      }
+
+      if (location.startsWith('/dashboard/')) {
+        final target = _dashboardPathForUser(user);
+        if (target == null) {
+          return '/login';
+        }
+        if (location != target) {
+          return target;
+        }
       }
 
       if (location.startsWith('/admin') && !(user?.isAdmin ?? false)) {
@@ -204,12 +243,32 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const MaintenanceScreen(),
       ),
       GoRoute(
+        path: '/dashboard',
+        builder: (context, state) => const SizedBox.shrink(),
+      ),
+      GoRoute(
+        path: '/dashboard/customer',
+        builder: (context, state) => const CustomerDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/dashboard/owner',
+        builder: (context, state) => const OwnerDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/dashboard/agent',
+        builder: (context, state) => const AgentDashboardScreen(),
+      ),
+      GoRoute(
+        path: '/dashboard/admin',
+        builder: (context, state) => const AdminDashboardScreen(),
+      ),
+      GoRoute(
         path: '/notifications',
         builder: (context, state) => const NotificationsScreen(),
       ),
       GoRoute(
         path: '/admin',
-        builder: (context, state) => const AdminDashboardScreen(),
+        builder: (context, state) => const SizedBox.shrink(),
       ),
       GoRoute(
         path: '/documents',

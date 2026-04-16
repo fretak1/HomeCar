@@ -1,9 +1,10 @@
 "use client";
 
-import { use } from 'react';
+import { useParams } from 'next/navigation';
 import ReceiptDetail from '@/components/documents/ReceiptDetail';
 
-export default function OwnerReceiptPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+export default function OwnerReceiptPage() {
+    const params = useParams();
+    const id = params?.id as string;
     return <ReceiptDetail id={id} role="owner" />;
 }

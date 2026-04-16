@@ -1,7 +1,7 @@
 "use client";
 
-import { use, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     ChevronLeft,
@@ -39,9 +39,10 @@ import {
 } from "@/components/ui/dialog";
 import { format, differenceInMonths, isBefore, startOfMonth, endOfMonth, isSameMonth, addMonths, differenceInDays, addDays, isWithinInterval } from 'date-fns';
 
-export default function LeaseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function LeaseDetailsPage() {
     const router = useRouter();
-    const { id } = use(params);
+    const params = useParams();
+    const id = params?.id as string;
     const { leases, fetchLeases, isLoading: isLeaseLoading } = useLeaseStore();
     const { properties, fetchProperties, isLoading: isPropertyLoading } = usePropertyStore();
     const { transactions, fetchTransactions } = useTransactionStore();
@@ -386,7 +387,7 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                             <CardHeader className="border-b border-border bg-muted/5 flex flex-row items-center justify-between">
                                 <CardTitle className="text-lg font-bold flex items-center gap-2">
                                     <DollarSign className="h-5 w-5 text-[#005a41]" />
-                                    Revenue Collection Record
+                                    {lease.recurringAmount ? 'Revenue Collection Record' : 'Lease Payment Settlement'}
                                 </CardTitle>
 
                             </CardHeader>
@@ -407,11 +408,11 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                                 const start = new Date(lease.startDate);
                                                 const end = new Date(lease.endDate);
                                                 const now = new Date();
-                                                const totalMonths = Math.max(1, Math.floor(differenceInDays(end, start) / 30));
+                                                const totalMonths = lease.recurringAmount ? Math.max(1, Math.floor(differenceInDays(end, start) / 30)) : 1;
 
                                                 return Array.from({ length: totalMonths }).map((_, i) => {
-                                                    const periodStart = addDays(start, i * 30);
-                                                    const periodEnd = addDays(periodStart, 30);
+                                                    const periodStart = lease.recurringAmount ? addDays(start, i * 30) : start;
+                                                    const periodEnd = lease.recurringAmount ? addDays(periodStart, 30) : end;
                                                     const isMonthPast = isBefore(periodEnd, now);
                                                     const isCurrentMonth = isWithinInterval(now, { start: periodStart, end: periodEnd });
                                                     const monthLabel = format(periodStart, 'MMM-yyyy');
@@ -427,12 +428,12 @@ export default function LeaseDetailsPage({ params }: { params: Promise<{ id: str
                                                         <tr key={i} className={cn("hover:bg-muted/10 transition-colors", isCurrentMonth ? "bg-primary/5" : "")}>
                                                             <td className="px-6 py-4">
                                                                 <p className="text-sm font-bold text-foreground">{format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd, yyyy')}</p>
-                                                                <p className="text-[10px] text-muted-foreground">Fixed 30-Day Billing Cycle</p>
+                                                                <p className="text-[10px] text-muted-foreground">{lease.recurringAmount ? 'Fixed 30-Day Billing Cycle' : 'Full Lease Term'}</p>
                                                             </td>
                                                             <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
                                                                 {isPaid ? format(new Date(transaction.updatedAt), 'MMM dd, yyyy') : '—'}
                                                             </td>
-                                                            <td className="px-6 py-4 text-sm font-black text-foreground">ETB {(lease.recurringAmount || property.price).toLocaleString()}</td>
+                                                            <td className="px-6 py-4 text-sm font-black text-foreground">ETB {(lease.recurringAmount || lease.totalPrice).toLocaleString()}</td>
                                                             <td className="px-6 py-4">
                                                                 {isPaid ? (
                                                                     <Badge className="bg-green-50 text-green-700 border-green-100 px-2 py-0.5 text-[8px] font-bold">COLLECTED</Badge>

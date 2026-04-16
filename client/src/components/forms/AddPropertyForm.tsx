@@ -71,7 +71,7 @@ interface AddItemFormProps {
 
 const PROPERTY_AMENITIES = [
     { id: 'wifi', label: ' WiFi', icon: Wifi },
-    { id: 'parking', label: 'Private Parking', icon: ParkingCircle },
+    { id: 'parking', label: 'Parking', icon: ParkingCircle },
     { id: 'pool', label: 'Swimming Pool', icon: Waves },
     { id: 'ac', label: 'Air Conditioning', icon: Wind },
     { id: 'kitchen', label: 'Kitchen', icon: ChefHat },
@@ -80,14 +80,33 @@ const PROPERTY_AMENITIES = [
 ];
 
 const VEHICLE_AMENITIES = [
-    { id: 'bluetooth', label: 'Bluetooth Audio', icon: Zap },
-    { id: 'ac', label: 'Climate Control', icon: Wind },
-    { id: 'camera', label: 'Backup Camera', icon: Monitor },
+    { id: 'bluetooth', label: 'Bluetooth', icon: Zap },
+    { id: 'ac', label: 'AC', icon: Wind },
+    { id: 'camera', label: 'Camera', icon: Monitor },
     { id: 'leather', label: 'Leather Seats', icon: Check },
-    { id: 'gps', label: 'GPS Navigation', icon: MapPin },
-    { id: 'sunroof', label: 'Panoramic Sunroof', icon: Waves },
+    { id: 'gps', label: 'GPS', icon: MapPin },
+    { id: 'sunroof', label: 'Sunroof', icon: Waves },
     { id: 'keyless', label: 'Keyless Entry', icon: Key },
 ];
+
+const CAR_BRANDS_AND_MODELS: Record<string, string[]> = {
+    'Audi': ['A3', 'A4', 'A6', 'Q3', 'Q5', 'Q7', 'e-tron'],
+    'BMW': ['3 Series', '5 Series', '7 Series', 'X3', 'X5', 'X7'],
+    'Chevrolet': ['Silverado', 'Equinox', 'Tahoe', 'Malibu', 'Cruze'],
+    'Ford': ['F-150', 'Escape', 'Explorer', 'Focus', 'Mustang', 'Ranger'],
+    'Honda': ['Civic', 'Accord', 'CR-V', 'HR-V', 'Pilot', 'Fit'],
+    'Hyundai': ['Elantra', 'Sonata', 'Tucson', 'Santa Fe', 'Kona', 'Creta'],
+    'Kia': ['Rio', 'Cerato', 'Sportage', 'Sorento', 'Picanto'],
+    'Lexus': ['IS', 'ES', 'RX', 'NX', 'LX'],
+    'Mercedes-Benz': ['C-Class', 'E-Class', 'S-Class', 'GLC', 'GLE', 'G-Class'],
+    'Mitsubishi': ['Lancer', 'Pajero', 'Outlander', 'L200', 'Mirage'],
+    'Nissan': ['Altima', 'Sentra', 'Rogue', 'Pathfinder', 'Patrol', 'Leaf'],
+    'Suzuki': ['Swift', 'Dzire', 'Vitara', 'Jimny', 'Ertiga'],
+    'Tesla': ['Model S', 'Model 3', 'Model X', 'Model Y', 'Cybertruck'],
+    'Toyota': ['Corolla', 'Camry', 'RAV4', 'Highlander', 'Land Cruiser', 'Hilux', 'Vitz', 'Yaris', 'Prius'],
+    'Volkswagen': ['Golf', 'Jetta', 'Passat', 'Tiguan', 'ID.4', 'Amarok'],
+    'Other': ['Other']
+};
 
 export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFormProps) {
     // Map backend assetType ('HOME'/'CAR') to form state ('Home'/'Car')
@@ -173,6 +192,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
             village: (initialData as any)?.location?.village || '',
             lat: (initialData as any)?.location?.lat || 9.032,
             lng: (initialData as any)?.location?.lng || 38.74,
+            status: initialData?.status || 'AVAILABLE',
         },
     });
 
@@ -267,6 +287,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
             village: loc.village || '',
             lat: loc.lat ?? 9.032,
             lng: loc.lng ?? 38.74,
+            status: initialData.status || 'AVAILABLE',
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialData]);
@@ -281,7 +302,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
     
     // 3. Small Unit Auto-Lock Logic (Studio, 3x3, 3x4, etc.)
     const category = form.watch('category');
-    const isSmallUnit = ['studio', '3*3', '3*4', '4*4'].includes(category);
+    const isSmallUnit = ['studio', '3*3', '3*4', '4*4', '4*5', '5*5', '5*6', '6*6', '6*7'].includes(category);
 
     useEffect(() => {
         if (isSmallUnit) {
@@ -425,6 +446,8 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                 formData.append('propertyType', data.category);
             }
             formData.append('amenities', JSON.stringify(selectedAmenities));
+
+            // Status is already handled in the bulk loop above (lines 381-385)
 
             for (let [key, value] of formData.entries()) {
                 console.log(key, value);
@@ -602,6 +625,34 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {isEditMode && (
+                                <FormField
+                                    control={form.control}
+                                    name="status"
+                                    render={({ field }) => (
+                                        <FormItem className="md:col-span-2">
+                                            <FormLabel className="flex items-center gap-2">
+                                                Listing Status
+                                            </FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
+                                                        <SelectValue placeholder="Update status" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="AVAILABLE">AVAILABLE</SelectItem>
+                                                    <SelectItem value="UNAVAILABLE">UNAVAILABLE</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormDescription>
+                                                Manually mark this property as Unavailable if it has been sold or taken. Rent status is managed automatically by the lease system.
+                                            </FormDescription>
+                                        </FormItem>
+                                    )
+                                }
+                            />
+                        )}
                             <FormField
                                 control={form.control}
                                 name="title"
@@ -928,9 +979,26 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Brand</FormLabel>
-                                            <FormControl>
-                                                <Input className="h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl" placeholder="Toyota / Tesla" {...field} />
-                                            </FormControl>
+                                            <Select 
+                                                onValueChange={(val) => {
+                                                    field.onChange(val);
+                                                    form.setValue('model', '');
+                                                }} 
+                                                value={field.value || undefined}
+                                                defaultValue={field.value}
+                                            >
+                                                <FormControl>
+                                                    <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
+                                                        <SelectValue placeholder="Select Brand" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent className="rounded-xl max-h-[300px]">
+                                                    {Object.keys(CAR_BRANDS_AND_MODELS).sort().map(brand => (
+                                                        <SelectItem key={brand} value={brand}>{brand}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -938,14 +1006,35 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                     control={form.control}
                                     name="model"
                                     rules={{ required: 'Model is required' }}
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Model</FormLabel>
-                                            <FormControl>
-                                                <Input className="h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl" placeholder="Camry / Model S" {...field} />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
+                                    render={({ field }) => {
+                                        const selectedBrand = form.watch('brand');
+                                        const availableModels = selectedBrand && CAR_BRANDS_AND_MODELS[selectedBrand as string] 
+                                            ? CAR_BRANDS_AND_MODELS[selectedBrand as string] 
+                                            : [];
+                                            
+                                        return (
+                                            <FormItem>
+                                                <FormLabel>Model</FormLabel>
+                                                <Select 
+                                                    onValueChange={field.onChange} 
+                                                    value={field.value || undefined}
+                                                    disabled={!selectedBrand || availableModels.length === 0}
+                                                >
+                                                    <FormControl>
+                                                        <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
+                                                            <SelectValue placeholder={!selectedBrand ? "Select brand first" : "Select Model"} />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent className="rounded-xl max-h-[300px]">
+                                                        {availableModels.map(model => (
+                                                            <SelectItem key={model} value={model}>{model}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        );
+                                    }}
                                 />
                                 <FormField
                                     control={form.control}

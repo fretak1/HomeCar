@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -27,6 +28,7 @@ class _LeaseContractPreviewScreenState
   WebViewController? _webViewController;
   bool _isLoading = true;
   String? _error;
+  String? _contractDataUri;
 
   @override
   void initState() {
@@ -48,15 +50,24 @@ class _LeaseContractPreviewScreenState
         throw Exception('Lease agreement PDF is unavailable for this lease.');
       }
 
-      final controller = WebViewController()
-        ..setJavaScriptMode(JavaScriptMode.unrestricted)
-        ..loadHtmlString(_buildHtml(dataUri));
-
       if (!mounted) {
         return;
       }
 
+      if (kIsWeb) {
+        setState(() {
+          _contractDataUri = dataUri;
+          _isLoading = false;
+        });
+        return;
+      }
+
+      final controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..loadHtmlString(_buildHtml(dataUri));
+
       setState(() {
+        _contractDataUri = dataUri;
         _webViewController = controller;
         _isLoading = false;
       });
@@ -102,7 +113,11 @@ class _LeaseContractPreviewScreenState
                     padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: _webViewController == null
+                      child: kIsWeb
+                          ? const _BrowserPdfFallback(
+                              title: 'Lease agreement preview',
+                            )
+                          : _webViewController == null
                           ? const SizedBox.shrink()
                           : WebViewWidget(controller: _webViewController!),
                     ),
@@ -143,6 +158,59 @@ class _LeaseContractPreviewScreenState
   </body>
 </html>
 ''';
+  }
+}
+
+class _BrowserPdfFallback extends StatelessWidget {
+  const _BrowserPdfFallback({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF8FAFC),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.all(24),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 520),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.description_outlined,
+              size: 40,
+              color: Color(0xFF0F766E),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '$title is not embedded in the browser build yet.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF0F172A),
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'This screen now stays stable on web instead of crashing when WebView is unavailable.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF475569),
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

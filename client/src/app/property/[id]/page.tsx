@@ -281,11 +281,20 @@ export default function PropertyDetailPage() {
                                                             currentUser?.role === 'OWNER' ||
                                                             currentUser?.role === 'AGENT' ||
                                                             currentUser?.role === 'ADMIN' ||
+                                                            property.status === 'RENTED' ||
+                                                            property.status === 'SOLD' ||
+                                                            property.status === 'UNAVAILABLE' ||
                                                             applications.some(app => app.propertyId === id)
                                                         }
                                                     >
                                                         <Calendar className="h-5 w-5 mr-2" />
-                                                        {applications.some(app => app.propertyId === id)
+                                                        {property.status === 'RENTED' 
+                                                            ? 'Property Already Rented' 
+                                                            : property.status === 'SOLD'
+                                                            ? 'Property Already Sold'
+                                                            : property.status === 'UNAVAILABLE'
+                                                            ? 'Listing Currently Unavailable'
+                                                            : applications.some(app => app.propertyId === id)
                                                             ? 'Already Applied'
                                                             : `Apply For ${listingTypes[0]}`
                                                         }
@@ -331,9 +340,9 @@ export default function PropertyDetailPage() {
                                         applications.some(app => app.propertyId === id && app.status === 'accepted') &&
                                         !transactions.some(tx => tx.propertyId === id && tx.status?.toUpperCase() === 'COMPLETED') && (
                                             <Button
-                                                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl shadow-lg transition-all active:scale-95"
+                                                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl shadow-lg transition-all active:scale-95 disabled:bg-muted disabled:text-muted-foreground"
                                                 onClick={handlePayment}
-                                                disabled={isPaymentLoading}
+                                                disabled={isPaymentLoading || property.status === 'RENTED' || property.status === 'SOLD' || property.status === 'UNAVAILABLE'}
                                             >
                                                 {isPaymentLoading ? (
                                                     <Loader2 className="h-5 w-5 animate-spin mr-2" />
@@ -362,6 +371,10 @@ export default function PropertyDetailPage() {
                                         variant="outline"
                                         className="w-full cursor-pointer hover:bg-primary/5 border-primary/20 text-primary font-bold"
                                         onClick={() => {
+                                            if (!currentUser) {
+                                                toast.error("Please log in to view agent/owner profiles.");
+                                                return;
+                                            }
                                             if (property.owner?.id) {
                                                 router.push(`/profile/${property.owner.id}`);
                                             }
@@ -399,9 +412,11 @@ export default function PropertyDetailPage() {
                                     <Badge
                                         className={cn(
                                             "capitalize px-3 py-1 font-bold",
-                                            property.status.toLowerCase() === 'available'
+                                            property.status.toUpperCase() === 'AVAILABLE'
                                                 ? 'bg-green-100 text-green-800'
-                                                : 'bg-yellow-100 text-yellow-800'
+                                                : property.status.toUpperCase() === 'SOLD' || property.status.toUpperCase() === 'RENTED'
+                                                ? 'bg-rose-100 text-rose-800'
+                                                : 'bg-amber-100 text-amber-800'
                                         )}
                                     >
                                         {property.status.toLowerCase()}

@@ -233,7 +233,7 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                     <div className="space-y-4">
                                         <h4 className="text-sm font-black uppercase tracking-widest text-[#005a41] flex items-center gap-2">
                                             <CalendarDays className="h-4 w-4" />
-                                            Active & Past Leases
+                                            {user.role === 'AGENT' ? 'Leases Initiated & Managed' : 'Active & Past Leases'}
                                         </h4>
                                         {leasesLoading ? (
                                             <div className="h-20 animate-pulse bg-muted/50 rounded-xl" />
@@ -246,7 +246,12 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                                                 {lease.property?.assetType === 'CAR' ? '🚗' : '🏠'}
                                                             </div>
                                                             <div>
-                                                                <p className="font-bold text-sm text-foreground">{lease.property?.title || 'Property Lease'}</p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="font-bold text-sm text-foreground">{lease.property?.title || 'Property Lease'}</p>
+                                                                    {user.role === 'AGENT' && lease.property?.listedById === user.id && lease.ownerId !== user.id && (
+                                                                        <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[8px] h-4 font-black">INITIATED</Badge>
+                                                                    )}
+                                                                </div>
                                                                 <p className="text-[10px] text-muted-foreground uppercase font-black">{format(new Date(lease.startDate), 'MMM yyyy')} - {format(new Date(lease.endDate), 'MMM yyyy')}</p>
                                                             </div>
                                                         </div>

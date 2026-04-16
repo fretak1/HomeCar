@@ -106,6 +106,10 @@ export function Navbar() {
             ].filter((item) => {
               // Hide all links while auth state is loading to prevent role-based glitch
               if (userLoading) return false;
+
+              // Hide Dashboard link if not logged in
+              if (item.href === '/dashboard' && !currentUser) return false;
+
               // Restricted roles (Admin, Owner, Agent) see NO links in the main navbar
               const isRestrictedRole = currentUser && ['ADMIN', 'OWNER', 'AGENT'].includes(currentUser.role);
               if (isRestrictedRole) {

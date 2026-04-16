@@ -1,8 +1,8 @@
 "use client";
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, useParams } from 'next/navigation';
 import {
     ChevronLeft,
     MapPin,
@@ -26,8 +26,9 @@ import { useChatStore } from '@/store/useChatStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
 import { format, differenceInDays, isBefore, isWithinInterval, addDays } from 'date-fns';
 
-export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+export default function OwnerLeaseDetailsPage() {
+    const params = useParams();
+    const id = params?.id as string;
     const searchParams = useSearchParams();
     const isFromAdmin = searchParams.get('source') === 'admin';
 
@@ -152,8 +153,8 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                             </p>
                                         </div>
                                         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 text-white min-w-[140px]">
-                                            <p className="text-[10px] uppercase font-bold text-white/60 tracking-widest mb-1">Monthly Income</p>
-                                            <p className="text-2xl font-black">ETB {(lease.recurringAmount || property.price || 0).toLocaleString()}</p>
+                                            <p className="text-[10px] uppercase font-bold text-white/60 tracking-widest mb-1">{lease.recurringAmount ? 'Monthly Income' : 'Full Payment Amount'}</p>
+                                            <p className="text-2xl font-black">ETB {(lease.recurringAmount || lease.totalPrice || 0).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -187,7 +188,7 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                             const startDate = new Date(lease.startDate);
                             const endDate = new Date(lease.endDate);
                             const totalDays = differenceInDays(endDate, startDate);
-                            const totalMonths = Math.max(1, Math.floor(totalDays / 30));
+                            const totalMonths = lease.recurringAmount ? Math.max(1, Math.floor(totalDays / 30)) : 1;
                             const elapsedDays = differenceInDays(new Date(), startDate);
                             const leaseProgressValue = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
 
@@ -240,7 +241,7 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                         <CardHeader className="border-b border-border bg-muted/5">
                                             <CardTitle className="text-lg font-bold flex items-center gap-2">
                                                 <DollarSign className="h-5 w-5 text-[#005a41]" />
-                                                Revenue Collection Record
+                                                {lease.recurringAmount ? 'Revenue Collection Record' : 'Lease Payment Settlement'}
                                             </CardTitle>
                                         </CardHeader>
                                         <CardContent className="p-0">
@@ -257,8 +258,8 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                                     </thead>
                                                     <tbody className="divide-y divide-border/50">
                                                         {Array.from({ length: totalMonths }).map((_, i) => {
-                                                            const periodStart = addDays(startDate, i * 30);
-                                                            const periodEnd = addDays(periodStart, 30);
+                                                            const periodStart = lease.recurringAmount ? addDays(startDate, i * 30) : startDate;
+                                                            const periodEnd = lease.recurringAmount ? addDays(periodStart, 30) : endDate;
                                                             const monthKey = format(periodStart, 'MMM-yyyy');
                                                             const paymentRecord = transactions.find(t => 
                                                                 t.leaseId === lease.id && 
@@ -277,7 +278,7 @@ export default function OwnerLeaseDetailsPage({ params }: { params: Promise<{ id
                                                                     <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
                                                                         {isPaid ? format(new Date(paymentRecord.updatedAt), 'MMM dd, yyyy') : '—'}
                                                                     </td>
-                                                                    <td className="px-6 py-4 text-sm font-black text-foreground">ETB {(lease.recurringAmount || property.price).toLocaleString()}</td>
+                                                                    <td className="px-6 py-4 text-sm font-black text-foreground">ETB {(lease.recurringAmount || lease.totalPrice).toLocaleString()}</td>
                                                                     <td className="px-6 py-4">
                                                                         {isPaid ? (
                                                                             <Badge className="bg-green-100 text-green-700 border-none px-2 py-0.5 text-[8px] font-bold">RECEIVED</Badge>

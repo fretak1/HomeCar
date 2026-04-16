@@ -1,42 +1,77 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Send, Bot } from 'lucide-react';
+import { X, Send, Bot, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
 
 import { useGlobalStore } from '@/store/useGlobalStore';
+
+// Define the API URL for the AI service
+const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8000';
 
 export function AIChatWidget() {
     const { isAIChatOpen: isOpen, setAIChatOpen: setIsOpen } = useGlobalStore();
     const [input, setInput] = useState('');
-    const [messages, setMessages] = useState([
-        {
-            id: 1,
-            role: 'ai',
-            text: "Hello! I'm your HomeCar assistant. How can I help you find your perfect home or car today?",
-        },
-    ]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [messages, setMessages] = useState<any[]>([]);
+    const scrollRef = useRef<HTMLDivElement>(null);
 
-    const handleSend = () => {
-        if (!input.trim()) return;
+    // Auto-scroll to bottom of chat
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTo({
+                top: scrollRef.current.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+    }, [messages, isOpen]);
 
-        const userMessage = { id: Date.now(), role: 'user', text: input };
+    const handleSend = async () => {
+        if (!input.trim() || isLoading) return;
+
+        const userMessageText = input.trim();
+        const userMessage = { id: Date.now(), role: 'user', text: userMessageText };
+        
         setMessages((prev) => [...prev, userMessage]);
         setInput('');
+        setIsLoading(true);
 
-        // Mock AI Response
-        setTimeout(() => {
+        try {
+            // Map messages to the history format expected by the backend
+            // Backend expects: List[Dict[str, str]] with 'role' and 'content' (or 'parts')
+            const history = messages.map(msg => ({
+                role: msg.role === 'ai' ? 'model' : 'user', // Backend maps 'model' to 'assistant'
+                content: msg.text
+            }));
+
+            const response = await axios.post(`${AI_SERVICE_URL}/api/v1/chat`, {
+                message: userMessageText,
+                history: history
+            });
+
             const aiResponse = {
                 id: Date.now() + 1,
                 role: 'ai',
-                text: "That's a great question! I'm analyzing our latest listings and market trends right now. Would you like me to filter results based on your current location or budget?",
+                text: response.data.response,
             };
             setMessages((prev) => [...prev, aiResponse]);
-        }, 1000);
+        } catch (error) {
+            console.error('AI Chat Error:', error);
+            const errorMessage = {
+                id: Date.now() + 1,
+                role: 'ai',
+                text: "I'm sorry, I'm having trouble connecting to my brain right now. Please try again in a moment.",
+            };
+            setMessages((prev) => [...prev, errorMessage]);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -67,8 +102,14 @@ export function AIChatWidget() {
                                 </Button>
                             </CardHeader>
                             <CardContent className="p-0">
-                                <ScrollArea className="h-80 p-4">
+                                <ScrollArea className="h-80 p-4" viewportRef={scrollRef}>
                                     <div className="space-y-4">
+                                        {messages.length === 0 && (
+                                            <div className="text-center py-10 text-muted-foreground flex flex-col items-center gap-2">
+                                                <Bot className="h-8 w-8 opacity-20" />
+                                                <p className="text-sm">Ask me anything about HomeCar!</p>
+                                            </div>
+                                        )}
                                         {messages.map((message) => (
                                             <div
                                                 key={message.id}
@@ -81,10 +122,35 @@ export function AIChatWidget() {
                                                         : 'bg-muted text-foreground rounded-bl-none'
                                                         }`}
                                                 >
-                                                    {message.text}
+                                                    <ReactMarkdown
+                                                        components={{
+                                                            a: ({ node, ...props }) => (
+                                                                <a 
+                                                                    {...props} 
+                                                                    className="text-[#065f46] hover:text-[#047857] hover:underline font-bold transition-all cursor-pointer inline-block pointer-events-auto" 
+                                                                    target="_blank" 
+                                                                    rel="noopener noreferrer"
+                                                                    style={{ textDecoration: 'underline' }}
+                                                                />
+                                                            ),
+                                                            p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                                                            ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
+                                                            li: ({ children }) => <li className="mb-1">{children}</li>,
+                                                        }}
+                                                    >
+                                                        {message.text}
+                                                    </ReactMarkdown>
                                                 </div>
                                             </div>
                                         ))}
+                                        {isLoading && (
+                                            <div className="flex justify-start">
+                                                <div className="bg-muted text-foreground rounded-2xl rounded-bl-none px-4 py-2 text-sm flex items-center gap-2">
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                    Searching...
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </ScrollArea>
                             </CardContent>
@@ -101,8 +167,14 @@ export function AIChatWidget() {
                                         value={input}
                                         onChange={(e) => setInput(e.target.value)}
                                         className="h-10 bg-background border-border"
+                                        disabled={isLoading}
                                     />
-                                    <Button type="submit" size="icon" className="h-10 w-10 shrink-0">
+                                    <Button 
+                                        type="submit" 
+                                        size="icon" 
+                                        className="h-10 w-10 shrink-0"
+                                        disabled={isLoading || !input.trim()}
+                                    >
                                         <Send className="h-4 w-4" />
                                     </Button>
                                 </form>

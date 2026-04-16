@@ -91,7 +91,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
       minChildSize: 0.5,
       builder: (context, controller) => Container(
         decoration: const BoxDecoration(
-          color: Color(0xFF1E293B),
+          color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
@@ -102,7 +102,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: AppTheme.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -117,20 +117,20 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: AppTheme.foreground,
                     ),
                   ),
                   TextButton(
                     onPressed: _reset,
                     child: const Text(
                       'Reset All',
-                      style: TextStyle(color: AppTheme.secondary),
+                      style: TextStyle(color: AppTheme.primary),
                     ),
                   ),
                 ],
               ),
             ),
-            const Divider(color: Colors.white12),
+            const Divider(color: AppTheme.border),
             // Scrollable content
             Expanded(
               child: ListView(

@@ -7,6 +7,7 @@ import { formatLocation, getListingMainImage } from '@/lib/utils';
 import { Property } from '@/store/usePropertyStore';
 import { useFavoriteStore } from '@/store/useFavoriteStore';
 import { useUserStore } from '@/store/useUserStore';
+import { cn } from '@/lib/utils';
 
 interface CarCardProps {
   car: Property;
@@ -54,7 +55,15 @@ export function CarCard({ car }: CarCardProps) {
             ))}
           </div>
 
-          <div className="absolute top-4 right-4 z-10">
+          <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-2">
+            {car.status !== 'AVAILABLE' && (
+              <Badge className={cn(
+                "border-none shadow-md text-[10px] font-bold uppercase tracking-wider px-2",
+                car.status === 'RENTED' || car.status === 'BOOKED' ? "bg-amber-500 text-white" : "bg-rose-500 text-white"
+              )}>
+                {car.status}
+              </Badge>
+            )}
             <Button
               variant="secondary"
               size="icon"

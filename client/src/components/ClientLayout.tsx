@@ -52,7 +52,19 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     }, [currentUser, isLoading, pathname, router, isAuthPage]);
 
     const isRestrictedRole = currentUser && RESTRICTED_ROLES.includes(currentUser.role);
-    const shouldHideUI = isRestrictedRole || isAuthPage;
+    
+    // Pages where the footer should be hidden for ALL users (interactive workspaces & utilities)
+    const isAppWorkspacePage = 
+        pathname.startsWith('/dashboard') || 
+        pathname.startsWith('/chat') || 
+        pathname.startsWith('/checkout') || 
+        pathname.startsWith('/verify-email');
+
+    // Hide footer on intense workspaces and utility screens
+    const shouldHideFooter = isRestrictedRole || isAuthPage || isAppWorkspacePage;
+    
+    // Keep AI Assistant available on workspaces for customers, only hide it on Auth/Restricted roles
+    const shouldHideAskAI = isRestrictedRole || isAuthPage;
 
     // Proactive guard: if a restricted role is on a consumer path, render nothing
     // (middleware already redirected — this blocks the brief content flash)
@@ -67,8 +79,8 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
                 <main className="flex-1">
                     {children}
                 </main>
-                {!shouldHideUI && <div className="print:hidden"><Footer /></div>}
-                {!shouldHideUI && <div className="print:hidden"><AskAIAssistant /></div>}
+                {!shouldHideFooter && <div className="print:hidden"><Footer /></div>}
+                {!shouldHideAskAI && <div className="print:hidden"><AskAIAssistant /></div>}
             </div>
             <Toaster position="top-right" expand={true} richColors />
         </AuthProvider>

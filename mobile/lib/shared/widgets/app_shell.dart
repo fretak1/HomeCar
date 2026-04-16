@@ -26,6 +26,7 @@ class AppShell extends ConsumerWidget {
     final user = authState.user;
     final unreadCount = ref.watch(unreadNotificationsCountProvider);
     final showPublicNav = user == null || user.isCustomer;
+    final showAskAi = user == null || user.isCustomer;
 
     return Scaffold(
       appBar: AppBar(
@@ -58,16 +59,6 @@ class AppShell extends ConsumerWidget {
           ),
         ),
         actions: [
-          if (showPublicNav)
-            IconButton(
-              tooltip: 'Properties',
-              onPressed: () {
-                ref.read(exploreViewModeProvider.notifier).state =
-                    ExploreViewMode.list;
-                _goBranch(1);
-              },
-              icon: const Icon(Icons.search_rounded),
-            ),
           if (user != null && !user.isAdmin)
             IconButton(
               tooltip: 'Messages',
@@ -115,7 +106,7 @@ class AppShell extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: InkWell(
-                onTap: () => _goBranch(4),
+                onTap: () => context.push('/dashboard'),
                 borderRadius: BorderRadius.circular(999),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -191,60 +182,19 @@ class AppShell extends ConsumerWidget {
                           _goBranch(1);
                         },
                       ),
-                      _DrawerLink(
-                        icon: Icons.dashboard_outlined,
-                        label: 'Dashboard',
-                        selected: navigationShell.currentIndex == 4,
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          if (user == null) {
-                            context.push('/login');
-                          } else if (user.isAdmin) {
-                            context.push('/admin');
-                          } else {
-                            _goBranch(4);
-                          }
-                        },
-                      ),
                       const SizedBox(height: 12),
                     ],
-                    _DrawerSectionTitle(label: 'Tools'),
-                    _DrawerLink(
-                      icon: Icons.auto_awesome_outlined,
-                      label: 'AI Price Predictor',
-                      selected: navigationShell.currentIndex == 2,
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        _goBranch(2);
-                      },
-                    ),
-                    _DrawerLink(
-                      icon: Icons.smart_toy_outlined,
-                      label: 'AI Assistant',
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        context.push('/ai-assistant');
-                      },
-                    ),
-                    _DrawerLink(
-                      icon: Icons.insights_outlined,
-                      label: 'AI Insights',
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        context.push('/ai-insights');
-                      },
-                    ),
-                    _DrawerLink(
-                      icon: Icons.recommend_outlined,
-                      label: 'Recommendations',
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        context.push('/recommendations');
-                      },
-                    ),
                     if (user != null) ...[
                       const SizedBox(height: 12),
                       _DrawerSectionTitle(label: 'Account'),
+                      _DrawerLink(
+                        icon: Icons.dashboard_outlined,
+                        label: 'Dashboard',
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          context.push('/dashboard');
+                        },
+                      ),
                       _DrawerLink(
                         icon: Icons.person_outline,
                         label: 'My Profile',
@@ -281,38 +231,6 @@ class AppShell extends ConsumerWidget {
                           context.push('/favorites');
                         },
                       ),
-                      _DrawerLink(
-                        icon: Icons.description_outlined,
-                        label: 'Documents',
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          context.push('/documents');
-                        },
-                      ),
-                      _DrawerLink(
-                        icon: Icons.receipt_long_outlined,
-                        label: 'Transactions',
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          context.push('/transactions');
-                        },
-                      ),
-                      _DrawerLink(
-                        icon: Icons.home_work_outlined,
-                        label: 'Leases',
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          context.push('/leases');
-                        },
-                      ),
-                      _DrawerLink(
-                        icon: Icons.build_outlined,
-                        label: 'Maintenance',
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          context.push('/maintenance');
-                        },
-                      ),
                       if (user.isOwnerOrAgent)
                         _DrawerLink(
                           icon: Icons.add_home_outlined,
@@ -346,7 +264,7 @@ class AppShell extends ConsumerWidget {
                           label: 'Admin Dashboard',
                           onTap: () {
                             Navigator.of(context).pop();
-                            context.push('/admin');
+                            context.push('/dashboard/admin');
                           },
                         ),
                       const SizedBox(height: 12),
@@ -416,7 +334,91 @@ class AppShell extends ConsumerWidget {
           ),
         ),
       ),
-      body: navigationShell,
+      body: Stack(
+        children: [
+          Positioned.fill(child: navigationShell),
+          if (showAskAi)
+            Positioned(
+              right: 18,
+              bottom: 18,
+              child: _AskAiButton(
+                onTap: () => context.push('/ai-assistant'),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AskAiButton extends StatelessWidget {
+  const _AskAiButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF004E3B),
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x4D004E3B),
+                blurRadius: 24,
+                offset: Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(
+                    Icons.smart_toy_rounded,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF22C55E),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: const Color(0xFF004E3B),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'Ask Ai',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

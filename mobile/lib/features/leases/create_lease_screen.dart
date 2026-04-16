@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../shared/widgets/glass_card.dart';
 import '../applications/models/application_model.dart';
+import '../dashboard/widgets/dashboard_page_scaffold.dart';
+import '../dashboard/widgets/dashboard_utils.dart';
+import '../dashboard/widgets/role_dashboard_scaffold.dart';
 import 'providers/lease_provider.dart';
 
 class CreateLeaseScreen extends ConsumerStatefulWidget {
-  const CreateLeaseScreen({Key? key, required this.application})
-    : super(key: key);
+  const CreateLeaseScreen({super.key, required this.application});
 
   final PropertyApplication application;
 
@@ -58,211 +59,323 @@ class _CreateLeaseScreenState extends ConsumerState<CreateLeaseScreen> {
     final actionState = ref.watch(leaseActionProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Lease Offer')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GlassCard(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.application.propertyTitle,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.application.propertyLocation,
-                    style: const TextStyle(color: Colors.white70),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _InfoChip(
-                          label: 'Applicant',
-                          value: widget.application.customerName ?? 'Customer',
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _InfoChip(
-                          label: 'Reference Price',
-                          value:
-                              '${widget.application.price.toStringAsFixed(0)} ETB',
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            DashboardPageHeader(
+              title: 'Create New Lease',
+              subtitle:
+                  'Set the agreement structure, payment model, and lease terms before sending it for approval.',
+              onBack: () => Navigator.of(context).maybePop(),
             ),
-            const SizedBox(height: 16),
-            GlassCard(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Lease Details',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: _leaseType,
-                    dropdownColor: const Color(0xFF1E293B),
-                    decoration: _inputDecoration('Lease type'),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'LongTerm',
-                        child: Text('Long term'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'ShortTerm',
-                        child: Text('Short term'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _leaseType = value);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<bool>(
-                    value: _isRecurring,
-                    dropdownColor: const Color(0xFF1E293B),
-                    decoration: _inputDecoration('Payment model'),
-                    items: const [
-                      DropdownMenuItem(
-                        value: true,
-                        child: Text('Recurring payment'),
-                      ),
-                      DropdownMenuItem(
-                        value: false,
-                        child: Text('One-time contract'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value == null) return;
-                      setState(() {
-                        _isRecurring = value;
-                        if (!_isRecurring) {
-                          _recurringAmountController.clear();
-                        } else if (_recurringAmountController.text
-                            .trim()
-                            .isEmpty) {
-                          _recurringAmountController.text = widget
-                              .application
-                              .price
-                              .toStringAsFixed(0);
-                        }
-                        _recalculatePrice();
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _DateField(
-                          label: 'Start date',
-                          value: _startDate,
-                          onTap: () => _pickDate(isStart: true),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 960),
+                    child: Column(
+                      children: [
+                        DashboardSectionCard(
+                          title: 'Application summary',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.application.propertyTitle,
+                                style: const TextStyle(
+                                  color: AppTheme.foreground,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                widget.application.propertyLocation,
+                                style: const TextStyle(
+                                  color: AppTheme.mutedForeground,
+                                  height: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                children: [
+                                  DashboardMetricTile(
+                                    icon: Icons.person_outline_rounded,
+                                    label: widget.application.customerName ??
+                                        'Customer',
+                                  ),
+                                  DashboardMetricTile(
+                                    icon: Icons.sell_outlined,
+                                    label: formatDashboardMoney(
+                                      widget.application.price,
+                                    ),
+                                  ),
+                                  DashboardMetricTile(
+                                    icon: Icons.category_outlined,
+                                    label: widget.application.listingLabel,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _DateField(
-                          label: 'End date',
-                          value: _endDate,
-                          onTap: () => _pickDate(isStart: false),
+                        const SizedBox(height: 16),
+                        DashboardSectionCard(
+                          title: 'Lease details',
+                          child: Column(
+                            children: [
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final stacked = constraints.maxWidth < 720;
+                                  final typeField = _SelectField<String>(
+                                    label: 'Lease type',
+                                    value: _leaseType,
+                                    items: const [
+                                      DropdownMenuItem(
+                                        value: 'LongTerm',
+                                        child: Text('Long term'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 'ShortTerm',
+                                        child: Text('Short term'),
+                                      ),
+                                    ],
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        setState(() => _leaseType = value);
+                                      }
+                                    },
+                                  );
+                                  final paymentField = _SelectField<bool>(
+                                    label: 'Payment model',
+                                    value: _isRecurring,
+                                    items: const [
+                                      DropdownMenuItem(
+                                        value: true,
+                                        child: Text('Recurring payment'),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: false,
+                                        child: Text('One-time contract'),
+                                      ),
+                                    ],
+                                    onChanged: (value) {
+                                      if (value == null) {
+                                        return;
+                                      }
+                                      setState(() {
+                                        _isRecurring = value;
+                                        if (!_isRecurring) {
+                                          _recurringAmountController.clear();
+                                        } else if (_recurringAmountController
+                                            .text
+                                            .trim()
+                                            .isEmpty) {
+                                          _recurringAmountController.text =
+                                              widget.application.price
+                                                  .toStringAsFixed(0);
+                                        }
+                                        _recalculatePrice();
+                                      });
+                                    },
+                                  );
+
+                                  if (stacked) {
+                                    return Column(
+                                      children: [
+                                        typeField,
+                                        const SizedBox(height: 14),
+                                        paymentField,
+                                      ],
+                                    );
+                                  }
+
+                                  return Row(
+                                    children: [
+                                      Expanded(child: typeField),
+                                      const SizedBox(width: 14),
+                                      Expanded(child: paymentField),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 14),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final stacked = constraints.maxWidth < 720;
+                                  final startField = _DateField(
+                                    label: 'Start date',
+                                    value: _startDate,
+                                    onTap: () => _pickDate(isStart: true),
+                                  );
+                                  final endField = _DateField(
+                                    label: 'End date',
+                                    value: _endDate,
+                                    onTap: () => _pickDate(isStart: false),
+                                  );
+
+                                  if (stacked) {
+                                    return Column(
+                                      children: [
+                                        startField,
+                                        const SizedBox(height: 14),
+                                        endField,
+                                      ],
+                                    );
+                                  }
+
+                                  return Row(
+                                    children: [
+                                      Expanded(child: startField),
+                                      const SizedBox(width: 14),
+                                      Expanded(child: endField),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 14),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final stacked = constraints.maxWidth < 720;
+                                  final totalField = _InputField(
+                                    label: 'Total contract price (ETB)',
+                                    controller: _totalPriceController,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                  );
+                                  final recurringField = _InputField(
+                                    label: 'Recurring amount (ETB)',
+                                    controller: _recurringAmountController,
+                                    enabled: _isRecurring,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                  );
+
+                                  if (stacked) {
+                                    return Column(
+                                      children: [
+                                        totalField,
+                                        const SizedBox(height: 14),
+                                        recurringField,
+                                      ],
+                                    );
+                                  }
+
+                                  return Row(
+                                    children: [
+                                      Expanded(child: totalField),
+                                      const SizedBox(width: 14),
+                                      Expanded(child: recurringField),
+                                    ],
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 14),
+                              _InputField(
+                                label: 'Terms and conditions',
+                                controller: _termsController,
+                                minLines: 6,
+                                maxLines: 8,
+                              ),
+                              if (actionState.error != null &&
+                                  actionState.error!.isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                Text(
+                                  actionState.error!,
+                                  style: const TextStyle(
+                                    color: Color(0xFFDC2626),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _totalPriceController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
+                        const SizedBox(height: 16),
+                        DashboardSectionCard(
+                          title: 'Review and send',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Double-check the dates, payment amount, and contract terms before sending the lease for approval.',
+                                style: TextStyle(
+                                  color: AppTheme.mutedForeground,
+                                  height: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final stacked = constraints.maxWidth < 520;
+                                  final cancelButton = OutlinedButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).maybePop(),
+                                    child: const Text('Cancel'),
+                                  );
+                                  final sendButton = FilledButton(
+                                    onPressed:
+                                        actionState.isLoading ? null : _submit,
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppTheme.primary,
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    child: actionState.isLoading
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : const Text('Send lease offer'),
+                                  );
+
+                                  if (stacked) {
+                                    return Column(
+                                      children: [
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: cancelButton,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        SizedBox(
+                                          width: double.infinity,
+                                          child: sendButton,
+                                        ),
+                                      ],
+                                    );
+                                  }
+
+                                  return Row(
+                                    children: [
+                                      cancelButton,
+                                      const Spacer(),
+                                      sendButton,
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('Total contract price (ETB)'),
                   ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _recurringAmountController,
-                    enabled: _isRecurring,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    style: TextStyle(
-                      color: _isRecurring ? Colors.white : Colors.white38,
-                    ),
-                    decoration: _inputDecoration('Recurring amount (ETB)'),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _termsController,
-                    minLines: 5,
-                    maxLines: 7,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('Terms and conditions'),
-                  ),
-                  if (actionState.error != null &&
-                      actionState.error!.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    Text(
-                      actionState.error!,
-                      style: const TextStyle(color: Colors.redAccent),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: actionState.isLoading ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.secondary,
-                  foregroundColor: AppTheme.darkBackground,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: actionState.isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text(
-                        'Send Lease Offer',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: Colors.white.withOpacity(0.06),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
       ),
     );
   }
@@ -282,7 +395,9 @@ class _CreateLeaseScreenState extends ConsumerState<CreateLeaseScreen> {
       firstDate: firstDate,
       lastDate: DateTime.now().add(const Duration(days: 3650)),
     );
-    if (date == null) return;
+    if (date == null) {
+      return;
+    }
 
     setState(() {
       if (isStart) {
@@ -353,9 +468,7 @@ class _CreateLeaseScreenState extends ConsumerState<CreateLeaseScreen> {
     }
 
     try {
-      await ref
-          .read(leaseActionProvider.notifier)
-          .createLease(
+      await ref.read(leaseActionProvider.notifier).createLease(
             leaseType: _leaseType,
             startDate: _startDate!.toIso8601String(),
             endDate: _endDate!.toIso8601String(),
@@ -366,50 +479,90 @@ class _CreateLeaseScreenState extends ConsumerState<CreateLeaseScreen> {
             customerId: widget.application.customerId,
             ownerId: widget.application.managerId,
           );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lease offer created successfully.')),
       );
       Navigator.of(context).pop(true);
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       _showMessage(error.toString().replaceFirst('Exception: ', ''));
     }
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.label, required this.value});
+class _SelectField<T> extends StatelessWidget {
+  const _SelectField({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
 
   final String label;
-  final String value;
+  final T value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
-          ),
-          const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: _labelStyle),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<T>(
+          value: value,
+          decoration: _fieldDecoration(),
+          items: items,
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+}
+
+class _InputField extends StatelessWidget {
+  const _InputField({
+    required this.label,
+    required this.controller,
+    this.keyboardType,
+    this.enabled = true,
+    this.minLines = 1,
+    this.maxLines = 1,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final TextInputType? keyboardType;
+  final bool enabled;
+  final int minLines;
+  final int maxLines;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: _labelStyle),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          keyboardType: keyboardType,
+          enabled: enabled,
+          minLines: minLines,
+          maxLines: maxLines,
+          decoration: _fieldDecoration(),
+        ),
+      ],
     );
   }
 }
@@ -428,31 +581,71 @@ class _DateField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = value == null
-        ? label
+        ? 'Select date'
         : '${value!.day}/${value!.month}/${value!.year}';
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Ink(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.06),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.calendar_today_outlined,
-              size: 18,
-              color: Colors.white70,
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: _labelStyle),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.border),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(text, style: const TextStyle(color: Colors.white)),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  size: 18,
+                  color: AppTheme.primary,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    text,
+                    style: const TextStyle(
+                      color: AppTheme.foreground,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
+}
+
+const _labelStyle = TextStyle(
+  color: AppTheme.foreground,
+  fontSize: 13,
+  fontWeight: FontWeight.w700,
+);
+
+InputDecoration _fieldDecoration() {
+  return InputDecoration(
+    filled: true,
+    fillColor: Colors.white,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: AppTheme.border),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: AppTheme.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: AppTheme.primary, width: 1.4),
+    ),
+  );
 }

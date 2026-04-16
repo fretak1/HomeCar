@@ -186,6 +186,11 @@ export const getProperties = async (req: any, res: Response) => {
         if (listedById) where.listedById = listedById;
         if (assetType) where.assetType = assetType.toUpperCase().includes('HOME') ? 'HOME' : 'CAR';
 
+        // Filter out UNAVAILABLE listings from general searches
+        if (!ownerId && !listedById) {
+            where.status = { not: 'UNAVAILABLE' };
+        }
+
         if (listingType && listingType !== 'any') {
             const type = listingType.toUpperCase();
             if (type === 'BUY' || type === 'SALE') {
@@ -201,15 +206,46 @@ export const getProperties = async (req: any, res: Response) => {
             if (priceMax) where.price.lte = parseFloat(priceMax);
         }
 
+        if (beds && beds !== 'any') {
+            const bedVal = parseInt(beds.toString().replace('+', ''));
+            if (!isNaN(bedVal)) where.bedrooms = { gte: bedVal };
+        }
+        if (baths && baths !== 'any') {
+            const bathVal = parseInt(baths.toString().replace('+', ''));
+            if (!isNaN(bathVal)) where.bathrooms = { gte: bathVal };
+        }
+
+        if (amenities) {
+            const amenitiesArr = Array.isArray(amenities) ? amenities : [amenities];
+            if (amenitiesArr.length > 0) {
+                where.amenities = { hasEvery: amenitiesArr };
+            }
+        }
+
+        if (yearMin || yearMax) {
+            where.year = {};
+            if (yearMin) where.year.gte = parseInt(yearMin);
+            if (yearMax) where.year.lte = parseInt(yearMax);
+        }
+        if (fuelType && fuelType !== 'any') {
+            where.fuelType = { equals: fuelType, mode: 'insensitive' };
+        }
+        if (transmission && transmission !== 'any') {
+            where.transmission = { equals: transmission, mode: 'insensitive' };
+        }
+        if (mileageMax) {
+            where.mileage = { lte: parseInt(mileageMax) };
+        }
+
         if (propertyType && propertyType !== 'any') {
             where.propertyType = { contains: propertyType.trim(), mode: 'insensitive' };
         }
         
         const andConditions: any[] = [];
-        if (region) andConditions.push({ location: { region: { contains: (region as string).trim(), mode: 'insensitive' } } });
-        if (city) andConditions.push({ location: { city: { contains: (city as string).trim(), mode: 'insensitive' } } });
-        if (subCity) andConditions.push({ location: { subcity: { contains: (subCity as string).trim(), mode: 'insensitive' } } });
-        if (req.query.village) andConditions.push({ location: { village: { contains: (req.query.village as string).trim(), mode: 'insensitive' } } });
+        if (region && region !== 'any') andConditions.push({ location: { region: { contains: (region as string).trim(), mode: 'insensitive' } } });
+        if (city && city !== 'any') andConditions.push({ location: { city: { contains: (city as string).trim(), mode: 'insensitive' } } });
+        if (subCity && subCity !== 'any') andConditions.push({ location: { subcity: { contains: (subCity as string).trim(), mode: 'insensitive' } } });
+        if (req.query.village && req.query.village !== 'any') andConditions.push({ location: { village: { contains: (req.query.village as string).trim(), mode: 'insensitive' } } });
         
         if (brand && brand !== 'any') {
             where.brand = { contains: (brand as string).trim(), mode: 'insensitive' };
@@ -339,14 +375,17 @@ export const updateProperty = async (req: any, res: Response) => {
             title, description, assetType, listingType, price,
             propertyType, bedrooms, bathrooms, area,
             brand, model, year, fuelType, transmission, mileage,
-            location, amenities, keepImages 
+            location, amenities, keepImages, status
         } = req.body;
         const files = req.files as { [fieldname: string]: any[] } | undefined;
+
+        const normalizedStatus = status ? (Array.isArray(status) ? status[0] : status).toString().toUpperCase() : undefined;
 
         const updateData: any = { 
             title, 
             description, 
             price: price ? parseFloat(price) : undefined,
+            status: normalizedStatus && ['AVAILABLE', 'SOLD', 'UNAVAILABLE'].includes(normalizedStatus) ? normalizedStatus : undefined,
             assetType: assetType ? normalizeAssetType(assetType) : undefined,
             listingType: listingType ? (Array.isArray(listingType) ? listingType : [listingType]).map((t: string) => t.toUpperCase()) : undefined,
         };

@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
     ChevronLeft,
@@ -18,8 +18,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { mockProperties } from '@/data/mockData';
 
-export default function ContractPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params);
+export default function ContractPage() {
+    const params = useParams();
+    const id = params?.id as string;
     const property = mockProperties.find(p => p.id === id);
 
     if (!property) {

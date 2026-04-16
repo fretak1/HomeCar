@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
-import '../../../shared/widgets/glass_card.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../dashboard/widgets/dashboard_page_scaffold.dart';
+import '../../dashboard/widgets/dashboard_utils.dart';
+import '../../dashboard/widgets/role_dashboard_scaffold.dart';
 import '../providers/payment_provider.dart';
 
 class PayoutSetupScreen extends ConsumerStatefulWidget {
-  const PayoutSetupScreen({Key? key}) : super(key: key);
+  const PayoutSetupScreen({super.key});
 
   @override
   ConsumerState<PayoutSetupScreen> createState() => _PayoutSetupScreenState();
@@ -51,148 +53,180 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
         user?.chapaSubaccountId != null && user!.chapaSubaccountId!.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Payout Setup')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            GlassCard(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    isLinked
-                        ? Icons.verified_user_outlined
-                        : Icons.account_balance_outlined,
-                    color: isLinked
-                        ? const Color(0xFF34D399)
-                        : AppTheme.secondary,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
+            DashboardPageHeader(
+              title: 'Payout Setup',
+              subtitle:
+                  'Connect your bank details so completed payments and lease proceeds can be settled correctly.',
+              onBack: () => Navigator.of(context).maybePop(),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 900),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          isLinked
-                              ? 'Payout account linked'
+                        DashboardSectionCard(
+                          title: isLinked
+                              ? 'Payout account connected'
                               : 'Payout setup required',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isLinked
+                                    ? 'Your payout account is linked and ready to receive marketplace disbursements.'
+                                    : 'Add your payout bank details so approved transactions can be routed to your account.',
+                                style: const TextStyle(
+                                  color: AppTheme.mutedForeground,
+                                  height: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                children: [
+                                  DashboardMetricTile(
+                                    icon: Icons.verified_outlined,
+                                    label: isLinked
+                                        ? 'Payout ready'
+                                        : 'Setup incomplete',
+                                  ),
+                                  DashboardMetricTile(
+                                    icon: Icons.account_balance_outlined,
+                                    label:
+                                        user?.payoutBankCode?.trim().isNotEmpty ??
+                                                false
+                                            ? 'Bank selected'
+                                            : 'Bank missing',
+                                  ),
+                                  DashboardMetricTile(
+                                    icon: Icons.badge_outlined,
+                                    label: user?.chapaSubaccountId
+                                                ?.trim()
+                                                .isNotEmpty ??
+                                            false
+                                        ? 'Chapa linked'
+                                        : 'Chapa pending',
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          isLinked
-                              ? 'Your account is ready to receive split payments from Chapa.'
-                              : 'Add your bank details so accepted applications and lease payments can be completed.',
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            height: 1.45,
+                        const SizedBox(height: 16),
+                        DashboardSectionCard(
+                          title: 'Bank details',
+                          child: Column(
+                            children: [
+                              DropdownButtonFormField<String>(
+                                value: _resolveSelectedBankCode(banks),
+                                decoration: _fieldDecoration('Select bank'),
+                                items: banks
+                                    .map(
+                                      (bank) => DropdownMenuItem<String>(
+                                        value: _bankValue(bank),
+                                        child: Text(_bankLabel(bank)),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) =>
+                                    setState(() => _bankCode = value),
+                              ),
+                              const SizedBox(height: 14),
+                              TextField(
+                                controller: _accountNameController,
+                                decoration: _fieldDecoration('Account name'),
+                              ),
+                              const SizedBox(height: 14),
+                              TextField(
+                                controller: _accountNumberController,
+                                keyboardType: TextInputType.number,
+                                decoration: _fieldDecoration('Account number'),
+                              ),
+                              const SizedBox(height: 14),
+                              TextField(
+                                controller: _businessNameController,
+                                decoration: _fieldDecoration(
+                                  'Business name (optional)',
+                                ),
+                              ),
+                              if (paymentState.error != null &&
+                                  paymentState.error!.isNotEmpty) ...[
+                                const SizedBox(height: 14),
+                                Text(
+                                  paymentState.error!.replaceFirst(
+                                    'Exception: ',
+                                    '',
+                                  ),
+                                  style: const TextStyle(
+                                    color: Color(0xFFDC2626),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        DashboardSectionCard(
+                          title: 'Save changes',
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final stacked = constraints.maxWidth < 520;
+                              final button = FilledButton(
+                                onPressed:
+                                    paymentState.isLoading ? null : _save,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppTheme.primary,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: paymentState.isLoading
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : Text(
+                                        isLinked
+                                            ? 'Update payout details'
+                                            : 'Save payout details',
+                                      ),
+                              );
+
+                              if (stacked) {
+                                return SizedBox(
+                                  width: double.infinity,
+                                  child: button,
+                                );
+                              }
+
+                              return Row(
+                                children: [
+                                  const Spacer(),
+                                  button,
+                                ],
+                              );
+                            },
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            GlassCard(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Bank Details',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<String>(
-                    value: _resolveSelectedBankCode(banks),
-                    dropdownColor: const Color(0xFF1E293B),
-                    decoration: _inputDecoration('Select bank'),
-                    items: banks
-                        .map(
-                          (bank) => DropdownMenuItem<String>(
-                            value: _bankValue(bank),
-                            child: Text(_bankLabel(bank)),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) => setState(() => _bankCode = value),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _accountNameController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('Account name'),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _accountNumberController,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('Account number'),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _businessNameController,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('Business name (optional)'),
-                  ),
-                  if (paymentState.error != null &&
-                      paymentState.error!.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    Text(
-                      paymentState.error!.replaceFirst('Exception: ', ''),
-                      style: const TextStyle(color: Colors.redAccent),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: paymentState.isLoading ? null : _save,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.secondary,
-                  foregroundColor: AppTheme.darkBackground,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: paymentState.isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(
-                        isLinked
-                            ? 'Update Payout Details'
-                            : 'Save Payout Details',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      filled: true,
-      fillColor: Colors.white.withOpacity(0.06),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
       ),
     );
   }
@@ -245,9 +279,7 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
     }
 
     try {
-      await ref
-          .read(paymentProvider.notifier)
-          .createSubaccount(
+      await ref.read(paymentProvider.notifier).createSubaccount(
             userId: user.id,
             bankCode: _bankCode!,
             accountNumber: _accountNumberController.text.trim(),
@@ -255,19 +287,37 @@ class _PayoutSetupScreenState extends ConsumerState<PayoutSetupScreen> {
             businessName: _businessNameController.text.trim(),
           );
       await ref.read(authProvider.notifier).refreshCurrentUser();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Payout details saved successfully.')),
       );
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       _showMessage(error.toString().replaceFirst('Exception: ', ''));
     }
   }
 
   void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
+}
+
+InputDecoration _fieldDecoration(String label) {
+  return InputDecoration(
+    labelText: label,
+    filled: true,
+    fillColor: AppTheme.inputBackground,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: AppTheme.border),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: AppTheme.border),
+    ),
+  );
 }

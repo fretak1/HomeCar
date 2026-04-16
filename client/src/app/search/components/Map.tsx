@@ -164,14 +164,16 @@ const createMarker = (item: any, map: mapboxgl.Map, lngLat: [number, number], ty
         .setPopup(
             new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(
                 `
-        <div class="p-0 w-48 overflow-hidden rounded-xl bg-card border border-border shadow-xl">
-          <div class="h-24 w-full bg-cover bg-center" style="background-image: url('${imageUrl}')"></div>
-          <div class="p-3">
-            <h3 class="font-bold text-sm truncate text-foreground">${item.title}</h3>
-            <p class="text-[10px] text-muted-foreground mb-1 font-medium uppercase truncate">${locationStr}</p>
-            <p class="font-bold text-primary text-base">ETB ${item.price.toLocaleString()}<span class="text-[10px] font-normal text-muted-foreground ml-1">${type === 'property' ? '/mo' : ''}</span></p>
+        <a href="/property/${item.id}" class="block group/popup cursor-pointer no-underline">
+          <div class="p-0 w-48 overflow-hidden rounded-xl bg-card border border-border shadow-xl hover:border-primary transition-all duration-300">
+            <div class="h-24 w-full bg-cover bg-center transition-transform duration-500 group-hover/popup:scale-110" style="background-image: url('${imageUrl}')"></div>
+            <div class="p-3">
+              <h3 class="font-bold text-sm truncate text-foreground group-hover/popup:text-primary transition-colors">${item.title}</h3>
+              <p class="text-[10px] text-muted-foreground mb-1 font-medium uppercase truncate">${locationStr}</p>
+              <p class="font-bold text-primary text-base">ETB ${item.price.toLocaleString()}<span class="text-[10px] font-normal text-muted-foreground ml-1">${type === 'property' ? '/mo' : ''}</span></p>
+            </div>
           </div>
-        </div>
+        </a>
         `
             )
         )

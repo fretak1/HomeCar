@@ -16,10 +16,14 @@ import { Toaster } from "@/components/ui/sonner";
 export default function SearchPage() {
     const { user } = useAuth();
     const { fetchFavorites } = useFavoriteStore();
-    const { isFiltersFullOpen, filters, searchType, setFilters } = useGlobalStore();
+    const { isFiltersFullOpen, filters, searchType, setFilters, setSearchType, setViewMode } = useGlobalStore();
     const { fetchProperties } = usePropertyStore();
 
     useEffect(() => {
+        // Force search type to property for this dedicated search page
+        setSearchType('property');
+        // Force grid view for this page
+        setViewMode('grid');
         // Reset filters on mount to ensure fresh state
         setFilters({
             beds: 'any',
@@ -39,7 +43,7 @@ export default function SearchPage() {
             location: '',
             listingType: 'any'
         });
-    }, [setFilters]);
+    }, [setFilters, setSearchType, setViewMode]);
 
     useEffect(() => {
         if (user?.id) {

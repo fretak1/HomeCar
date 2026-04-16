@@ -30,6 +30,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn, formatLocation } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function AIInsightsPage() {
     const { currentUser } = useUserStore();
@@ -189,6 +190,21 @@ export default function AIInsightsPage() {
                                 </div>
                             )}
 
+                            {/* Scoring Matrix - NEW SECTION */}
+                            {explanationData.base_weights && renderStep(
+                                "Scoring Matrix Configuration",
+                                <Settings className="h-6 w-6 text-primary" />,
+                                "Global multipliers applied to user interactions for baseline intent signaling.",
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {Object.entries(explanationData.base_weights).map(([key, weight]: any) => (
+                                        <div key={key} className="p-4 bg-white/5 border border-white/10 rounded-2xl flex flex-col items-center">
+                                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-1">{key}</span>
+                                            <span className="text-2xl font-black text-primary">x{weight}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
                             {/* Step-by-Step Signals */}
                             <Tabs defaultValue="signals" className="w-full">
                                 <TabsList className="bg-white/5 border border-white/5 p-1 rounded-2xl h-16 mb-8">
@@ -298,36 +314,50 @@ export default function AIInsightsPage() {
                                                 <div className="flex justify-between items-start mb-4">
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-xs font-black text-white/20 group-hover:text-primary transition-colors">#{i + 1}</span>
+                                                        <Avatar className="h-10 w-10 border border-white/5">
+                                                            <AvatarImage src={rec.images?.[0]?.url || rec.image} />
+                                                            <AvatarFallback className="bg-primary/10 text-[10px]">{rec.assetType === 'HOME' ? 'H' : 'C'}</AvatarFallback>
+                                                        </Avatar>
                                                         <div>
                                                             <h4 className="text-sm font-black text-white group-hover:text-primary transition-colors truncate w-32">{rec.title}</h4>
-                                                            <p className="text-[10px] text-white/30 font-bold uppercase tracking-tighter">{rec.subcity}</p>
+                                                            <p className="text-[10px] text-white/30 font-bold uppercase tracking-tighter">{rec.location?.subcity || rec.subcity}</p>
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <span className="text-2xl font-black text-white flex items-center justify-end">
-                                                            {rec.score?.toFixed(2)}
-                                                        </span>
-                                                        <p className="text-[8px] font-black text-white/20 uppercase tracking-widest">AI ACCURACY</p>
+                                                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary/20 border border-primary/30 mb-1">
+                                                            <span className="text-lg font-black text-primary">
+                                                                {rec.score?.toFixed(2)}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[8px] font-black text-white/40 uppercase tracking-widest whitespace-nowrap">TOTAL MATCH SCORE</p>
                                                     </div>
                                                 </div>
 
                                                 {/* Score Breakdown Bars - GRANULAR DETAIL */}
-                                                <div className="space-y-3 pt-3 border-t border-white/5 group-hover:border-white/10 transition-colors">
-                                                    {Object.entries(rec.score_breakdown || {}).map(([key, val]: any) => (
-                                                        <div key={key} className="space-y-1">
-                                                            <div className="flex justify-between text-[8px] font-black uppercase text-white/40 group-hover:text-white/60 transition-colors">
-                                                                <span>{key.replace(/_/g, ' ')}</span>
-                                                                <span className="text-primary">+{val}</span>
+                                                <div className="space-y-3 pt-4 border-t border-white/5 group-hover:border-white/10 transition-colors">
+                                                    <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] mb-3">Metric Contribution Details</p>
+                                                    {Object.entries(rec.score_breakdown || {}).sort((a: any, b: any) => b[1] - a[1]).map(([key, val]: any) => (
+                                                        <div key={key} className="space-y-1.5">
+                                                            <div className="flex justify-between text-[10px] font-bold uppercase transition-colors">
+                                                                <span className="text-white/50">{key.replace(/_/g, ' ')}</span>
+                                                                <span className="text-primary font-black">+{val.toFixed(2)} pts</span>
                                                             </div>
                                                             <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                                                                 <motion.div
                                                                     initial={{ width: 0 }}
-                                                                    animate={{ width: `${Math.min(100, (val / 1) * 100)}%` }}
-                                                                    className="h-full bg-primary"
+                                                                    animate={{ width: `${Math.min(100, (val / 1.5) * 100)}%` }}
+                                                                    className={cn(
+                                                                        "h-full rounded-full",
+                                                                        val >= 1 ? "bg-primary" : 
+                                                                        val >= 0.5 ? "bg-amber-500" : "bg-white/40"
+                                                                    )}
                                                                 />
                                                             </div>
                                                         </div>
                                                     ))}
+                                                    {(!rec.score_breakdown || Object.keys(rec.score_breakdown).length === 0) && (
+                                                        <p className="text-[xs] text-white/20 italic">No historical traces for this item.</p>
+                                                    )}
                                                 </div>
                                             </motion.div>
                                         ))}
