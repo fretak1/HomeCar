@@ -80,3 +80,4 @@ final recommendationProvider =
     AsyncNotifierProvider<RecommendationNotifier, List<PropertyModel>>(() {
       return RecommendationNotifier();
     });
+

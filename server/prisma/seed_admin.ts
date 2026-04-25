@@ -11,7 +11,6 @@ async function main() {
     console.log('--- Starting Admin Seeding (via Better Auth Library) ---');
 
     // 1. Delete existing user/account to start fresh if needed
-    // (This helps avoid conflicts if the previous manual seed was broken)
     await prisma.account.deleteMany({ where: { accountId: adminEmail } }).catch(() => {});
     await prisma.user.deleteMany({ where: { email: adminEmail } }).catch(() => {});
 

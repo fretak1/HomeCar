@@ -157,6 +157,10 @@ class AuthNotifier extends Notifier<AuthState> {
     String? name,
     String? email,
     String? phoneNumber,
+    String? marriageStatus,
+    int? kids,
+    String? gender,
+    String? employmentStatus,
     String? currentPassword,
     String? newPassword,
     String? profileImagePath,
@@ -169,6 +173,10 @@ class AuthNotifier extends Notifier<AuthState> {
             name: name,
             email: email,
             phoneNumber: phoneNumber,
+            marriageStatus: marriageStatus,
+            kids: kids,
+            gender: gender,
+            employmentStatus: employmentStatus,
             currentPassword: currentPassword,
             newPassword: newPassword,
             profileImagePath: profileImagePath,
@@ -217,3 +225,4 @@ final authProvider = NotifierProvider<AuthNotifier, AuthState>(() {
 final currentUserProvider = Provider<UserModel?>((ref) {
   return ref.watch(authProvider).user;
 });
+

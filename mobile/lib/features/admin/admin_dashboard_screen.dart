@@ -824,9 +824,9 @@ class _AdminLeaseRow extends StatelessWidget {
       ],
       actions: [
         FilledButton.icon(
-          onPressed: () => context.push('/leases/${lease.id}'),
+          onPressed: () => context.go('/leases/${lease.id}'),
           icon: const Icon(Icons.visibility_outlined, size: 18),
-          label: const Text('View detail'),
+          label: const Text('View Detail'),
         ),
       ],
     );
@@ -867,3 +867,4 @@ class _AdminFilterChip extends StatelessWidget {
 }
 
 Future<void> _noopRefresh() async {}
+

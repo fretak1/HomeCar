@@ -20,7 +20,9 @@ import 'widgets/dashboard_utils.dart';
 import 'widgets/role_dashboard_scaffold.dart';
 
 class CustomerDashboardScreen extends ConsumerStatefulWidget {
-  const CustomerDashboardScreen({super.key});
+  const CustomerDashboardScreen({super.key, this.initialTab});
+
+  final String? initialTab;
 
   @override
   ConsumerState<CustomerDashboardScreen> createState() =>
@@ -30,6 +32,14 @@ class CustomerDashboardScreen extends ConsumerStatefulWidget {
 class _CustomerDashboardScreenState
     extends ConsumerState<CustomerDashboardScreen> {
   String _activeTab = 'applications';
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialTab != null) {
+      _activeTab = widget.initialTab!.toLowerCase();
+    }
+  }
   String _transactionDateFilter = 'all';
   String _transactionStatusFilter = 'all';
   String _favoriteFilter = 'all';
@@ -295,7 +305,8 @@ class _CustomerDashboardScreenState
         if (applications.isEmpty)
           const DashboardEmptyState(
             title: 'No applications found',
-            message: 'You haven\'t submitted any applications yet.',
+            message:
+                'When you apply for a property, your application history will appear here.',
           )
         else
           Column(
@@ -370,7 +381,7 @@ class _CustomerDashboardScreenState
           const DashboardEmptyState(
             title: 'No maintenance requests found',
             message:
-                'Everything looks good. If you have an issue, create a new request.',
+                'Everything looks good! No pending maintenance issues at the moment.',
           )
         else
           Column(
@@ -491,7 +502,7 @@ class _CustomerDashboardScreenState
                 padding: const EdgeInsets.all(16),
                 child: leases.isEmpty
                     ? const DashboardEmptyState(
-                        title: 'No active leases',
+                        title: 'No active leases found',
                         message:
                             'You don\'t have any active lease agreements at the moment.',
                       )
@@ -655,8 +666,7 @@ class _CustomerDashboardScreenState
                   padding: EdgeInsets.all(28),
                   child: DashboardEmptyState(
                     title: 'No transactions found',
-                    message:
-                        'No transactions matched your current filters.',
+                    message: 'No transactions found matching your criteria',
                   ),
                 )
               else
@@ -722,7 +732,7 @@ class _CustomerDashboardScreenState
           DashboardEmptyState(
             title: 'No favorites found',
             message: _favoriteFilter == 'all'
-                ? 'You haven\'t saved any items yet. Start exploring.'
+                ? 'You haven\'t saved any items yet. Start exploring!'
                 : 'You don\'t have any ${_favoriteFilter == 'HOME' ? 'houses' : 'cars'} in your favorites.',
           )
         else

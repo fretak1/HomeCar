@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/utils/web_utils_stub.dart'
+    if (dart.library.html) '../../core/utils/web_utils_web.dart';
+
+import '../../core/api/dio_client.dart';
+import '../../core/api/api_paths.dart';
 import '../../core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'widgets/web_auth_widgets.dart';
+import 'google_auth_webview.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
@@ -89,11 +97,32 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           'Account created! Please enter the verification code sent to your email.',
           success: true,
         );
-        context.go('/verify-email');
+        // Using a microtask to ensure navigation happens after state propagation
+        Future.microtask(() {
+          if (mounted) context.go('/verify-email');
+        });
       }
     } catch (error) {
       if (mounted) {
-        _showMessage(error.toString().replaceAll('Exception: ', ''));
+        final message = error.toString().toLowerCase();
+        if (message.contains('already') || message.contains('exists')) {
+          _showMessage('This email is already registered. Please go to Login.');
+        } else {
+          // Show a dialog for unexpected errors so they are clearly visible
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Registration Error'),
+              content: Text(error.toString()),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
       }
     } finally {
       if (mounted) {
@@ -113,8 +142,58 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     );
   }
 
-  void _showGoogleUnavailable() {
-    _showMessage('Google sign-in is not configured on mobile yet.');
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _submitting = true);
+    try {
+      final dio = ref.read(dioClientProvider).dio;
+      final callbackPrefix = kIsWeb ? Uri.base.origin : '${DioClient.baseUrl}/';
+      
+      final response = await dio.post(
+        '${ApiPaths.auth}/sign-in/social',
+        data: {
+          'provider': 'google',
+          'callbackURL': callbackPrefix,
+        },
+      );
+      
+      final url = response.data['url'] as String?;
+      if (url == null) throw Exception('Failed to get Google auth URL');
+
+      if (!mounted) return;
+      setState(() => _submitting = false);
+
+      if (kIsWeb) {
+        // On Web, force same-tab navigation
+        navigateToUrl(url);
+      } else if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS) {
+        // On Desktop, open in browser
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          throw Exception('Could not launch auth URL');
+        }
+      } else {
+        // On Mobile (Android/iOS), use WebView
+        final result = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (context) => GoogleAuthWebviewScreen(
+              authUrl: url,
+              callbackPrefix: callbackPrefix,
+            ),
+          ),
+        );
+
+        if (result == true && mounted) {
+          context.go('/home');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _submitting = false);
+        _showMessage(e.toString().replaceAll('Exception: ', ''));
+      }
+    }
   }
 
   @override
@@ -342,7 +421,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                             fontWeight: FontWeight.w600,
                           ),
                           decoration: authInputDecoration(
-                            hintText: 'What describes you?',
+                            hintText: '', // handled by hint widget below
+                          ),
+                          hint: const Text(
+                            'What describes you?',
+                            style: TextStyle(
+                              color: AppTheme.mutedForeground,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                           items: const [
                             DropdownMenuItem(
@@ -379,7 +466,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                             backgroundColor: AppTheme.primary,
                             foregroundColor: Colors.white,
                             disabledBackgroundColor:
-                                AppTheme.primary.withValues(alpha: 0.35),
+                                AppTheme.primary.withOpacity(0.35),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
@@ -410,7 +497,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
             const SizedBox(height: 20),
             const AuthSocialDivider(),
             const SizedBox(height: 14),
-            ContinueWithGoogleButton(onPressed: _showGoogleUnavailable),
+            ContinueWithGoogleButton(
+              onPressed: _submitting ? () {} : _handleGoogleSignIn,
+            ),
             const SizedBox(height: 18),
             RichText(
               textAlign: TextAlign.center,
@@ -505,3 +594,4 @@ class _PasswordRequirement extends StatelessWidget {
     );
   }
 }
+

@@ -62,3 +62,4 @@ class NotificationRepository {
     return fallback;
   }
 }
+

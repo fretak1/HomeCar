@@ -195,3 +195,4 @@ class AdminOverviewData {
   final int totalTransactions;
   final int totalApplications;
 }
+

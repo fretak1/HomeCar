@@ -6,6 +6,7 @@ class FilterState {
   final String region;
   final String city;
   final String subCity;
+  final String village;
   final double? priceMin;
   final double? priceMax;
   final List<String> amenities;
@@ -28,6 +29,7 @@ class FilterState {
     this.region = '',
     this.city = '',
     this.subCity = '',
+    this.village = '',
     this.priceMin,
     this.priceMax,
     this.amenities = const [],
@@ -47,6 +49,7 @@ class FilterState {
     String? region,
     String? city,
     String? subCity,
+    String? village,
     double? priceMin,
     double? priceMax,
     List<String>? amenities,
@@ -68,6 +71,7 @@ class FilterState {
       region: region ?? this.region,
       city: city ?? this.city,
       subCity: subCity ?? this.subCity,
+      village: village ?? this.village,
       priceMin: clearPriceMin ? null : (priceMin ?? this.priceMin),
       priceMax: clearPriceMax ? null : (priceMax ?? this.priceMax),
       amenities: amenities ?? this.amenities,
@@ -90,6 +94,7 @@ class FilterState {
     if (region.isNotEmpty) params['region'] = region;
     if (city.isNotEmpty) params['city'] = city;
     if (subCity.isNotEmpty) params['subCity'] = subCity;
+    if (village.isNotEmpty) params['village'] = village;
     if (listingType != 'any') params['listingType'] = listingType;
     if (priceMin != null) params['priceMin'] = priceMin;
     if (priceMax != null) params['priceMax'] = priceMax;
@@ -137,3 +142,4 @@ class FilterNotifier extends StateNotifier<FilterState> {
 final filterProvider = StateNotifierProvider<FilterNotifier, FilterState>(
   (ref) => FilterNotifier(),
 );
+

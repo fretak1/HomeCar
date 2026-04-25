@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../prediction/models/prediction_model.dart';
@@ -29,6 +30,8 @@ class AddListingState {
     this.ownershipDocument,
     this.identityPhoto,
     this.aiEstimate,
+    this.reasoning,
+    this.similarListings = const [],
     this.fields = const {},
   });
 
@@ -43,6 +46,8 @@ class AddListingState {
   final XFile? ownershipDocument;
   final XFile? identityPhoto;
   final String? aiEstimate;
+  final String? reasoning;
+  final List<dynamic> similarListings;
   final Map<String, dynamic> fields;
 
   bool get isEditing =>
@@ -60,6 +65,8 @@ class AddListingState {
     XFile? ownershipDocument,
     XFile? identityPhoto,
     String? aiEstimate,
+    String? reasoning,
+    List<dynamic>? similarListings,
     Map<String, dynamic>? fields,
   }) {
     return AddListingState(
@@ -76,6 +83,8 @@ class AddListingState {
       ownershipDocument: ownershipDocument ?? this.ownershipDocument,
       identityPhoto: identityPhoto ?? this.identityPhoto,
       aiEstimate: aiEstimate ?? this.aiEstimate,
+      reasoning: reasoning ?? this.reasoning,
+      similarListings: similarListings ?? this.similarListings,
       fields: fields ?? this.fields,
     );
   }
@@ -164,6 +173,25 @@ class AddListingNotifier extends StateNotifier<AddListingState> {
     state = state.copyWith(fields: newFields);
   }
 
+  void updateLocationField(String key, String value) {
+    final newFields = Map<String, dynamic>.from(state.fields);
+    newFields[key] = value;
+    
+    // Cascading resets
+    if (key == 'region') {
+      newFields['city'] = '';
+      newFields['subcity'] = '';
+      newFields['village'] = '';
+    } else if (key == 'city') {
+      newFields['subcity'] = '';
+      newFields['village'] = '';
+    } else if (key == 'subcity') {
+      newFields['village'] = '';
+    }
+    
+    state = state.copyWith(fields: newFields);
+  }
+
   Future<void> pickImages() async {
     final picker = ImagePicker();
     final picked = await picker.pickMultiImage();
@@ -197,18 +225,45 @@ class AddListingNotifier extends StateNotifier<AddListingState> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['pdf', 'png', 'jpg', 'jpeg'],
+      withData: kIsWeb, // Required for web to get bytes
     );
 
-    final path = result?.files.single.path;
-    if (path == null) return;
-    state = state.copyWith(ownershipDocument: XFile(path));
+    if (result == null || result.files.isEmpty) return;
+    
+    if (kIsWeb) {
+      final file = result.files.first;
+      state = state.copyWith(
+        ownershipDocument: XFile.fromData(file.bytes!, name: file.name),
+      );
+    } else {
+      state = state.copyWith(
+        ownershipDocument: XFile(result.files.first.path!),
+      );
+    }
   }
 
-  Future<void> captureIdentity() async {
+  Future<void> setIdentityPhoto(XFile file) async {
+    state = state.copyWith(identityPhoto: file);
+  }
+
+  Future<void> pickIdentityPhoto() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.camera);
-    if (picked != null) {
-      state = state.copyWith(identityPhoto: picked);
+    try {
+      XFile? picked;
+      try {
+        picked = await picker.pickImage(
+          source: ImageSource.camera,
+          preferredCameraDevice: CameraDevice.front,
+        );
+      } catch (e) {
+        picked = await picker.pickImage(source: ImageSource.gallery);
+      }
+      
+      if (picked != null) {
+        state = state.copyWith(identityPhoto: picked);
+      }
+    } catch (e) {
+      debugPrint('Error picking identity photo: $e');
     }
   }
 
@@ -235,6 +290,8 @@ class AddListingNotifier extends StateNotifier<AddListingState> {
         final response = await _aiRepo.predictCarPrice(request);
         state = state.copyWith(
           aiEstimate: response.predictedPrice?.toStringAsFixed(0),
+          reasoning: response.reasoning,
+          similarListings: response.similarListings,
           isPredicting: false,
         );
       } else {
@@ -254,6 +311,8 @@ class AddListingNotifier extends StateNotifier<AddListingState> {
         final response = await _aiRepo.predictHousePrice(request);
         state = state.copyWith(
           aiEstimate: response.predictedPrice?.toStringAsFixed(0),
+          reasoning: response.reasoning,
+          similarListings: response.similarListings,
           isPredicting: false,
         );
       }
@@ -272,8 +331,8 @@ class AddListingNotifier extends StateNotifier<AddListingState> {
         'subcity': formDataMap['subcity'] ?? '',
         'region': formDataMap['region'] ?? '',
         'village': formDataMap['village'] ?? '',
-        'lat': 9.03,
-        'lng': 38.74,
+        'latitude': formDataMap['latitude'] ?? '9.03',
+        'longitude': formDataMap['longitude'] ?? '38.74',
       });
 
       final amenities = formDataMap['amenities'];
@@ -289,34 +348,31 @@ class AddListingNotifier extends StateNotifier<AddListingState> {
       final formData = FormData.fromMap(formDataMap);
 
       for (final file in state.images) {
+        final bytes = await file.readAsBytes();
         formData.files.add(
           MapEntry(
             'images',
-            await MultipartFile.fromFile(file.path, filename: file.name),
+            MultipartFile.fromBytes(bytes, filename: file.name),
           ),
         );
       }
 
       if (state.ownershipDocument != null) {
+        final bytes = await state.ownershipDocument!.readAsBytes();
         formData.files.add(
           MapEntry(
             'ownershipDocument',
-            await MultipartFile.fromFile(
-              state.ownershipDocument!.path,
-              filename: state.ownershipDocument!.name,
-            ),
+            MultipartFile.fromBytes(bytes, filename: state.ownershipDocument!.name),
           ),
         );
       }
 
       if (state.identityPhoto != null) {
+        final bytes = await state.identityPhoto!.readAsBytes();
         formData.files.add(
           MapEntry(
             'ownerPhoto',
-            await MultipartFile.fromFile(
-              state.identityPhoto!.path,
-              filename: state.identityPhoto!.name,
-            ),
+            MultipartFile.fromBytes(bytes, filename: state.identityPhoto!.name),
           ),
         );
       }
@@ -348,3 +404,4 @@ final addListingProvider =
         ref.watch(aiRepositoryProvider),
       );
     });
+

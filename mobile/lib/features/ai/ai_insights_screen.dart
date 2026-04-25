@@ -253,3 +253,4 @@ class _InsightSection extends StatelessWidget {
     return const JsonEncoder.withIndent('  ').convert(value);
   }
 }
+

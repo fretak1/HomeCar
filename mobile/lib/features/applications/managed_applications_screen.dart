@@ -518,7 +518,7 @@ class _ManagedApplicationCard extends ConsumerWidget {
         return;
       }
 
-      context.push(
+      context.go(
         '/inbox/thread/${application.customerId}',
         extra: {
           'name': application.customerName,
@@ -569,3 +569,4 @@ class _ApplicantAvatar extends StatelessWidget {
     );
   }
 }
+

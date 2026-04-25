@@ -94,3 +94,4 @@ final aiInsightsProvider = FutureProvider<dynamic>((ref) async {
   }
   return ref.watch(aiRepositoryProvider).getExplanationData(user.id);
 });
+

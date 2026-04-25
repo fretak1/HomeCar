@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import 'web_auth_widgets.dart';
 
 /// HomeCar logo with icon + wordmark – used on all auth screens
 class AuthLogo extends StatelessWidget {
@@ -7,35 +8,7 @@ class AuthLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppTheme.primary, Color(0xFF7C3AED)],
-            ),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: const Icon(
-            Icons.home_work_outlined,
-            color: Colors.white,
-            size: 28,
-          ),
-        ),
-        const SizedBox(width: 12),
-        const Text(
-          'HomeCar',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            letterSpacing: -0.5,
-          ),
-        ),
-      ],
-    );
+    return const BrandLogo(height: 48);
   }
 }
 
@@ -57,3 +30,4 @@ class AuthFieldLabel extends StatelessWidget {
     );
   }
 }
+

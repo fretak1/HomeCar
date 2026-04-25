@@ -120,3 +120,4 @@ final paymentProvider = StateNotifierProvider<PaymentNotifier, PaymentState>((
 ) {
   return PaymentNotifier(ref.watch(paymentRepositoryProvider));
 });
+

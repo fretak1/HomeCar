@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
-import '../../shared/widgets/glass_card.dart';
 import '../auth/providers/auth_provider.dart';
 import 'models/app_notification_model.dart';
 import 'providers/notification_provider.dart';
@@ -18,8 +17,16 @@ class NotificationsScreen extends ConsumerWidget {
     final user = ref.watch(authProvider).user;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Notifications'),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: AppTheme.foreground,
+        surfaceTintColor: Colors.white,
+        title: const Text(
+          'Notifications',
+          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+        ),
         actions: [
           if ((ref.watch(unreadNotificationsCountProvider)) > 0)
             TextButton(
@@ -30,62 +37,108 @@ class NotificationsScreen extends ConsumerWidget {
                         .markAllAsRead(),
               child: const Text(
                 'Mark all read',
-                style: TextStyle(color: AppTheme.secondary),
+                style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
               ),
             ),
         ],
       ),
-      body: notificationsAsync.when(
-        data: (items) {
-          if (items.isEmpty) {
-            return ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(24),
-              children: const [SizedBox(height: 80), _EmptyNotifications()],
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () => ref.refresh(notificationsProvider.future),
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return _NotificationCard(
-                  notification: item,
-                  onTap: () async {
-                    if (!item.read) {
-                      await ref
-                          .read(notificationActionProvider.notifier)
-                          .markAsRead(item.id);
-                    }
-                    if (!context.mounted) {
-                      return;
-                    }
-                    _openNotificationDestination(
-                      context,
-                      item,
-                      user?.role ?? 'CUSTOMER',
-                    );
-                  },
-                );
-              },
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                bottom: BorderSide(color: AppTheme.border),
+              ),
             ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              error.toString().replaceFirst('Exception: ', ''),
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.redAccent),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Activity',
+                  style: TextStyle(
+                    color: AppTheme.foreground,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    height: 1.1,
+                  ),
+                ),
+                SizedBox(height: 6),
+                Text(
+                  'Stay updated on your listings, messages, and maintenance requests.',
+                  style: TextStyle(
+                    color: AppTheme.mutedForeground,
+                    height: 1.45,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
+          Expanded(
+            child: notificationsAsync.when(
+              data: (items) {
+                if (items.isEmpty) {
+                  return RefreshIndicator(
+                    onRefresh: () => ref.refresh(notificationsProvider.future),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(24),
+                      children: const [SizedBox(height: 56), _EmptyNotifications()],
+                    ),
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () => ref.refresh(notificationsProvider.future),
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      return _NotificationCard(
+                        notification: item,
+                        onTap: () async {
+                          if (!item.read) {
+                            await ref
+                                .read(notificationActionProvider.notifier)
+                                .markAsRead(item.id);
+                          }
+                          if (!context.mounted) return;
+                          _openNotificationDestination(
+                            context,
+                            item,
+                            user?.role ?? 'CUSTOMER',
+                          );
+                        },
+                      );
+                    },
+                  ),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => RefreshIndicator(
+                onRefresh: () => ref.refresh(notificationsProvider.future),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(24),
+                  children: [
+                    const SizedBox(height: 56),
+                    _NotificationStatus(
+                      icon: Icons.error_outline,
+                      title: 'Something went wrong',
+                      message: error.toString().replaceFirst('Exception: ', ''),
+                      actionLabel: 'Retry',
+                      onAction: () => ref.invalidate(notificationsProvider),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -137,10 +190,7 @@ class NotificationsScreen extends ConsumerWidget {
   String? _extractQueryValue(String link, String key) {
     final marker = '$key=';
     final index = link.indexOf(marker);
-    if (index == -1) {
-      return null;
-    }
-
+    if (index == -1) return null;
     final value = link.substring(index + marker.length);
     final ampersandIndex = value.indexOf('&');
     return ampersandIndex == -1 ? value : value.substring(0, ampersandIndex);
@@ -156,102 +206,119 @@ class _NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUnread = !notification.read;
-    return GlassCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: _accentColor(notification.type).withOpacity(0.14),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              _iconForType(notification.type),
-              color: _accentColor(notification.type),
-            ),
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Ink(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.border),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A000000),
+                blurRadius: 16,
+                offset: Offset(0, 8),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: _accentColor(notification.type).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  _iconForType(notification.type),
+                  color: _accentColor(notification.type),
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        notification.title,
-                        style: TextStyle(
-                          fontWeight: isUnread
-                              ? FontWeight.bold
-                              : FontWeight.w600,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            notification.title,
+                            style: TextStyle(
+                              color: AppTheme.foreground,
+                              fontSize: 15,
+                              fontWeight: isUnread ? FontWeight.w900 : FontWeight.w700,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatTime(notification.createdAt),
+                          style: const TextStyle(
+                            color: AppTheme.mutedForeground,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 6),
                     Text(
-                      _formatTime(notification.createdAt),
-                      style: const TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
+                      notification.message,
+                      style: TextStyle(
+                        color: isUnread ? AppTheme.foreground : AppTheme.mutedForeground,
+                        fontSize: 14,
+                        fontWeight: isUnread ? FontWeight.w600 : FontWeight.w500,
+                        height: 1.45,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  notification.message,
-                  style: const TextStyle(color: Colors.white70, height: 1.45),
+              ),
+              if (isUnread) ...[
+                const SizedBox(width: 12),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(
+                    color: AppTheme.primary,
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ],
-            ),
+            ],
           ),
-          if (isUnread) ...[
-            const SizedBox(width: 12),
-            Container(
-              width: 10,
-              height: 10,
-              decoration: const BoxDecoration(
-                color: AppTheme.secondary,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
 
   IconData _iconForType(String type) {
     switch (type.toUpperCase()) {
-      case 'MESSAGE':
-        return Icons.chat_bubble_outline;
-      case 'APPLICATION':
-        return Icons.assignment_outlined;
-      case 'MAINTENANCE':
-        return Icons.build_outlined;
-      case 'LEASE':
-        return Icons.description_outlined;
-      default:
-        return Icons.notifications_outlined;
+      case 'MESSAGE': return Icons.chat_bubble_outline_rounded;
+      case 'APPLICATION': return Icons.assignment_outlined;
+      case 'MAINTENANCE': return Icons.build_outlined;
+      case 'LEASE': return Icons.description_outlined;
+      default: return Icons.notifications_none_rounded;
     }
   }
 
   Color _accentColor(String type) {
     switch (type.toUpperCase()) {
-      case 'MESSAGE':
-        return const Color(0xFF60A5FA);
-      case 'APPLICATION':
-        return const Color(0xFFFBBF24);
-      case 'MAINTENANCE':
-        return const Color(0xFF34D399);
-      case 'LEASE':
-        return const Color(0xFFA78BFA);
-      default:
-        return AppTheme.secondary;
+      case 'MESSAGE': return const Color(0xFF3B82F6);
+      case 'APPLICATION': return const Color(0xFFF59E0B);
+      case 'MAINTENANCE': return const Color(0xFF10B981);
+      case 'LEASE': return const Color(0xFF8B5CF6);
+      default: return AppTheme.primary;
     }
   }
 
@@ -270,29 +337,94 @@ class _EmptyNotifications extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      padding: const EdgeInsets.all(24),
+    return _NotificationStatus(
+      icon: Icons.notifications_none_rounded,
+      title: 'All caught up!',
+      message: 'Updates about leases, maintenance, applications, and messages will show up here.',
+      actionLabel: 'Go to Home',
+      onAction: () => context.go('/home'),
+    );
+  }
+}
+
+class _NotificationStatus extends StatelessWidget {
+  const _NotificationStatus({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A000000),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         children: [
-          Icon(
-            Icons.notifications_none,
-            color: AppTheme.secondary.withOpacity(0.95),
-            size: 42,
+          Container(
+            width: 68,
+            height: 68,
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withOpacity(0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: AppTheme.primary, size: 34),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Text(
-            'No notifications yet',
+            title,
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge,
+            style: const TextStyle(
+              color: AppTheme.foreground,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Updates about leases, maintenance, applications, and messages will show up here.',
+          Text(
+            message,
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70, height: 1.5),
+            style: const TextStyle(
+              color: AppTheme.mutedForeground,
+              height: 1.55,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: onAction,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: Text(actionLabel),
+            ),
           ),
         ],
       ),
     );
   }
 }
+

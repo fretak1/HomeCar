@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/upload_repository.dart';
@@ -32,12 +33,16 @@ class MaintenanceActionNotifier extends StateNotifier<MaintenanceActionState> {
     required String category,
     required String description,
     List<String> imagePaths = const [],
+    List<PlatformFile> attachments = const [],
   }) async {
     state = const MaintenanceActionState(isLoading: true);
     try {
       final uploadedImages = await ref
           .read(uploadRepositoryProvider)
-          .uploadFiles(imagePaths);
+          .uploadSelectedFiles(
+            paths: imagePaths,
+            files: attachments,
+          );
       await ref
           .read(maintenanceRepositoryProvider)
           .createRequest(
@@ -84,3 +89,4 @@ final maintenanceActionProvider =
     ) {
       return MaintenanceActionNotifier(ref);
     });
+

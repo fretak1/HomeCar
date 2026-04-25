@@ -170,7 +170,8 @@ export const getProperties = async (req: any, res: Response) => {
             assetType, listingType, priceMin, priceMax, propertyType,
             beds, baths, region, city, subCity, brand, model,
             yearMin, yearMax, fuelType, transmission, mileageMax,
-            amenities, location, ownerId, listedById, isVerified, sort, limit
+            amenities, location, ownerId, listedById, isVerified, sort, 
+            limit = 20, page = 1
         } = req.query as any;
 
         const where: any = {};
@@ -270,14 +271,17 @@ export const getProperties = async (req: any, res: Response) => {
 
         if (andConditions.length > 0) where.AND = andConditions;
 
-        let orderBy: any = { createdAt: 'desc' };
-        if (sort === 'price-low') orderBy = { price: 'asc' };
-        if (sort === 'price-high') orderBy = { price: 'desc' };
+        let orderBy: any = [{ createdAt: 'desc' }, { id: 'asc' }];
+        if (sort === 'price-low') orderBy = [{ price: 'asc' }, { id: 'asc' }];
+        if (sort === 'price-high') orderBy = [{ price: 'desc' }, { id: 'asc' }];
 
-        const parsedLimit = Number.parseInt(limit as string, 10);
-        const take = Number.isFinite(parsedLimit) && parsedLimit > 0
-            ? Math.min(parsedLimit, 100)
-            : undefined;
+        // Pagination Math
+        const pLimit = Math.min(parseInt(limit as string) || 20, 100);
+        const pPage = Math.max(parseInt(page as string) || 1, 1);
+        const skip = (pPage - 1) * pLimit;
+
+        // Get total count for pagination metadata
+        const total = await prisma.property.count({ where });
 
         const properties = await prisma.property.findMany({
             where,
@@ -288,18 +292,29 @@ export const getProperties = async (req: any, res: Response) => {
                 reviews: { select: { rating: true } }
             },
             orderBy,
-            take
+            skip,
+            take: pLimit
         });
 
-        res.json(properties.map(p => ({
+        const formattedProperties = properties.map(p => ({
             ...p,
             rating: p.reviews.length > 0 ? p.reviews.reduce((a, c) => a + c.rating, 0) / p.reviews.length : 0,
             reviewCount: p.reviews.length
-        })));
+        }));
+
+        res.json({
+            properties: formattedProperties,
+            total,
+            page: pPage,
+            limit: pLimit,
+            totalPages: Math.ceil(total / pLimit)
+        });
     } catch (error: any) {
+        console.error("GetProperties Error:", error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
 
 export const getPropertyById = async (req: any, res: Response) => {
     try {
@@ -341,7 +356,12 @@ export const getPropertiesByOwnerId = async (req: any, res: Response) => {
     try {
         const { ownerId } = req.params;
         const properties = await prisma.property.findMany({
-            where: { ownerId },
+            where: {
+                OR: [
+                    { ownerId },
+                    { listedById: ownerId }
+                ]
+            },
             include: { location: true, images: true },
             orderBy: { createdAt: 'desc' }
         });

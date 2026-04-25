@@ -62,6 +62,9 @@ export interface Property {
 
 interface PropertyState {
     properties: Property[];
+    total: number;
+    page: number;
+    totalPages: number;
     isLoading: boolean;
     error: string | null;
     lastRequestId: number;
@@ -78,19 +81,40 @@ interface PropertyState {
 
 export const usePropertyStore = create<PropertyState>((set, get) => ({
     properties: [],
+    total: 0,
+    page: 1,
+    totalPages: 1,
     isLoading: false,
     error: null,
     lastRequestId: 0,
     fetchProperties: async (filters = {}) => {
         const requestId = (get().lastRequestId || 0) + 1;
-        set({ lastRequestId: requestId, isLoading: true, error: null, properties: [] });
+        set({ lastRequestId: requestId, isLoading: true, error: null });
 
         try {
             const response = await api.get(API_ROUTES.PROPERTIES, { params: filters });
             
             // Only update if this was the latest request
             if (get().lastRequestId === requestId) {
-                set({ properties: response.data, isLoading: false });
+                // Handle both old array response and new paginated object response for safety
+                if (Array.isArray(response.data)) {
+                    set({ 
+                        properties: response.data, 
+                        total: response.data.length,
+                        page: 1,
+                        totalPages: 1,
+                        isLoading: false 
+                    });
+                } else {
+                    const { properties, total, page, totalPages } = response.data;
+                    set({ 
+                        properties, 
+                        total, 
+                        page, 
+                        totalPages, 
+                        isLoading: false 
+                    });
+                }
             } else {
                 console.log(`[Store] Discarding stale fetch response (ID: ${requestId})`);
             }
@@ -100,7 +124,14 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
             }
         }
     },
-    clearProperties: () => set({ properties: [], isLoading: false, error: null }),
+    clearProperties: () => set({ 
+        properties: [], 
+        total: 0, 
+        page: 1, 
+        totalPages: 1, 
+        isLoading: false, 
+        error: null 
+    }),
     fetchPropertiesByOwnerId: async (ownerId: string) => {
         set({ isLoading: true, error: null });
         try {

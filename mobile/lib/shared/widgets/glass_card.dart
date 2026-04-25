@@ -30,7 +30,7 @@ class GlassCard extends StatelessWidget {
               color: AppTheme.cardGlass,
               borderRadius: BorderRadius.circular(borderRadius),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
+                color: Colors.white.withOpacity(0.1),
                 width: 1.5,
               ),
             ),
@@ -41,3 +41,4 @@ class GlassCard extends StatelessWidget {
     );
   }
 }
+

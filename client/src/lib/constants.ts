@@ -24,6 +24,7 @@ export const PropertyTypeIcons = {
     Apartment: Building,
     Condominium: Building,
     Villa: Castle,
+    Studio: Home,
     Compound: Building,
     Building: Building,
     "3*3": Map,

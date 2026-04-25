@@ -71,3 +71,4 @@ class ReviewRepository {
     return fallback;
   }
 }
+

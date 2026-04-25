@@ -33,3 +33,4 @@ class FavoriteRepository {
     await _dio.delete('${ApiPaths.favorites}/$propertyId');
   }
 }
+

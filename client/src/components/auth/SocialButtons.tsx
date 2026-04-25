@@ -29,11 +29,14 @@ export const SocialButtons = () => {
             <Button
                 variant="outline"
                 type="button"
-                className="w-full flex items-center gap-2"
+                className="w-full h-12 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-900 shadow-sm px-4"
                 onClick={handleGoogleSignIn}
             >
-                <FcGoogle className="w-5 h-5" />
-                <span>Continue with Google</span>
+                <span className="w-full grid grid-cols-[20px_1fr_20px] items-center">
+                    <FcGoogle className="w-5 h-5" />
+                    <span className="text-sm font-semibold text-center">Continue with Google</span>
+                    <span aria-hidden />
+                </span>
             </Button>
         </div>
     );

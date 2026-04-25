@@ -28,3 +28,4 @@ class SessionStorage {
 final sessionStorageProvider = Provider<SessionStorage>((ref) {
   return SessionStorage();
 });
+

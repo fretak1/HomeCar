@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/models/user_model.dart';
+import '../../leases/models/lease_model.dart';
+import '../../leases/repositories/lease_repository.dart';
 import '../../listings/models/property_model.dart';
 import '../../listings/repositories/listing_repository.dart';
 import '../repositories/public_profile_repository.dart';
@@ -27,3 +29,9 @@ final publicUserListingsProvider =
 
       return [];
     });
+
+final publicUserLeasesProvider =
+    FutureProvider.family<List<LeaseModel>, String>((ref, userId) async {
+      return ref.watch(leaseRepositoryProvider).getLeasesForUser(userId);
+    });
+

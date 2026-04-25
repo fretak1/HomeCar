@@ -30,7 +30,7 @@ class AgentDashboardScreen extends ConsumerWidget {
 
     return RoleDashboardScaffold(
       title: 'Agent Dashboard',
-      subtitle: 'Manage assigned listings, nurture incoming applications, and initiate leases.',
+      subtitle: 'Manage listings, optimize leads, and track performance',
       headerAction: FilledButton.icon(
         onPressed: user?.verified == true ? () => context.push('/add-listing') : null,
         style: FilledButton.styleFrom(
@@ -81,15 +81,15 @@ class _AgentVerificationBanner extends StatelessWidget {
     final pending = user.isAgentVerificationPending;
     final rejected = user.isAgentVerificationRejected;
     final title = pending
-        ? 'Verification in progress'
+        ? 'Verification In Progress'
         : rejected
-            ? 'Verification rejected'
-            : 'Verification required';
+            ? 'Verification Rejected'
+            : 'Account Verification Required';
     final message = pending
-        ? 'Your documents are under review. Listing management features will unlock once approval is complete.'
+        ? 'Your application is currently being reviewed by our administration team. This usually takes 24-48 hours.'
         : rejected
-            ? 'Your last verification was rejected. Update your documents and resubmit to regain listing access.'
-            : 'Upload your verification documents to unlock property management and leasing tools.';
+            ? 'Your application was not approved: "${user.rejectionReason}". Please update your documents to proceed.'
+            : 'To ensure platform safety, adding properties and other management features are restricted until your identification documents are verified by our team.';
     final accentColor = pending ? const Color(0xFFD97706) : const Color(0xFFDC2626);
 
     return LayoutBuilder(
@@ -102,7 +102,7 @@ class _AgentVerificationBanner extends StatelessWidget {
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: accentColor.withValues(alpha: 0.24),
+              color: accentColor.withOpacity(0.24),
             ),
             boxShadow: const [
               BoxShadow(
@@ -160,7 +160,7 @@ class _AgentVerificationBanner extends StatelessWidget {
                       ),
                       icon:
                           const Icon(Icons.verified_user_outlined, size: 18),
-                      label: Text(pending ? 'Update' : 'Verify now'),
+                      label: Text(pending ? 'Update Verification' : 'Verify Now'),
                     ),
                   ],
                 ),
@@ -194,7 +194,7 @@ class _AgentVerificationBannerBody extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: accentColor.withValues(alpha: 0.12),
+            color: accentColor.withOpacity(0.12),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Icon(
@@ -281,8 +281,8 @@ class _AgentPropertiesTab extends ConsumerWidget {
             ),
             if (properties.isEmpty)
               DashboardEmptyState(
-                title: 'No managed listings',
-                message: 'Assigned or created agent listings will appear here.',
+                title: 'No properties found',
+                message: 'Start by adding your first property listing.',
                 actionLabel: user?.verified == true ? 'Add Property' : 'Verify account',
                 onAction: () => context.push(
                   user?.verified == true ? '/add-listing' : '/agent-verification',
@@ -362,10 +362,8 @@ class _AgentApplicationsTab extends ConsumerWidget {
             ),
             if (applications.isEmpty)
               DashboardEmptyState(
-                title: 'No applications yet',
-                message: 'Incoming customer applications for your managed listings will appear here.',
-                actionLabel: 'Open applications',
-                onAction: () => context.push('/manage-applications'),
+                title: 'No applications found',
+                message: 'When potential customers apply for your properties, they will appear here.',
               )
             else
               for (final application in applications)
@@ -418,7 +416,7 @@ class _AgentLeasesTab extends ConsumerWidget {
           },
           children: [
             DashboardSectionCard(
-              title: 'Initiated leases',
+              title: 'Lease Initiation',
               trailing: TextButton(
                 onPressed: () => context.push('/leases'),
                 child: const Text('Open full page'),
@@ -440,10 +438,7 @@ class _AgentLeasesTab extends ConsumerWidget {
             ),
             if (leases.isEmpty)
               DashboardEmptyState(
-                title: 'No leases created yet',
-                message: 'Accepted applications can be converted into leases from your dashboard.',
-                actionLabel: 'Open leases',
-                onAction: () => context.push('/leases'),
+                title: 'No active leases found',
               )
             else
               for (final lease in leases)
@@ -648,13 +643,13 @@ class _AgentLeaseCard extends StatelessWidget {
       ],
       actions: [
         FilledButton.icon(
-          onPressed: () => context.push('/leases/${lease.id}'),
+          onPressed: () => context.go('/leases/${lease.id}'),
           icon: const Icon(Icons.visibility_outlined, size: 18),
-          label: const Text('View detail'),
+          label: const Text('View Detail'),
         ),
         OutlinedButton.icon(
           onPressed: () =>
-              context.push('/leases/${lease.id}/contract', extra: lease),
+              context.go('/leases/${lease.id}/contract', extra: lease),
           icon: const Icon(Icons.description_outlined, size: 18),
           label: const Text('Contract'),
         ),
@@ -664,3 +659,4 @@ class _AgentLeaseCard extends StatelessWidget {
 }
 
 Future<void> _noopRefresh() async {}
+

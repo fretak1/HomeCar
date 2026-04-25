@@ -45,4 +45,14 @@ class ApiConfig {
         return _normalizeAiBaseUrl('http://localhost:8000');
     }
   }
+
+  static String paymentSuccessReturnUrl(String txRef) {
+    if (kIsWeb) {
+      return Uri.base.replace(fragment: '/checkout/success/$txRef').toString();
+    }
+
+    // Native app payments should return into the Flutter app instead of the web site.
+    return 'homecar:///checkout/success/$txRef';
+  }
 }
+

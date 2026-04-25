@@ -86,3 +86,4 @@ class ApplicationRepository {
     return fallback;
   }
 }
+

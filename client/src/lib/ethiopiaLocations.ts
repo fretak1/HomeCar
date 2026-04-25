@@ -1,39 +1,40 @@
 export const ethiopiaLocations: Record<string, Record<string, Record<string, string[]>>> = {
   "Addis Ababa": {
     "Addis Ababa": {
-      "Addis Ketema": ["Geja Sefer", "Kuchele", "Autobus Tera", "Amanuele", "Sebategna", "Merkato", "Minalesh Tera"],
-      "Akaky Kaliti": ["Saris", "Kaliti", "Gelam", "Tulu Dimtu", "Kora", "Furi", "Tirunesh Beijing", "Alem Bank"],
-      "Arada": ["Piassa", "Arat Kilo", "Sidist Kilo", "Dornie", "Eri Bekentu", "Aware", "Basha Wolde Chilot", "Jan Meda"],
-      "Bole": ["Bole Medhanialem", "Atlas", "CMC", "Ayat", "Gerji", "Goro", "Ruwanda", "Bole Michael", "Olympia", "Bole Bulbula"],
-      "Kirkos": ["Kazanchis", "Gotera", "Meskel Flower", "Bambi", "Kera", "Beklo Bet", "Lancia", "Meshualekiya"],
-      "Kolfe Keranio": ["Atena Tera", "Kolfe", "Repi", "Zenebe Werk", "Ayer Tena", "Keraniyo", "Total", "Jemo 1"],
-      "Lideta": ["Abnet", "Torhailoch", "Geja Sefer", "Lideta Condominium", "Sengatera", "Golagol", "Balcha"],
-      "Nifas Silk-Lafto": ["Jemo", "Lafto", "Lebu", "Mekanisa", "Gofa", "Nifas Silk", "Saris Abo", "Mekanisa Abo", "Jemo 2"],
-      "Yeka": ["Kotebe", "Megenagna", "Signal", "Urael", "Ayat 2", "Kara", "Wesen", "Ferer", "Shola", "Yeka Abado"],
-      "Lemi Kura": ["Ayat Real Estate", "Goro Sefer", "Lemi", "Meri", "Figa", "Arabsa", "Summit", "Tafo"]
+      "Addis Ketema": ["Merkato", "Geja Sefer", "Kuchele", "Autobus Tera", "Amanuele", "Sebategna", "Minalesh Tera", "Wingate", "Addis Ketema 1", "Addis Ketema 2"],
+      "Akaky Kaliti": ["Saris", "Kaliti", "Gelam", "Tulu Dimtu", "Kora", "Furi", "Tirunesh Beijing", "Alem Bank", "Hana Mariam", "Akaki 1", "Kality Center"],
+      "Arada": ["Piassa", "Arat Kilo", "Sidist Kilo", "Dornie", "Eri Bekentu", "Aware", "Basha Wolde Chilot", "Jan Meda", "Somale Tera", "Ras Mekonnen"],
+      "Bole": ["Bole Medhanialem", "Atlas", "CMC", "Ayat", "Gerji", "Goro", "Ruwanda", "Bole Michael", "Olympia", "Bole Bulbula", "22 Mazoria", "Hayahulet", "Summit", "Bole 17/18"],
+      "Kirkos": ["Kazanchis", "Gotera", "Meskel Flower", "Bambi", "Kera", "Beklo Bet", "Lancia", "Meshualekiya", "Riche", "Estifanos", "Mexico Area"],
+      "Kolfe Keranio": ["Atena Tera", "Kolfe", "Repi", "Zenebe Werk", "Ayer Tena", "Keraniyo", "Total", "Jemo 1", "Bethel", "Wingate 2", "Zenebe Werk 1"],
+      "Lideta": ["Abnet", "Torhailoch", "Geja Sefer", "Lideta Condominium", "Sengatera", "Golagol", "Balcha", "Mexico", "Coca Cola", "Lideta Market"],
+      "Nifas Silk-Lafto": ["Jemo", "Lafto", "Lebu", "Mekanisa", "Gofa", "Nifas Silk", "Saris Abo", "Mekanisa Abo", "Jemo 2", "Haile Garment", "Vaso"],
+      "Yeka": ["Kotebe", "Megenagna", "Signal", "Urael", "Ayat 2", "Kara", "Wesen", "Ferer", "Shola", "Yeka Abado", "Kebena", "Beseqa"],
+      "Lemi Kura": ["Ayat Real Estate", "Goro Sefer", "Lemi", "Meri", "Figa", "Arabsa", "Summit 2", "Tafo", "Kotebe Metal", "Kotebe 02"],
+      "Gullele": ["Shiro Meda", "Wingate", "Pastor", "Kechene", "Addisu Gebeya", "Semien Mazoria", "Entoto", "Abinet area", "Gullele 1"]
     }
   },
   "Oromia": {
     "Adama": {
-      "Bole": ["Bole 1", "Bole 2", "Bole 3"],
-      "Dabe": ["Boku", "Migira", "Melka Adama"],
-      "Dembi": ["Dembi Centre", "Dembi 2"],
-      "Lugama": ["Lugama 1", "Biftu"]
+      "Bole": ["Bole 1", "Bole 2", "Bole 3", "Kebele 01"],
+      "Dabe": ["Boku", "Migira", "Melka Adama", "Dabe 1"],
+      "Dembi": ["Dembi Centre", "Dembi 2", "Adama University Area"],
+      "Lugama": ["Lugama 1", "Biftu", "Lugama 2"]
     },
     "Bishoftu": {
-      "Kality": ["Kality Main", "Lake Babogaya Area"],
-      "Caffee": ["Caffee 1", "Caffee 2"],
-      "Kajela": ["Kajela 1", "Lake Kuriftu Area"]
+      "Kality": ["Kality Main", "Lake Babogaya Area", "Hora"],
+      "Caffee": ["Caffee 1", "Caffee 2", "Caffee Central"],
+      "Kajela": ["Kajela 1", "Lake Kuriftu Area", "Kajela 2"]
     },
     "Jimma": {
-      "Jiren": ["Jiren 1", "Jiren 2"],
-      "Hirmata": ["Mercato", "Kochi", "Awetu"],
-      "Mendera": ["Mendera 1", "Saris", "Boso"]
+      "Jiren": ["Jiren 1", "Jiren 2", "Jiren Palace Area"],
+      "Hirmata": ["Mercato", "Kochi", "Awetu", "Hirmata 1"],
+      "Mendera": ["Mendera 1", "Saris", "Boso", "Mendera 2"]
     },
     "Shashamane": {
-      "Abosto": ["Abosto 1", "Bulbula area"],
-      "Awasho": ["Awasho Center"],
-      "Bulla": ["Bulla 1", "Rift Valley Area"]
+      "Abosto": ["Abosto 1", "Bulbula area", "Abosto 2"],
+      "Awasho": ["Awasho Center", "Awasho 1"],
+      "Bulla": ["Bulla 1", "Rift Valley Area", "Bulla 2"]
     },
     "Nekemte": {
       "Bake Jama": ["Bake 1", "Bake 2"],
@@ -43,19 +44,20 @@ export const ethiopiaLocations: Record<string, Record<string, Record<string, str
   },
   "Amhara": {
     "Bahir Dar": {
-      "Fasilo": ["Kebele 1", "Kebele 2", "Fasilo Stadium Area"],
-      "Belay Zeleke": ["Kebele 3", "Kebele 4", "Diaspora Area"],
-      "Gish Abay": ["Kebele 5", "Kebele 6", "Lakeside"]
+      "Fasilo": ["Kebele 1", "Kebele 2", "Fasilo Stadium Area", "Kebele 14"],
+      "Belay Zeleke": ["Kebele 3", "Kebele 4", "Diaspora Area", "Kebele 15"],
+      "Gish Abay": ["Kebele 5", "Kebele 6", "Lakeside", "Kebele 16"],
+      "Sefene Selam": ["Kebele 7", "Kebele 8", "Sefene 1"]
     },
     "Gondar": {
-      "Arada": ["Arada Center", "Maraki", "Kebele 08"],
+      "Arada": ["Arada Center", "Maraki", "Kebele 08", "Kebele 09"],
       "Azezo": ["Azezo 1", "Azezo 2", "Teda", "Tseda"],
-      "Fasil": ["Fasil Ghebbi Area", "Piazza"]
+      "Fasil": ["Fasil Ghebbi Area", "Piazza", "Kebele 01", "Kebele 02"]
     },
     "Dessie": {
-      "Buanbua Wuha": ["Kebele 10", "Kebele 11"],
+      "Buanbua Wuha": ["Kebele 10", "Kebele 11", "Kebele 12"],
       "Segno Gebeya": ["Kebele 1", "Kebele 2", "Robit"],
-      "Arada": ["Arada 1", "Arada 2"]
+      "Arada": ["Arada 1", "Arada 2", "Arada Center"]
     },
     "Kombolcha": {
       "Piassa": ["Piassa 1", "Industrial Park Area"],
@@ -64,27 +66,27 @@ export const ethiopiaLocations: Record<string, Record<string, Record<string, str
   },
   "Tigray": {
     "Mekelle": {
-      "Ayder": ["Ayder 1", "Ayder Hospital Area", "Kebele 14"],
-      "Hawelti": ["Hawelti 1", "Hawelti Monument Area"],
-      "Kedamay Weyane": ["Kedamay Weyane 1", "Romanat"],
-      "Quiha": ["Quiha 1", "Airport Road"],
-      "Hadnet": ["Hadnet 1", "Adi Haki"]
+      "Ayder": ["Ayder 1", "Ayder Hospital Area", "Kebele 14", "Ayder 2"],
+      "Hawelti": ["Hawelti 1", "Hawelti Monument Area", "Kebele 15"],
+      "Kedamay Weyane": ["Kedamay Weyane 1", "Romanat", "Kedamay 2"],
+      "Quiha": ["Quiha 1", "Airport Road", "Quiha 2"],
+      "Hadnet": ["Hadnet 1", "Adi Haki", "Hadnet 2"]
     },
     "Adigrat": {
-      "01 Kebele": ["Central Adigrat"],
-      "02 Kebele": ["Eastern Adigrat"]
+      "01 Kebele": ["Central Adigrat", "Adigrat 1"],
+      "02 Kebele": ["Eastern Adigrat", "Adigrat 2"]
     },
     "Axum": {
-      "01 Kebele": ["St. Mary Area", "Obelisk Area"],
-      "02 Kebele": ["University Area"]
+      "01 Kebele": ["St. Mary Area", "Obelisk Area", "Axum 1"],
+      "02 Kebele": ["University Area", "Axum 2"]
     }
   },
   "Sidama": {
     "Hawassa": {
-      "Tabore": ["Tabor 1", "Piazza", "Tabor 2"],
-      "Hayik Dar": ["Lakeside 1", "Amora Gedel", "Gudumale"],
-      "Menahariya": ["Bus Station Area", "Mobil", "Atote"],
-      "Mehal Ketema": ["Awasho", "Bolesh"]
+      "Tabore": ["Tabor 1", "Piazza", "Tabor 2", "Tabor 3"],
+      "Hayik Dar": ["Lakeside 1", "Amora Gedel", "Gudumale", "Lakeside 2"],
+      "Menahariya": ["Bus Station Area", "Mobil", "Atote", "Menahariya 1"],
+      "Mehal Ketema": ["Awasho", "Bolesh", "Mehal 1"]
     },
     "Yirgalem": {
       "01 Kebele": ["Central Yirgalem"],
@@ -93,8 +95,8 @@ export const ethiopiaLocations: Record<string, Record<string, Record<string, str
   },
   "SNNPR": {
     "Arba Minch": {
-      "Sikela": ["Sikela 1", "Sikela Market", "Sikela 2"],
-      "Shecha": ["Shecha 1", "Limat", "Zuria"]
+      "Sikela": ["Sikela 1", "Sikela Market", "Sikela 2", "Sikela Center"],
+      "Shecha": ["Shecha 1", "Limat", "Zuria", "Shecha 2"]
     },
     "Dilla": {
       "01 Kebele": ["Dilla Center"],
@@ -102,22 +104,22 @@ export const ethiopiaLocations: Record<string, Record<string, Record<string, str
     },
     "Sodo": {
       "Arada": ["Arada 1", "Arada 2"],
-      "Merkato": ["Merkato 1"]
+      "Merkato": ["Merkato 1", "Merkato 2"]
     }
   },
   "Dire Dawa": {
     "Dire Dawa": {
-      "Megala": ["Megala 1", "Megala 2", "Ashewa Meda"],
-      "Aboker": ["Aboker 1", "Taiwan", "Legehare"],
-      "Gende Kore": ["Gende Kore 1", "Sabian"],
-      "Depot": ["Depot 1", "Railway Area"]
+      "Megala": ["Megala 1", "Megala 2", "Ashewa Meda", "Chat Tera"],
+      "Aboker": ["Aboker 1", "Taiwan", "Legehare", "Aboker 2"],
+      "Gende Kore": ["Gende Kore 1", "Sabian", "Gende Kore 2"],
+      "Depot": ["Depot 1", "Railway Area", "Depot 2"]
     }
   },
   "Somali": {
     "Jijiga": {
-      "01 Kebele": ["Taiwan Market Area", "Garab-ase"],
-      "02 Kebele": ["02 Center"],
-      "03 Kebele": ["03 area", "University area"]
+      "01 Kebele": ["Taiwan Market Area", "Garab-ase", "Jijiga 1"],
+      "02 Kebele": ["02 Center", "Jijiga 2"],
+      "03 Kebele": ["03 area", "University area", "Jijiga 3"]
     },
     "Gode": {
       "01 Kebele": ["Center Gode"]
@@ -128,7 +130,7 @@ export const ethiopiaLocations: Record<string, Record<string, Record<string, str
   },
   "Harari": {
     "Harar": {
-      "Jegol": ["Megala", "Berd Bari", "Asmaddin Bari", "Shoa Gate", "Erer Gate"],
+      "Jegol": ["Megala", "Berd Bari", "Asmaddin Bari", "Shoa Gate", "Erer Gate", "Jegol 1"],
       "Aboker": ["Aboker 1", "Aboker 2"],
       "Hundene": ["Hundene 1", "Hundene 2"]
     }

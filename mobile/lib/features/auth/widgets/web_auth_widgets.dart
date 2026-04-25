@@ -35,9 +35,9 @@ class AuthPageScaffold extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              AppTheme.muted.withValues(alpha: 0.3),
+              AppTheme.muted.withOpacity(0.3),
               AppTheme.background,
-              AppTheme.muted.withValues(alpha: 0.2),
+              AppTheme.muted.withOpacity(0.2),
             ],
           ),
         ),
@@ -155,7 +155,7 @@ class AuthFieldLabelLight extends StatelessWidget {
 }
 
 InputDecoration authInputDecoration({
-  required String hintText,
+  String hintText = '',
   Widget? prefixIcon,
   Widget? suffixIcon,
 }) {
@@ -171,7 +171,7 @@ InputDecoration authInputDecoration({
     prefixIconColor: AppTheme.mutedForeground,
     suffixIconColor: AppTheme.mutedForeground,
     filled: true,
-    fillColor: AppTheme.muted.withValues(alpha: 0.2),
+    fillColor: AppTheme.muted.withOpacity(0.2),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(16),
@@ -202,7 +202,7 @@ class AuthSocialDivider extends StatelessWidget {
           child: Text(
             'OR CONTINUE WITH',
             style: TextStyle(
-              color: AppTheme.mutedForeground.withValues(alpha: 0.9),
+              color: AppTheme.mutedForeground.withOpacity(0.9),
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.8,
@@ -254,26 +254,79 @@ class _GoogleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 22,
       height: 22,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.border),
-      ),
-      alignment: Alignment.center,
-      child: const Text(
-        'G',
-        style: TextStyle(
-          color: Color(0xFF4285F4),
-          fontWeight: FontWeight.w800,
-          fontSize: 13,
-        ),
+      child: CustomPaint(
+        painter: _GoogleLogoPainter(),
       ),
     );
   }
 }
+
+class _GoogleLogoPainter extends CustomPainter {
+  static const _pi = 3.14159265358979;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final r = size.width / 2;
+
+    // 1) White background
+    canvas.drawCircle(center, r, Paint()..color = Colors.white);
+
+    // Ring geometry: outer=95%, inner=45% of radius
+    final outerR = r * 0.95;
+    final innerR = r * 0.45;
+    final midR = (outerR + innerR) / 2;
+    final strokeW = outerR - innerR;
+    final arcRect = Rect.fromCircle(center: center, radius: midR);
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeW
+      ..strokeCap = StrokeCap.butt;
+
+    // Angles (Flutter canvas: 0=right/3-o'clock, clockwise positive)
+    // Red  : top-left, from -150° to -30°  (span 120°)
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(arcRect, -5 * _pi / 6, 2 * _pi / 3, false, paint);
+
+    // Blue : top-right/right, from -30° to 15°  (span 45°)
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(arcRect, -_pi / 6, _pi / 4, false, paint);
+
+    // Green: bottom-right, from 15° to 150°  (span 135°)
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(arcRect, _pi / 12, 3 * _pi / 4, false, paint);
+
+    // Yellow: bottom-left, from 150° to 210°  (span 60°)
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(arcRect, 5 * _pi / 6, _pi / 3, false, paint);
+
+    // 2) White gap: carve out the G opening on the right (15° to -30°)
+    //    We punch a white rect over the right-center gap area
+    final gapHalf = strokeW / 2 + 0.5;
+    canvas.drawRect(
+      Rect.fromLTRB(center.dx, center.dy - gapHalf, size.width + 1, center.dy + gapHalf),
+      Paint()..color = Colors.white,
+    );
+
+    // 3) Blue horizontal G-bar from center to right
+    final barHalf = strokeW * 0.38;
+    canvas.drawRect(
+      Rect.fromLTRB(center.dx, center.dy - barHalf, size.width * 0.91, center.dy + barHalf),
+      Paint()
+        ..color = const Color(0xFF4285F4)
+        ..style = PaintingStyle.fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+
 
 class _AuthImagePanel extends StatelessWidget {
   const _AuthImagePanel({
@@ -301,9 +354,9 @@ class _AuthImagePanel extends StatelessWidget {
             imageUrl: imageUrl,
             fit: BoxFit.cover,
             placeholder: (context, url) =>
-                Container(color: AppTheme.muted.withValues(alpha: 0.6)),
+                Container(color: AppTheme.muted.withOpacity(0.6)),
             errorWidget: (context, url, error) =>
-                Container(color: AppTheme.muted.withValues(alpha: 0.6)),
+                Container(color: AppTheme.muted.withOpacity(0.6)),
           ),
           Container(
             decoration: const BoxDecoration(
@@ -339,7 +392,7 @@ class _AuthImagePanel extends StatelessWidget {
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.accent.withValues(alpha: 0.9),
+                        color: AppTheme.accent.withOpacity(0.9),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
@@ -369,7 +422,7 @@ class _AuthImagePanel extends StatelessWidget {
                   Text(
                     description,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: Colors.white.withOpacity(0.9),
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       height: 1.5,
@@ -390,7 +443,7 @@ class _AuthImagePanel extends StatelessWidget {
                         Text(
                           point,
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.92),
+                            color: Colors.white.withOpacity(0.92),
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -408,3 +461,4 @@ class _AuthImagePanel extends StatelessWidget {
     );
   }
 }
+

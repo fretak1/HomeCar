@@ -40,3 +40,4 @@ class InteractionRepository {
     } catch (_) {}
   }
 }
+

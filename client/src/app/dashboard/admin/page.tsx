@@ -179,7 +179,7 @@ function AdminDashboardSkeleton() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AdminDashboardPage() {
-    const { properties: allAssets, fetchProperties, isLoading: propsLoading } = usePropertyStore();
+    const { total: totalProps, properties: allAssets, fetchProperties, isLoading: propsLoading } = usePropertyStore();
     const { fetchApplications } = useApplicationStore();
     const { fetchRequests: fetchMaintenanceRequests } = useMaintenanceStore();
     const { leases, fetchLeases, isLoading: leasesLoading } = useLeaseStore();
@@ -189,7 +189,7 @@ export default function AdminDashboardPage() {
     const isLoading = propsLoading || usersLoading || leasesLoading || txLoading;
 
     useEffect(() => {
-        fetchProperties();
+        fetchProperties({ limit: 100 }); // Get more for dashboard stats
         fetchApplications({ managerId: undefined, customerId: undefined });
         fetchMaintenanceRequests();
         fetchLeases();
@@ -319,10 +319,11 @@ export default function AdminDashboardPage() {
 
     const stats = [
         { label: 'Total Users', value: users.length.toString(), trend: userTrend.trend, isUp: userTrend.isUp, icon: Users, color: 'bg-blue-50 text-blue-600' },
-        { label: 'Total Homes', value: properties.length.toString(), trend: propertyTrend.trend, isUp: propertyTrend.isUp, icon: Building2, color: 'bg-indigo-50 text-indigo-600' },
-        { label: 'Total Cars', value: vehicles.length.toString(), trend: vehicleTrend.trend, isUp: vehicleTrend.isUp, icon: Car, color: 'bg-teal-50 text-teal-600' },
+        { label: 'Total Assets', value: totalProps.toString(), trend: propertyTrend.trend, isUp: propertyTrend.isUp, icon: Building2, color: 'bg-indigo-50 text-indigo-600' },
+        { label: 'Total Transactions', value: transactions.length.toString(), trend: vehicleTrend.trend, isUp: vehicleTrend.isUp, icon: Car, color: 'bg-teal-50 text-teal-600' },
         { label: 'Monthly Revenue', value: `ETB ${(transactions.reduce((sum, t) => sum + t.amount, 0) / 1000).toFixed(1)}K`, trend: transactionTrend.trend, isUp: transactionTrend.isUp, icon: CreditCard, color: 'bg-green-50 text-green-600' },
     ];
+
 
     // Real Data for Charts
     const transactionData = transactions.slice(-6).map(t => ({

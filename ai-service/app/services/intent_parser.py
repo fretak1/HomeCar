@@ -1,7 +1,7 @@
 import os
 import json
 import asyncio
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from groq import Groq
 
 class IntentParser:
@@ -21,41 +21,29 @@ class IntentParser:
            - 'GENERAL': Greetings, platform questions, or non-search statements.
         3. Extract Filters: 
            - 'locations': List of detected cities or neighborhoods (e.g. ["Addis Ababa", "Bole"]).
-           - 'brand': Detected car brand (e.g. "Toyota").
-           - 'prop_type': Detected property type (e.g. "VILLA", "APARTMENT").
-           - 'price_max': Maximum price in ETB (convert 'million' to 1,000,000).
+           - 'entities': A list of objects, each containing:
+                - 'brand': Detected car brand (e.g. "Toyota").
+                - 'model': Detected car model or fragment (e.g. "Vitz", "Tucson").
+                - 'prop_type': Detected property type (e.g. "VILLA", "APARTMENT").
+                - 'bedrooms': Number of bedrooms (integer).
+           - 'price_max': Maximum price in ETB.
            - 'price_min': Minimum price in ETB.
            - 'listing_intent': 'BUY' or 'RENT'.
-           - 'bedrooms': Number of bedrooms as an integer (e.g. 1, 2, 3, 4).
-           - 'query_text': Any remaining relevant keywords (e.g. "luxury", "automatic").
+           - 'query_text': Any remaining relevant keywords. DO NOT include adjectives like "fuel-efficient", "cheap", "nice", "affordable" here as they are unlikely to be in listing titles. Only include concrete features like "automatic", "luxury", "furnished", "pool".
         
-        Example Input: "i am frezer takele live in addis abeba show me tucsons for sale"
+        Example Input: "compare toyota vitz and hyundai tucson for sale in addis"
         Example Output: 
         {
           "intent": "SEARCH_CAR",
           "is_search": true,
           "filters": {
             "locations": ["Addis Ababa"],
-            "brand": "Hyundai",
-            "model_fragment": "Tucson",
-            "bedrooms": null,
-            "price_max": null, 
+            "entities": [
+                {"brand": "Toyota", "model": "Vitz"},
+                {"brand": "Hyundai", "model": "Tucson"}
+            ],
             "listing_intent": "BUY",
-            "query_text": ""
-          }
-        }
-
-        Example Input: "4 bedroom villa in bole for sale"
-        Example Output:
-        {
-          "intent": "SEARCH_HOME",
-          "is_search": true,
-          "filters": {
-            "locations": ["Bole"],
-            "prop_type": "VILLA",
-            "bedrooms": 4,
-            "listing_intent": "BUY",
-            "query_text": ""
+            "query_text": "compare"
           }
         }
         
@@ -63,16 +51,34 @@ class IntentParser:
         Return ONLY valid JSON.
         """
 
-    async def parse(self, message: str) -> Dict[str, Any]:
-        """Convert message to structured intent."""
+    async def parse(self, message: str, history: List[Dict[str, str]] = []) -> Dict[str, Any]:
+        """Convert message to structured intent, considering conversation history for context."""
         try:
+            # Prepare conversation context for the parser
+            parsing_messages = [
+                {"role": "system", "content": self.SYSTEM_PROMPT},
+            ]
+            
+            # Add last 5 messages for context to keep it concise but relevant
+            recent_history = history[-5:] if history else []
+            for h in recent_history:
+                role = h.get('role', 'user')
+                if role == 'model': role = 'assistant'
+                
+                content = h.get('parts', h.get('content', ''))
+                if isinstance(content, list):
+                    content = " ".join([p.get('text', '') if isinstance(p, dict) else str(p) for p in content])
+                
+                if content:
+                    parsing_messages.append({"role": role, "content": content})
+            
+            # Add the current message
+            parsing_messages.append({"role": "user", "content": f"Extract intent from this new message, maintaining context from above if it's a follow-up: {message}"})
+
             completion = await asyncio.to_thread(
                 self.client.chat.completions.create,
                 model=self.model,
-                messages=[
-                    {"role": "system", "content": self.SYSTEM_PROMPT},
-                    {"role": "user", "content": message}
-                ],
+                messages=parsing_messages,
                 response_format={"type": "json_object"},
                 temperature=0.0
             )

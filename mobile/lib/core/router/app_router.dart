@@ -69,16 +69,26 @@ String? _dashboardPathForUser(UserModel? user) {
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  // We use a Listenable to notify GoRouter when the auth state changes
+  // without re-creating the entire GoRouter instance.
+  final authNotifier = ref.watch(authProvider.notifier);
+  
+  // Create a simple Listenable that triggers whenever the auth state changes
+  final listenable = _AuthListenable(ref);
 
   return GoRouter(
     initialLocation: '/home',
+    refreshListenable: listenable,
     redirect: (context, state) {
+      // Access the current state without watching (watching here would still cause re-creation)
+      final authState = ref.read(authProvider);
       if (authState.isLoading) return null;
 
       final isAuthed = authState.isAuthenticated;
       final user = authState.user;
       final location = state.matchedLocation;
+      
+      debugPrint('[ROUTER] Checking redirect for: $location (Authed: $isAuthed)');
 
       const protectedPaths = [
         '/favorites',
@@ -141,12 +151,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         return _dashboardPathForUser(user) ?? '/login';
       }
 
+      if (location == '/listings' || location == '/search') {
+        return '/explore';
+      }
+
       if (location.startsWith('/dashboard/')) {
         final target = _dashboardPathForUser(user);
         if (target == null) {
           return '/login';
         }
-        if (location != target) {
+        final matchesDashboardRoot = location == target;
+        final matchesDashboardChild = location.startsWith('$target/');
+        if (!matchesDashboardRoot && !matchesDashboardChild) {
           return target;
         }
       }
@@ -155,20 +171,52 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/home';
       }
 
+      // If user is authenticated but not verified, force them to the verify-email screen
+      // (Unless they are trying to log out, are on the profile page, or are already on an auth-related path that isn't login/signup)
+      if (isAuthed && !(user?.emailVerified ?? false)) {
+        if (location != '/verify-email' && 
+            !location.startsWith('/logout') && 
+            location != '/profile') {
+          debugPrint('[ROUTER] Force Redirect: User is NOT verified. Moving to /verify-email');
+          return '/verify-email';
+        }
+        return null;
+      }
+
       const authPaths = [
         '/login',
         '/signup',
-        '/verify-email',
         '/forgot-password',
         '/reset-password',
       ];
+      
       if (authPaths.contains(location) && isAuthed) {
+        debugPrint('[ROUTER] Redirecting to /home: User is already authenticated.');
         return '/home';
       }
 
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/listings',
+        redirect: (context, state) => '/explore',
+      ),
+      GoRoute(
+        path: '/properties',
+        redirect: (context, state) => '/explore',
+      ),
+      GoRoute(
+        path: '/search',
+        redirect: (context, state) => '/explore',
+      ),
+      GoRoute(
+        path: '/dashboard',
+        redirect: (context, state) {
+          final authState = ref.read(authProvider);
+          return _dashboardPathForUser(authState.user) ?? '/login';
+        },
+      ),
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
@@ -248,11 +296,30 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/dashboard/customer',
-        builder: (context, state) => const CustomerDashboardScreen(),
+        builder: (context, state) {
+          final tab = state.uri.queryParameters['tab'];
+          return CustomerDashboardScreen(initialTab: tab);
+        },
+      ),
+      GoRoute(
+        path: '/dashboard/owner/lease/create',
+        builder: (context, state) {
+          final extra = state.extra;
+          PropertyApplication? application;
+          if (extra is Map<String, dynamic>) {
+            application = extra['application'] as PropertyApplication?;
+          } else if (extra is PropertyApplication) {
+            application = extra;
+          }
+          return CreateLeaseScreen(application: application);
+        },
       ),
       GoRoute(
         path: '/dashboard/owner',
-        builder: (context, state) => const OwnerDashboardScreen(),
+        builder: (context, state) {
+          final tab = state.uri.queryParameters['tab'];
+          return OwnerDashboardScreen(initialTab: tab);
+        },
       ),
       GoRoute(
         path: '/dashboard/agent',
@@ -333,6 +400,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: '/profile/:userId',
+        builder: (context, state) {
+          final userId = state.pathParameters['userId']!;
+          return PublicProfileScreen(userId: userId);
+        },
+      ),
+      GoRoute(
         path: '/agent-verification',
         builder: (context, state) => const AgentVerificationScreen(),
       ),
@@ -357,16 +431,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/leases/create',
         builder: (context, state) {
           final extra = state.extra;
-          if (extra is! Map<String, dynamic> ||
-              extra['application'] is! PropertyApplication) {
-            return const _RouteErrorScreen(
-              title: 'Lease data missing',
-              message: 'Open lease creation from an accepted application.',
-            );
+          PropertyApplication? application;
+          if (extra is Map<String, dynamic>) {
+            application = extra['application'] as PropertyApplication?;
+          } else if (extra is PropertyApplication) {
+            application = extra;
           }
-          return CreateLeaseScreen(
-            application: extra['application'] as PropertyApplication,
-          );
+          return CreateLeaseScreen(application: application);
         },
       ),
       GoRoute(
@@ -386,6 +457,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             payeeId: extra['payeeId'] as String?,
             payerId: extra['payerId'] as String?,
             subaccountId: extra['subaccountId'] as String?,
+            email: extra['email'] as String?,
             meta: extra['meta'] is Map
                 ? Map<String, dynamic>.from(extra['meta'] as Map)
                 : null,
@@ -397,6 +469,33 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final txRef = state.pathParameters['txRef']!;
           return PaymentSuccessScreen(txRef: txRef);
+        },
+      ),
+      GoRoute(
+        path: '/property/:propertyId',
+        builder: (context, state) {
+          final propertyId = state.pathParameters['propertyId']!;
+          final extra = state.extra;
+          
+          if (extra is PropertyModel) {
+            return PropertyDetailScreen(property: extra);
+          }
+          
+          return Consumer(
+            builder: (context, ref, child) {
+              final propertyAsync = ref.watch(propertyDetailProvider(propertyId));
+              return propertyAsync.when(
+                data: (property) => PropertyDetailScreen(property: property),
+                loading: () => const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                ),
+                error: (error, _) => _RouteErrorScreen(
+                  title: 'Property not found',
+                  message: 'Could not load property details: $error',
+                ),
+              );
+            },
+          );
         },
       ),
       GoRoute(
@@ -495,5 +594,21 @@ class _RouteErrorScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _AuthListenable extends ChangeNotifier {
+  _AuthListenable(Ref ref) {
+    _subscription = ref.listen(authProvider, (_, __) {
+      notifyListeners();
+    });
+  }
+
+  late final ProviderSubscription _subscription;
+
+  @override
+  void dispose() {
+    _subscription.close();
+    super.dispose();
   }
 }

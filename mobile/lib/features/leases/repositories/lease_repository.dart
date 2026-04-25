@@ -15,8 +15,17 @@ class LeaseRepository {
   final Dio _dio;
 
   Future<List<LeaseModel>> getLeases() async {
+    return getLeasesForUser();
+  }
+
+  Future<List<LeaseModel>> getLeasesForUser([String? userId]) async {
     try {
-      final response = await _dio.get(ApiPaths.leases);
+      final response = await _dio.get(
+        ApiPaths.leases,
+        queryParameters: {
+          if (userId != null && userId.trim().isNotEmpty) 'userId': userId,
+        },
+      );
       final data = response.data;
       if (data is! List) {
         return const [];
@@ -112,3 +121,4 @@ class LeaseRepository {
     return fallback;
   }
 }
+

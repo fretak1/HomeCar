@@ -71,3 +71,4 @@ final predictionProvider =
     StateNotifierProvider<PredictionNotifier, PredictionState>((ref) {
       return PredictionNotifier(ref.watch(aiRepositoryProvider));
     });
+

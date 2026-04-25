@@ -146,6 +146,24 @@ class ChatThreadNotifier extends StateNotifier<ChatThreadState> {
     }
   }
 
+  void receiveMessage(ChatMessage message) {
+    // Only append if it belongs to this thread
+    final isFromPartner = message.senderId == partnerId;
+    final isToPartner = message.receiverId == partnerId;
+
+    if (isFromPartner || isToPartner) {
+      // Check if we already have this message (e.g. from optimistic update or race condition)
+      if (state.messages.any((m) => m.id == message.id)) {
+        return;
+      }
+
+      state = state.copyWith(
+        messages: [...state.messages, message],
+        clearError: true,
+      );
+    }
+  }
+
   String _readError(Object error) {
     return error.toString().replaceFirst('Exception: ', '');
   }
@@ -158,3 +176,4 @@ final chatThreadProvider =
     ) {
       return ChatThreadNotifier(ref, partnerId);
     });
+

@@ -53,7 +53,7 @@ function ListingContent() {
     } = useGlobalStore();
     const searchParams = useSearchParams();
 
-    const { properties, isLoading, fetchProperties, clearProperties } = usePropertyStore();
+    const { properties, isLoading, total, page, totalPages, fetchProperties, clearProperties } = usePropertyStore();
     const { currentUser } = useUserStore();
     const { logSearchFilter } = useInteractionStore();
 
@@ -62,6 +62,7 @@ function ListingContent() {
     const [sortBy, setSortBy] = useState("newest");
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [hasSyncedUrl, setHasSyncedUrl] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
 
     const displayLocation = [filters.subCity, filters.city, filters.region].filter(Boolean).filter(v => v !== 'any').join(", ") || "Location";
 
@@ -77,6 +78,7 @@ function ListingContent() {
         }
         
         setFilters(updates);
+        setCurrentPage(1); // Reset to page 1 on filter change
     };
 
     const resetFilters = () => {
@@ -98,9 +100,10 @@ function ListingContent() {
             city: 'any',
             subCity: 'any'
         });
+        setCurrentPage(1);
     };
 
-    // Sync URL parameters to Store on mount
+    // Sync URL parameters to Store on mount ONLY
     useEffect(() => {
         // Clear any stale properties from previous pages (like Home)
         clearProperties();
@@ -111,6 +114,7 @@ function ListingContent() {
         const listingType = searchParams.get('listingType');
         const priceMin = searchParams.get('priceMin');
         const priceMax = searchParams.get('priceMax');
+        const pageParam = searchParams.get('page');
 
         const newFilters: any = {};
 
@@ -121,6 +125,10 @@ function ListingContent() {
         if (city) newFilters.city = city;
         if (location) newFilters.location = location;
         if (listingType) newFilters.listingType = listingType;
+        if (pageParam) {
+            const p = parseInt(pageParam);
+            if (!isNaN(p)) setCurrentPage(p);
+        }
 
         if (priceMin || priceMax) {
             newFilters.priceRange = [
@@ -130,13 +138,32 @@ function ListingContent() {
         }
 
         if (Object.keys(newFilters).length > 0) {
-            setFilters(newFilters);
-        } else {
-            resetFilters();
+            setFilters({ ...filters, ...newFilters });
         }
+        
         setHasSyncedUrl(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchParams, setSearchType]);
+    }, []); // Only run on mount
+
+    // Reset page to 1 whenever filters change (except for the page itself)
+    useEffect(() => {
+        if (hasSyncedUrl) {
+            setCurrentPage(1);
+        }
+    }, [filters, searchType, sortBy, hasSyncedUrl]);
+
+    // Update URL when page changes
+    useEffect(() => {
+        if (hasSyncedUrl && currentPage > 1) {
+            const params = new URLSearchParams(window.location.search);
+            params.set('page', currentPage.toString());
+            window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+        } else if (hasSyncedUrl && currentPage === 1) {
+            const params = new URLSearchParams(window.location.search);
+            params.delete('page');
+            window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+        }
+    }, [currentPage, hasSyncedUrl]);
 
     useEffect(() => {
         let shouldIgnore = false;
@@ -148,7 +175,9 @@ function ListingContent() {
             city: filters.city,
             subCity: filters.subCity,
             location: filters.location,
-            sort: sortBy
+            sort: sortBy,
+            page: currentPage,
+            limit: 20
         };
 
         if (filters.priceRange[0] !== null) params.priceMin = filters.priceRange[0];
@@ -185,7 +214,7 @@ function ListingContent() {
         return () => {
             shouldIgnore = true;
         };
-    }, [filters, searchType, sortBy, fetchProperties, currentUser?.id, logSearchFilter, hasSyncedUrl]);
+    }, [filters, searchType, sortBy, currentPage, fetchProperties, currentUser?.id, logSearchFilter, hasSyncedUrl]);
 
     const items = properties;
 
@@ -205,7 +234,10 @@ function ListingContent() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <Tabs
                     value={searchType}
-                    onValueChange={(v) => setSearchType(v as 'property' | 'vehicle')}
+                    onValueChange={(v) => {
+                        setSearchType(v as 'property' | 'vehicle');
+                        setCurrentPage(1);
+                    }}
                     className="w-full"
                 >
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -291,7 +323,10 @@ function ListingContent() {
 
                             <Select
                                 value={filters.listingType || "any"}
-                                onValueChange={(value) => setFilters({ listingType: value })}
+                                onValueChange={(value) => {
+                                    setFilters({ listingType: value });
+                                    setCurrentPage(1);
+                                }}
                             >
                                 <SelectTrigger className="w-[120px] h-10 rounded-full bg-background border-border">
                                     <SelectValue placeholder="All" />
@@ -324,11 +359,15 @@ function ListingContent() {
                         <div className={showFilters ? 'lg:col-span-3' : 'lg:col-span-4'}>
                             <div className="flex justify-between items-center mb-6 px-1">
                                 <p className="text-muted-foreground font-medium">
-                                    Showing <span className="text-foreground font-bold">{items.length}</span> {searchType}s
+                                    Showing <span className="text-foreground font-bold">{properties.length}</span> of <span className="text-foreground font-bold">{total}</span> {searchType}s
+                                    <span className="ml-2 text-xs">(Page {currentPage} of {totalPages})</span>
                                 </p>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs text-muted-foreground hidden sm:inline">Sort By</span>
-                                    <Select value={sortBy} onValueChange={(v) => setSortBy(v)}>
+                                    <Select value={sortBy} onValueChange={(v) => {
+                                        setSortBy(v);
+                                        setCurrentPage(1);
+                                    }}>
                                         <SelectTrigger className="w-40 h-9 bg-card">
                                             <SelectValue />
                                         </SelectTrigger>
@@ -382,12 +421,49 @@ function ListingContent() {
                                     <Button onClick={resetFilters} variant="default">Reset All Filters</Button>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {searchType === 'property'
-                                        ? items.map(p => <PropertyCard key={p.id} property={p as any} />)
-                                        : items.map(c => <CarCard key={c.id} car={c as any} />)
-                                    }
-                                </div>
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {searchType === 'property'
+                                            ? items.map(p => <PropertyCard key={p.id} property={p as any} />)
+                                            : items.map(c => <CarCard key={c.id} car={c as any} />)
+                                        }
+                                    </div>
+
+                                    {/* Pagination UI */}
+                                    {totalPages > 1 && (
+                                        <div className="mt-12 flex justify-center items-center gap-4">
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => {
+                                                    setCurrentPage(p => Math.max(1, p - 1));
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                }}
+                                                disabled={currentPage === 1}
+                                                className="rounded-xl px-6"
+                                            >
+                                                Previous
+                                            </Button>
+                                            
+                                            <div className="flex items-center gap-2 font-medium">
+                                                <span className="text-muted-foreground text-sm font-bold bg-muted w-8 h-8 rounded-lg flex items-center justify-center text-foreground">{currentPage}</span>
+                                                <span className="text-muted-foreground text-sm">/</span>
+                                                <span className="text-muted-foreground text-sm">{totalPages}</span>
+                                            </div>
+
+                                            <Button
+                                                variant="default"
+                                                onClick={() => {
+                                                    setCurrentPage(p => Math.min(totalPages, p + 1));
+                                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                                }}
+                                                disabled={currentPage === totalPages}
+                                                className="rounded-xl px-6"
+                                            >
+                                                Next
+                                            </Button>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>

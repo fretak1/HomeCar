@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, MapPin, Home, Car, ChartCandlestick } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,10 +32,28 @@ export function SearchBar({ onSearch }: SearchBarProps) {
   const [listingType, setListingType] = useState('rent');
   const [priceRange, setPriceRange] = useState('');
   const [activeTab, setActiveTab] = useState<'property' | 'vehicle'>('property');
+  const isSelectingRef = useRef(false);
 
   const onTabChange = (value: string) => {
     setActiveTab(value as 'property' | 'vehicle');
     setListingType('rent'); // Reset to rent when switching tabs
+  };
+
+  // Synchronously block ghost clicks by intercepting click events at the capture phase
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      isSelectingRef.current = true;
+      setTimeout(() => {
+        isSelectingRef.current = false;
+      }, 400);
+    }
+  };
+
+  const blockGhostClick = (e: React.SyntheticEvent) => {
+    if (isSelectingRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   };
 
   const listingTypes = [
@@ -102,8 +120,17 @@ export function SearchBar({ onSearch }: SearchBarProps) {
           <TabsTrigger value="vehicle">Cars</TabsTrigger>
         </TabsList>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Select value={location} onValueChange={setLocation}>
+        <div 
+          className="grid grid-cols-1 md:grid-cols-4 gap-4 relative"
+          onClickCapture={blockGhostClick}
+          onPointerDownCapture={blockGhostClick}
+          onPointerUpCapture={blockGhostClick}
+          onTouchStartCapture={blockGhostClick}
+          onTouchEndCapture={blockGhostClick}
+          onMouseDownCapture={blockGhostClick}
+          onMouseUpCapture={blockGhostClick}
+        >
+          <Select value={location} onValueChange={setLocation} onOpenChange={handleOpenChange}>
             <SelectTrigger className="h-12 bg-input-background border-border">
               <div className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-muted-foreground" />
@@ -119,7 +146,7 @@ export function SearchBar({ onSearch }: SearchBarProps) {
               ))}
             </SelectContent>
           </Select>
-          <Select value={listingType} onValueChange={setListingType}>
+          <Select value={listingType} onValueChange={setListingType} onOpenChange={handleOpenChange}>
             <SelectTrigger className="h-12 bg-input-background border-border uppercase">
               <CategoryIcon className="h-5 w-5 mr-2 text-muted-foreground" />
               <SelectValue placeholder={categoryPlaceholder} />
@@ -133,7 +160,7 @@ export function SearchBar({ onSearch }: SearchBarProps) {
             </SelectContent>
           </Select>
 
-          <Select value={priceRange} onValueChange={setPriceRange}>
+          <Select value={priceRange} onValueChange={setPriceRange} onOpenChange={handleOpenChange}>
             <SelectTrigger className="h-12 bg-input-background border-border">
               <ChartCandlestick />
               <SelectValue placeholder="Price Range" />

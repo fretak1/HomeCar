@@ -1,34 +1,50 @@
-import os
 import psycopg2
-import pandas as pd
+import os
 from dotenv import load_dotenv
 
-# Absolute path to be safe
-load_dotenv('c:/Users/Fretak/Desktop/HomeCar/server/.env')
-db_url = os.getenv('DATABASE_URL')
-if db_url and db_url.startswith('"') and db_url.endswith('"'):
-    db_url = db_url[1:-1]
+load_dotenv()
 
-def check_status_of_dimensional_types():
-    if not db_url:
-        print("ERROR: DATABASE_URL not found.")
-        return
+def check_price_distribution():
+    conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+    cur = conn.cursor()
     
-    try:
-        conn = psycopg2.connect(db_url)
-        query = "SELECT id, \"propertyType\", status FROM \"Property\" WHERE \"propertyType\" LIKE '%*%'"
-        df = pd.read_sql_query(query, conn)
-        conn.close()
+    query = """
+    SELECT 
+        COUNT(*) as total,
+        MIN(price) as min_price,
+        MAX(price) as max_price,
+        AVG(price) as avg_price
+    FROM "Property"
+    WHERE "assetType" = 'CAR';
+    """
+    
+    cur.execute(query)
+    res = cur.fetchone()
+    print(f"Total Cars: {res[0]}")
+    print(f"Min Price: {res[1]:,.0f} ETB")
+    print(f"Max Price: {res[2]:,.0f} ETB")
+    print(f"Avg Price: {res[3]:,.0f} ETB")
+    
+    # Check count in buckets
+    query_buckets = """
+    SELECT 
+        CASE 
+            WHEN price < 500000 THEN 'Under 500k'
+            WHEN price < 1000000 THEN '500k - 1M'
+            WHEN price < 2000000 THEN '1M - 2M'
+            ELSE 'Over 2M'
+        END as bucket,
+        COUNT(*)
+    FROM "Property"
+    WHERE "assetType" = 'CAR'
+    GROUP BY bucket;
+    """
+    cur.execute(query_buckets)
+    for r in cur.fetchall():
+        print(f"{r[0]}: {r[1]}")
         
-        print("--- Dimensional Properties Status ---")
-        if df.empty:
-            print("No properties with '*' in propertyType found in the WHOLE database.")
-        else:
-            print(df)
-            print("\nStatus Counts for Dimensional Properties:")
-            print(df['status'].value_counts())
-    except Exception as e:
-        print(f"FAILED: {e}")
+    cur.close()
+    conn.close()
 
 if __name__ == "__main__":
-    check_status_of_dimensional_types()
+    check_price_distribution()

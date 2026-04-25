@@ -45,6 +45,10 @@ class UserModel {
   final String? payoutAccountNumber;
   final String? payoutAccountName;
   final String? verificationPhoto;
+  final String? marriageStatus;
+  final int? kids;
+  final String? gender;
+  final String? employmentStatus;
   final DateTime? createdAt;
   final List<UserDocument> documents;
 
@@ -63,6 +67,10 @@ class UserModel {
     this.payoutAccountNumber,
     this.payoutAccountName,
     this.verificationPhoto,
+    this.marriageStatus,
+    this.kids,
+    this.gender,
+    this.employmentStatus,
     this.createdAt,
     this.documents = const [],
   });
@@ -93,6 +101,12 @@ class UserModel {
       payoutAccountNumber: json['payoutAccountNumber']?.toString(),
       payoutAccountName: json['payoutAccountName']?.toString(),
       verificationPhoto: json['verificationPhoto']?.toString(),
+      marriageStatus: json['marriageStatus']?.toString(),
+      kids: json['kids'] is int
+          ? json['kids']
+          : int.tryParse(json['kids']?.toString() ?? ''),
+      gender: json['gender']?.toString(),
+      employmentStatus: json['employmentStatus']?.toString(),
       createdAt: json['createdAt'] is String
           ? DateTime.tryParse(json['createdAt'] as String)?.toLocal()
           : null,
@@ -105,7 +119,9 @@ class UserModel {
   bool get isOwner => role.toUpperCase() == 'OWNER';
   bool get isAgent => role.toUpperCase() == 'AGENT';
   bool get isOwnerOrAgent =>
-      role.toUpperCase() == 'OWNER' || role.toUpperCase() == 'AGENT';
+      role.toUpperCase() == 'OWNER' ||
+      role.toUpperCase() == 'AGENT' ||
+      role.toUpperCase() == 'ADMIN';
   bool get isAgentVerificationPending =>
       isAgent &&
       !verified &&
@@ -128,3 +144,4 @@ class UserModel {
     return null;
   }
 }
+

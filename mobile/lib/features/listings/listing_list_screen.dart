@@ -24,6 +24,7 @@ class ListingListScreen extends ConsumerStatefulWidget {
 }
 
 class _ListingListScreenState extends ConsumerState<ListingListScreen> {
+  final ScrollController _scrollController = ScrollController();
   String _query = '';
   String _sortBy = 'newest';
 
@@ -36,6 +37,12 @@ class _ListingListScreenState extends ConsumerState<ListingListScreen> {
       }
       _logSearch();
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -57,6 +64,7 @@ class _ListingListScreenState extends ConsumerState<ListingListScreen> {
       child: Container(
         color: Colors.white,
         child: SingleChildScrollView(
+          controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             children: [
@@ -73,19 +81,24 @@ class _ListingListScreenState extends ConsumerState<ListingListScreen> {
                         hasLocation: hasLocation,
                         onAssetChanged: (filter) {
                           ref.read(assetFilterProvider.notifier).state = filter;
+                          ref.read(searchPageProvider.notifier).state = 1;
                           _logSearch();
                         },
                         onListingTypeChanged: (value) {
                           ref
                               .read(filterProvider.notifier)
                               .update((state) => state.copyWith(listingType: value));
+                          ref.read(searchPageProvider.notifier).state = 1;
                           _logSearch();
                         },
                         onLocationTap: _openLocationPicker,
                         onFilterTap: () => _openFilters(currentFilter),
+                        showAssetTabs: viewMode == ExploreViewMode.list,
                       ),
                       const SizedBox(height: 18),
                       propertiesAsync.when(
+                        skipLoadingOnRefresh: false,
+                        skipLoadingOnReload: false,
                         data: (properties) {
                           final visibleProperties = _sortProperties(
                             _applyQueryFilter(properties, _query),
@@ -108,22 +121,54 @@ class _ListingListScreenState extends ConsumerState<ListingListScreen> {
                                   setState(() => _query = '');
                                   _logSearch();
                                 },
+                                paginationControls: _PaginationControls(
+                                  hasMore: properties.length == 20,
+                                  onPageChanged: () {
+                                    if (_scrollController.hasClients) {
+                                      _scrollController.animateTo(
+                                        0,
+                                        duration: const Duration(milliseconds: 300),
+                                        curve: Curves.easeOut,
+                                      );
+                                    }
+                                  },
+                                ),
                               ),
                               const SizedBox(height: 12),
                               if (visibleProperties.isEmpty)
                                 _EmptyResults(
                                   onReset: () {
                                     ref.read(filterProvider.notifier).reset();
+                                    ref.read(searchPageProvider.notifier).state = 1;
                                     setState(() => _query = '');
                                     _logSearch();
                                   },
                                 )
                               else if (viewMode == ExploreViewMode.list)
-                                _ListingsList(
-                                  properties: visibleProperties,
-                                  shrinkWrap: true,
-                                  physics:
-                                      const NeverScrollableScrollPhysics(),
+                                Column(
+                                  children: [
+                                    _ListingsList(
+                                      properties: visibleProperties,
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                    ),
+                                    if (properties.isNotEmpty) ...[
+                                      const SizedBox(height: 24),
+                                    ],
+                                    _PaginationControls(
+                                      hasMore: properties.length == 20,
+                                      onPageChanged: () {
+                                        if (_scrollController.hasClients) {
+                                          _scrollController.animateTo(
+                                            0,
+                                            duration: const Duration(milliseconds: 300),
+                                            curve: Curves.easeOut,
+                                          );
+                                        }
+                                      },
+                                    ),
+                                    const SizedBox(height: 32),
+                                  ],
                                 )
                               else
                                 _ExploreMapWorkspace(
@@ -616,6 +661,7 @@ class _ResultsSummary extends StatelessWidget {
     required this.sortBy,
     required this.onSortChanged,
     required this.onReset,
+    this.paginationControls,
   });
 
   final int resultCount;
@@ -624,6 +670,7 @@ class _ResultsSummary extends StatelessWidget {
   final String sortBy;
   final ValueChanged<String> onSortChanged;
   final VoidCallback onReset;
+  final Widget? paginationControls;
 
   @override
   Widget build(BuildContext context) {
@@ -677,11 +724,22 @@ class _ResultsSummary extends StatelessWidget {
               ),
             );
 
+            final titleRow = Row(
+              children: [
+                titleWidget,
+                if (paginationControls != null) ...[
+                  const Spacer(),
+                  paginationControls!,
+                ],
+              ],
+            );
+
             if (constraints.maxWidth >= 760) {
               return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(child: titleWidget),
+                  Expanded(child: titleRow),
+                  const SizedBox(width: 16),
                   sortWidget,
                 ],
               );
@@ -690,7 +748,7 @@ class _ResultsSummary extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                titleWidget,
+                titleRow,
                 const SizedBox(height: 12),
                 Align(alignment: Alignment.centerLeft, child: sortWidget),
               ],
@@ -1461,12 +1519,14 @@ class _ListingControls extends StatelessWidget {
     required this.onListingTypeChanged,
     required this.onLocationTap,
     required this.onFilterTap,
+    this.showAssetTabs = true,
   });
 
   final AssetFilter currentFilter;
   final String listingType;
   final String locationLabel;
   final bool hasLocation;
+  final bool showAssetTabs;
   final ValueChanged<AssetFilter> onAssetChanged;
   final ValueChanged<String> onListingTypeChanged;
   final VoidCallback onLocationTap;
@@ -1476,16 +1536,18 @@ class _ListingControls extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _SegmentedTabs(
-          labels: const ['Homes', 'Cars'],
-          selectedIndex: currentFilter == AssetFilter.cars ? 1 : 0,
-          onChanged: (index) {
-            onAssetChanged(
-              index == 1 ? AssetFilter.cars : AssetFilter.homes,
-            );
-          },
-        ),
-        const SizedBox(height: 14),
+        if (showAssetTabs) ...[
+          _SegmentedTabs(
+            labels: const ['Homes', 'Cars'],
+            selectedIndex: currentFilter == AssetFilter.cars ? 1 : 0,
+            onChanged: (index) {
+              onAssetChanged(
+                index == 1 ? AssetFilter.cars : AssetFilter.homes,
+              );
+            },
+          ),
+          const SizedBox(height: 14),
+        ],
         LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth >= 760;
@@ -1990,9 +2052,9 @@ class _ListingTypePill extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             dropdownColor: Colors.white,
             items: const [
-              DropdownMenuItem(value: 'any', child: Text('All')),
-              DropdownMenuItem(value: 'rent', child: Text('For Rent')),
-              DropdownMenuItem(value: 'buy', child: Text('For Sale')),
+              DropdownMenuItem(value: 'any', child: Text('All', style: TextStyle(color: AppTheme.foreground))),
+              DropdownMenuItem(value: 'rent', child: Text('For Rent', style: TextStyle(color: AppTheme.foreground))),
+              DropdownMenuItem(value: 'buy', child: Text('For Sale', style: TextStyle(color: AppTheme.foreground))),
             ],
             onChanged: (value) {
               if (value != null) {
@@ -2042,9 +2104,9 @@ class _SortPill extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             dropdownColor: Colors.white,
             items: const [
-              DropdownMenuItem(value: 'newest', child: Text('Newest First')),
-              DropdownMenuItem(value: 'price-low', child: Text('Price: Low to High')),
-              DropdownMenuItem(value: 'price-high', child: Text('Price: High to Low')),
+              DropdownMenuItem(value: 'newest', child: Text('Newest First', style: TextStyle(color: AppTheme.foreground))),
+              DropdownMenuItem(value: 'price-low', child: Text('Price: Low to High', style: TextStyle(color: AppTheme.foreground))),
+              DropdownMenuItem(value: 'price-high', child: Text('Price: High to Low', style: TextStyle(color: AppTheme.foreground))),
             ],
             onChanged: (value) {
               if (value != null) {
@@ -2209,4 +2271,60 @@ class _ListingsLoadingState extends StatelessWidget {
   static void _noop() {}
 
   static void _noopString(String _) {}
+}
+
+class _PaginationControls extends ConsumerWidget {
+  const _PaginationControls({required this.hasMore, required this.onPageChanged});
+
+  final bool hasMore;
+  final VoidCallback onPageChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final page = ref.watch(searchPageProvider);
+
+    if (page == 1 && !hasMore) {
+      return const SizedBox.shrink(); // Hide if only 1 page
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          onPressed: page > 1 
+              ? () {
+                  ref.read(searchPageProvider.notifier).state = page - 1;
+                  onPageChanged();
+                }
+              : null,
+          icon: const Icon(Icons.chevron_left),
+          color: AppTheme.primary,
+          disabledColor: AppTheme.border,
+          visualDensity: VisualDensity.compact,
+        ),
+        const SizedBox(width: 4),
+        Text(
+          'Page $page',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+            color: AppTheme.foreground,
+          ),
+        ),
+        const SizedBox(width: 4),
+        IconButton(
+          onPressed: hasMore
+              ? () {
+                  ref.read(searchPageProvider.notifier).state = page + 1;
+                  onPageChanged();
+                }
+              : null,
+          icon: const Icon(Icons.chevron_right),
+          color: AppTheme.primary,
+          disabledColor: AppTheme.border,
+          visualDensity: VisualDensity.compact,
+        ),
+      ],
+    );
+  }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import '../../../core/api/api_config.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/glass_card.dart';
@@ -18,6 +19,7 @@ class CheckoutScreen extends ConsumerStatefulWidget {
   final String? payerId;
   final String? subaccountId;
   final Map<String, dynamic>? meta;
+  final String? email;
 
   const CheckoutScreen({
     required this.amount,
@@ -29,6 +31,7 @@ class CheckoutScreen extends ConsumerStatefulWidget {
     this.payerId,
     this.subaccountId,
     this.meta,
+    this.email,
     Key? key,
   }) : super(key: key);
 
@@ -72,11 +75,11 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     final checkoutUrl = await notifier.initialize({
       'amount': widget.amount,
-      'email': currentUser.email,
+      'email': widget.email ?? currentUser.email,
       'firstName': firstName,
       'lastName': lastName,
       'txRef': txRef,
-      'returnUrl': 'https://homecar.app/checkout/success/$txRef',
+        'returnUrl': ApiConfig.paymentSuccessReturnUrl(txRef),
       'subaccountId': widget.subaccountId,
       'leaseId': widget.leaseId,
       'propertyId': widget.propertyId,
@@ -324,3 +327,4 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     );
   }
 }
+

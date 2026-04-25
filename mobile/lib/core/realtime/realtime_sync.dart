@@ -5,6 +5,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 
 import '../../features/applications/providers/application_provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/chat/models/chat_model.dart';
 import '../../features/chat/providers/chat_provider.dart';
 import '../../features/leases/providers/lease_provider.dart';
 import '../../features/maintenance/providers/maintenance_provider.dart';
@@ -67,12 +68,16 @@ class RealtimeSyncService {
     final senderId = data['senderId']?.toString();
     final receiverId = data['receiverId']?.toString();
 
-    ref.invalidate(chatConversationsProvider);
-
     final partnerId = senderId == currentUserId ? receiverId : senderId;
     if (partnerId != null && partnerId.isNotEmpty) {
-      ref.invalidate(chatThreadProvider(partnerId));
+      // Direct update for the active thread (no loading flicker)
+      ref
+          .read(chatThreadProvider(partnerId).notifier)
+          .receiveMessage(ChatMessage.fromJson(data));
     }
+
+    // Refresh the list in the background
+    ref.refresh(chatConversationsProvider);
   }
 
   void _handleNotification(dynamic payload) {
@@ -94,7 +99,7 @@ class RealtimeSyncService {
         ref.invalidate(maintenanceRequestsProvider);
         break;
       case 'MESSAGE':
-        ref.invalidate(chatConversationsProvider);
+        ref.refresh(chatConversationsProvider);
         break;
     }
   }
@@ -122,3 +127,4 @@ final realtimeSyncProvider = Provider<RealtimeSyncService>((ref) {
   }, fireImmediately: true);
   return service;
 });
+

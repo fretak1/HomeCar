@@ -185,9 +185,14 @@ export const updateCurrentUser = async (req: any, res: Response) => {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
+        console.log('[USER UPDATE] Body:', req.body);
+        console.log('[USER UPDATE] File:', req.file);
+
         const updateData: any = {};
         if (name) updateData.name = name;
-        if (profileImage !== undefined) updateData.profileImage = profileImage;
+        if (profileImage !== undefined && profileImage !== '[object Object]') {
+            updateData.profileImage = profileImage;
+        }
         if (req.file) updateData.profileImage = req.file.path;
         if (email) updateData.email = email;
         if (phoneNumber) updateData.phoneNumber = phoneNumber;

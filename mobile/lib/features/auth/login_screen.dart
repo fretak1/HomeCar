@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/utils/web_utils_stub.dart'
+    if (dart.library.html) '../../core/utils/web_utils_web.dart';
+
+import '../../core/api/dio_client.dart';
+import '../../core/api/api_paths.dart';
 import '../../core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'widgets/web_auth_widgets.dart';
+import 'google_auth_webview.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -68,8 +76,58 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  void _showGoogleUnavailable() {
-    _showMessage('Google sign-in is not configured on mobile yet.');
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _submitting = true);
+    try {
+      final dio = ref.read(dioClientProvider).dio;
+      final callbackPrefix = kIsWeb ? Uri.base.origin : '${DioClient.baseUrl}/';
+      
+      final response = await dio.post(
+        '${ApiPaths.auth}/sign-in/social',
+        data: {
+          'provider': 'google',
+          'callbackURL': callbackPrefix,
+        },
+      );
+      
+      final url = response.data['url'] as String?;
+      if (url == null) throw Exception('Failed to get Google auth URL');
+
+      if (!mounted) return;
+      setState(() => _submitting = false);
+
+      if (kIsWeb) {
+        // On Web, force same-tab navigation
+        navigateToUrl(url);
+      } else if (defaultTargetPlatform == TargetPlatform.windows || defaultTargetPlatform == TargetPlatform.linux || defaultTargetPlatform == TargetPlatform.macOS) {
+        // On Desktop, open in browser
+        final uri = Uri.parse(url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          throw Exception('Could not launch auth URL');
+        }
+      } else {
+        // On Mobile (Android/iOS), use WebView
+        final result = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (context) => GoogleAuthWebviewScreen(
+              authUrl: url,
+              callbackPrefix: callbackPrefix,
+            ),
+          ),
+        );
+
+        if (result == true && mounted) {
+          context.go('/home');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _submitting = false);
+        _showMessage(e.toString().replaceAll('Exception: ', ''));
+      }
+    }
   }
 
   @override
@@ -234,7 +292,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             const SizedBox(height: 24),
             const AuthSocialDivider(),
             const SizedBox(height: 16),
-            ContinueWithGoogleButton(onPressed: _showGoogleUnavailable),
+            ContinueWithGoogleButton(
+              onPressed: _submitting ? () {} : _handleGoogleSignIn,
+            ),
             const SizedBox(height: 20),
             RichText(
               textAlign: TextAlign.center,
@@ -271,3 +331,4 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 }
+

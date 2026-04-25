@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/filter_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/constants/ethiopia_locations.dart';
 
 // ─── Public entry point ───────────────────────────────────────────────────────
 Future<void> showFilterSheet(BuildContext context, String assetType) async {
@@ -29,14 +30,20 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
 
   // ── Property Type options (matching web's PropertyTypeIcons keys) ──────────
   static const _propertyTypes = [
-    ('Villa', Icons.villa_outlined),
-    ('Apartment', Icons.apartment_outlined),
-    ('Commercial', Icons.store_outlined),
-    ('Studio', Icons.single_bed_outlined),
-    ('Penthouse', Icons.roofing_outlined),
+    ('Apartment', Icons.domain_outlined),
     ('Condominium', Icons.domain_outlined),
-    ('Town House', Icons.house_outlined),
-    ('Traditional Home', Icons.cottage_outlined),
+    ('Villa', Icons.castle_outlined),
+    ('Studio', Icons.home_outlined),
+    ('Compound', Icons.domain_outlined),
+    ('Building', Icons.domain_outlined),
+    ('3*3', Icons.map_outlined),
+    ('3*4', Icons.map_outlined),
+    ('4*4', Icons.map_outlined),
+    ('4*5', Icons.map_outlined),
+    ('5*5', Icons.map_outlined),
+    ('5*6', Icons.map_outlined),
+    ('6*6', Icons.map_outlined),
+    ('6*7', Icons.map_outlined),
   ];
 
   // ── Car amenity chips (matching web's amenity filter for cars) ─────────────
@@ -62,12 +69,22 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
   ];
 
   static const _carBrands = [
-    'Toyota',
-    'Mercedes',
-    'Tesla',
-    'Hyundai',
-    'Suzuki',
+    'Audi',
+    'BMW',
+    'Chevrolet',
     'Ford',
+    'Honda',
+    'Hyundai',
+    'Kia',
+    'Lexus',
+    'Mercedes-Benz',
+    'Mitsubishi',
+    'Nissan',
+    'Suzuki',
+    'Tesla',
+    'Toyota',
+    'Volkswagen',
+    'Other'
   ];
   @override
   void initState() {
@@ -139,36 +156,60 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                 children: [
                   // ── Location ──────────────────────────────────────────────
                   _sectionLabel('Location'),
-                  _textField(
+                  _dropdown(
                     'Region',
                     _draft.region,
-                    (v) => setState(() => _draft = _draft.copyWith(region: v)),
+                    [
+                      const ('Any Region', 'any'),
+                      ...ethiopiaLocations.keys.map((e) => (e, e)),
+                    ],
+                    (v) => setState(() => _draft = _draft.copyWith(
+                          region: v,
+                          city: 'any',
+                          subCity: 'any',
+                        )),
                   ),
                   const SizedBox(height: 10),
-                  _textField(
+                  _dropdown(
                     'City',
                     _draft.city,
-                    (v) => setState(() => _draft = _draft.copyWith(city: v)),
+                    [
+                      const ('Any City', 'any'),
+                      ...(ethiopiaLocations[_draft.region] ?? {})
+                          .keys
+                          .map((e) => (e, e)),
+                    ],
+                    (v) => setState(() => _draft = _draft.copyWith(
+                          city: v,
+                          subCity: 'any',
+                        )),
                   ),
                   const SizedBox(height: 10),
-                  _textField(
+                  _dropdown(
                     'Sub City',
                     _draft.subCity,
-                    (v) => setState(() => _draft = _draft.copyWith(subCity: v)),
+                    [
+                      const ('Any Sub City', 'any'),
+                      ...(ethiopiaLocations[_draft.region]?[_draft.city] ?? {})
+                          .keys
+                          .map((e) => (e, e)),
+                    ],
+                    (v) => setState(() => _draft = _draft.copyWith(
+                          subCity: v,
+                        )),
                   ),
 
                   // ── Listing Type ──────────────────────────────────────────
                   _sectionLabel('Listing Type'),
-                  _segmentedRow(
-                    options: const [
+                  _dropdown(
+                    'Any Listing Type',
+                    _draft.listingType,
+                    const [
                       ('Any', 'any'),
                       ('For Rent', 'rent'),
                       ('For Sale', 'buy'),
                     ],
-                    selected: _draft.listingType,
-                    onSelect: (v) => setState(
-                      () => _draft = _draft.copyWith(listingType: v),
-                    ),
+                    (v) => setState(() => _draft = _draft.copyWith(listingType: v)),
                   ),
 
                   // ── Price Range ───────────────────────────────────────────
@@ -182,7 +223,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                           [
                             const ('No Min', 'any'),
                             ...(isHome
-                                    ? [500, 1000, 2500, 5000, 10000, 25000]
+                                    ? [500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000, 50000000]
                                     : [
                                         50000,
                                         100000,
@@ -190,6 +231,10 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                                         500000,
                                         1000000,
                                         2500000,
+                                        5000000,
+                                        10000000,
+                                        25000000,
+                                        50000000,
                                       ])
                                 .map((p) => ('ETB ${_fmt(p)}', p.toString()))
                                 .toList(),
@@ -209,14 +254,17 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                           [
                             const ('No Max', 'any'),
                             ...(isHome
-                                    ? [1000, 2500, 5000, 10000, 25000, 50000]
+                                    ? [1000, 5000, 10000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000, 50000000, 100000000]
                                     : [
                                         100000,
-                                        250000,
                                         500000,
                                         1000000,
                                         2500000,
                                         5000000,
+                                        10000000,
+                                        25000000,
+                                        50000000,
+                                        100000000,
                                       ])
                                 .map((p) => ('ETB ${_fmt(p)}', p.toString()))
                                 .toList(),
@@ -326,7 +374,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                       max: 2025,
                       divisions: 35,
                       activeColor: AppTheme.secondary,
-                      inactiveColor: Colors.white12,
+                      inactiveColor: AppTheme.border,
                       values: RangeValues(
                         _draft.yearMin.toDouble(),
                         _draft.yearMax.toDouble(),
@@ -348,14 +396,14 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                         Text(
                           '${_draft.yearMin}',
                           style: const TextStyle(
-                            color: Colors.white54,
+                            color: AppTheme.mutedForeground,
                             fontSize: 12,
                           ),
                         ),
                         Text(
                           '${_draft.yearMax}',
                           style: const TextStyle(
-                            color: Colors.white54,
+                            color: AppTheme.mutedForeground,
                             fontSize: 12,
                           ),
                         ),
@@ -368,7 +416,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                       max: 200000,
                       divisions: 40,
                       activeColor: AppTheme.secondary,
-                      inactiveColor: Colors.white12,
+                      inactiveColor: AppTheme.border,
                       value: (_draft.mileageMax ?? 200000).clamp(0, 200000),
                       label: _draft.mileageMax != null
                           ? '${_draft.mileageMax!.toInt().toStringAsFixed(0)} km'
@@ -384,7 +432,7 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
                             ? '${_draft.mileageMax!.toInt()} km'
                             : '200,000+ km',
                         style: const TextStyle(
-                          color: Colors.white54,
+                          color: AppTheme.mutedForeground,
                           fontSize: 12,
                         ),
                       ),
@@ -410,30 +458,10 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
     child: Text(
       label.toUpperCase(),
       style: const TextStyle(
-        color: Colors.white54,
+        color: AppTheme.mutedForeground,
         fontSize: 11,
         fontWeight: FontWeight.bold,
         letterSpacing: 1.2,
-      ),
-    ),
-  );
-
-  Widget _textField(
-    String hint,
-    String value,
-    ValueChanged<String> onChanged,
-  ) => TextField(
-    controller: TextEditingController(text: value),
-    onChanged: onChanged,
-    style: const TextStyle(color: Colors.white),
-    decoration: InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: Colors.white38),
-      filled: true,
-      fillColor: Colors.white10,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
       ),
     ),
   );
@@ -443,28 +471,47 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
     String value,
     List<(String, String)> items,
     ValueChanged<String> onChanged,
-  ) => DropdownButtonFormField<String>(
-    initialValue: value,
-    dropdownColor: const Color(0xFF1E293B),
-    style: const TextStyle(color: Colors.white),
-    decoration: InputDecoration(
-      hintText: hint,
-      hintStyle: const TextStyle(color: Colors.white38),
-      filled: true,
-      fillColor: Colors.white10,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
+  ) {
+    final effectiveValue =
+        (value.isNotEmpty && items.any((i) => i.$2 == value)) ? value : 'any';
+
+    return DropdownButtonFormField<String>(
+      value: effectiveValue,
+      dropdownColor: Colors.white,
+      style: const TextStyle(color: AppTheme.foreground),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: AppTheme.mutedForeground),
+        filled: true,
+        fillColor: AppTheme.background,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppTheme.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppTheme.border),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-    ),
-    items: items
-        .map((e) => DropdownMenuItem(value: e.$2, child: Text(e.$1)))
-        .toList(),
-    onChanged: (v) {
-      if (v != null) onChanged(v);
-    },
-  );
+      items: items
+          .map((e) => DropdownMenuItem(
+                value: e.$2,
+                child: Text(
+                  e.$1,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.foreground,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ))
+          .toList(),
+      onChanged: (v) {
+        if (v != null) onChanged(v);
+      },
+    );
+  }
 
   Widget _segmentedRow({
     required List<(String, String)> options,
@@ -478,11 +525,15 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
         label: Text(opt.$1),
         selected: isActive,
         onSelected: (_) => onSelect(opt.$2),
-        selectedColor: AppTheme.primary.withValues(alpha: 0.6),
-        backgroundColor: Colors.white10,
+        selectedColor: AppTheme.primary.withOpacity(0.1),
+        backgroundColor: Colors.transparent,
+        side: BorderSide(
+          color: isActive ? AppTheme.primary : AppTheme.border,
+        ),
         labelStyle: TextStyle(
-          color: isActive ? AppTheme.secondary : Colors.white70,
+          color: isActive ? AppTheme.primary : AppTheme.foreground,
           fontSize: 13,
+          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
         ),
       );
     }).toList(),
@@ -492,9 +543,9 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
     crossAxisCount: 2,
     shrinkWrap: true,
     physics: const NeverScrollableScrollPhysics(),
-    mainAxisSpacing: 8,
-    crossAxisSpacing: 8,
-    childAspectRatio: 3,
+    mainAxisSpacing: 12,
+    crossAxisSpacing: 12,
+    childAspectRatio: 1.5,
     children: _propertyTypes.map((pt) {
       final isActive = _draft.propertyType == pt.$1;
       return GestureDetector(
@@ -503,31 +554,33 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
               _draft = _draft.copyWith(propertyType: isActive ? 'any' : pt.$1),
         ),
         child: Container(
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isActive
-                ? AppTheme.primary.withValues(alpha: 0.3)
-                : Colors.white10,
-            borderRadius: BorderRadius.circular(10),
+                ? AppTheme.primary.withOpacity(0.05)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isActive ? AppTheme.secondary : Colors.transparent,
+              color: isActive ? AppTheme.primary : AppTheme.border,
             ),
           ),
-          child: Row(
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 pt.$2,
-                size: 16,
-                color: isActive ? AppTheme.secondary : Colors.white54,
+                size: 20,
+                color: isActive ? AppTheme.primary : AppTheme.mutedForeground,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(height: 8),
               Flexible(
                 child: Text(
                   pt.$1,
                   overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: isActive ? AppTheme.secondary : Colors.white70,
-                    fontSize: 12,
+                    color: isActive ? AppTheme.primary : AppTheme.mutedForeground,
+                    fontSize: 13,
                     fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
@@ -560,11 +613,11 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: isActive
-                ? AppTheme.primary.withValues(alpha: 0.4)
-                : Colors.white10,
+                ? AppTheme.primary.withOpacity(0.1)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isActive ? AppTheme.secondary : Colors.transparent,
+              color: isActive ? AppTheme.primary : AppTheme.border,
             ),
           ),
           child: Row(
@@ -573,14 +626,14 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
               Icon(
                 a.$2,
                 size: 14,
-                color: isActive ? AppTheme.secondary : Colors.white54,
+                color: isActive ? AppTheme.primary : AppTheme.mutedForeground,
               ),
               const SizedBox(width: 6),
               Text(
                 a.$1,
                 style: TextStyle(
                   fontSize: 12,
-                  color: isActive ? AppTheme.secondary : Colors.white70,
+                  color: isActive ? AppTheme.primary : AppTheme.foreground,
                   fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
@@ -594,9 +647,9 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
   Widget _applyBar() => Container(
     padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
     decoration: BoxDecoration(
-      color: const Color(0xFF1E293B),
+      color: Colors.white,
       border: Border(
-        top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        top: BorderSide(color: AppTheme.border),
       ),
     ),
     child: SizedBox(
@@ -606,6 +659,8 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
         onPressed: _apply,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
@@ -624,3 +679,4 @@ class _FilterSheetState extends ConsumerState<FilterSheet> {
     return n.toString();
   }
 }
+

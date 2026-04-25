@@ -187,7 +187,7 @@ def get_user_map_history(user_id):
     """
     return query_to_dataframe(query, (user_id,))
 
-def get_all_properties(include_images=True):
+def get_all_properties(include_images=True, limit=None):
     """Fetch all properties with location data. Uses chunking to stay stable on remote DBs."""
     image_subquery = ""
     if include_images:
@@ -199,10 +199,17 @@ def get_all_properties(include_images=True):
         ) as images"""
 
     all_dfs = []
-    chunk_size = 1000
+    chunk_size = 1000 if limit is None else min(1000, limit)
     offset = 0
     
     while True:
+        # Use a reasonable limit if none is provided to avoid crashing on massive datasets
+        current_limit = chunk_size
+        if limit is not None:
+            current_limit = min(chunk_size, limit - offset)
+            if current_limit <= 0:
+                break
+
         query = f"""
         SELECT 
             p.*, 
@@ -211,8 +218,8 @@ def get_all_properties(include_images=True):
         FROM "Property" p
         LEFT JOIN "Location" l ON p."locationId" = l.id
         WHERE p.status = 'AVAILABLE'
-        ORDER BY p.id ASC
-        LIMIT {chunk_size} OFFSET {offset}
+        ORDER BY p."createdAt" DESC
+        LIMIT {current_limit} OFFSET {offset}
         """
         
         df_chunk = query_to_dataframe(query)
@@ -220,11 +227,15 @@ def get_all_properties(include_images=True):
             break
             
         all_dfs.append(df_chunk)
-        if len(df_chunk) < chunk_size:
+        if len(df_chunk) < current_limit:
             break
             
-        offset += chunk_size
-        print(f"Ingested {offset} items from DB...")
+        offset += len(df_chunk)
+        if limit is None:
+            print(f"Ingested {offset} items from DB...")
+        
+        if limit is not None and offset >= limit:
+            break
 
     if not all_dfs:
         return pd.DataFrame()

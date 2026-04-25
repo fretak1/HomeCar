@@ -1,5 +1,7 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/glass_card.dart';
@@ -142,32 +144,73 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   }
 }
 
-class _AssistantEmptyState extends StatelessWidget {
+class _AssistantEmptyState extends ConsumerWidget {
   const _AssistantEmptyState();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final suggestions = [
+      'Average price for a 3-bedroom apartment in Bole?',
+      'Find me a Toyota Vitz with low mileage.',
+      'Renting a furnished villa in Old Airport.',
+      'How does the price prediction work?',
+      'Documents needed to verify ownership?',
+    ];
+
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
-        child: GlassCard(
-          padding: const EdgeInsets.all(24),
-          child: const Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.auto_awesome_outlined,
-                size: 40,
-                color: AppTheme.secondary,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GlassCard(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome_outlined,
+                    size: 40,
+                    color: AppTheme.secondary,
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Ask the HomeCar assistant anything about listings, pricing, neighborhoods, vehicles, or your next steps.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70, height: 1.5),
+                  ),
+                ],
               ),
-              SizedBox(height: 14),
-              Text(
-                'Ask the HomeCar assistant anything about listings, pricing, neighborhoods, vehicles, or your next steps.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, height: 1.5),
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'QUICK SUGGESTIONS',
+              style: TextStyle(
+                color: Colors.white38,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: suggestions.map((text) {
+                return ActionChip(
+                  backgroundColor: Colors.white.withOpacity(0.05),
+                  side: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  label: Text(
+                    text,
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  onPressed: () {
+                    ref.read(assistantProvider.notifier).sendMessage(text);
+                  },
+                );
+              }).toList(),
+            ),
+          ],
         ),
       ),
     );
@@ -193,13 +236,90 @@ class _AssistantBubble extends StatelessWidget {
           color: isUser ? AppTheme.primary : Colors.white.withOpacity(0.07),
           borderRadius: BorderRadius.circular(18),
         ),
-        child: Text(
-          message.text,
+        child: _buildMessageContent(context, isUser),
+      ),
+    );
+  }
+
+  Widget _buildMessageContent(BuildContext context, bool isUser) {
+    final text = message.text;
+    final textStyle = TextStyle(
+      color: isUser ? Colors.white : Colors.white70,
+      height: 1.45,
+      fontSize: 15,
+    );
+
+    // Simple regex to find Markdown links: [Text](URL)
+    final linkRegex = RegExp(r'\[([^\]]+)\]\(([^\)]+)\)');
+    final matches = linkRegex.allMatches(text);
+
+    if (matches.isEmpty) {
+      return Text(text, style: textStyle);
+    }
+
+    final List<InlineSpan> spans = [];
+    int lastMatchEnd = 0;
+
+    for (final match in matches) {
+      // Add text before the match
+      if (match.start > lastMatchEnd) {
+        spans.add(TextSpan(text: text.substring(lastMatchEnd, match.start)));
+      }
+
+      final linkText = match.group(1) ?? '';
+      final url = (match.group(2) ?? '').trim();
+
+      spans.add(
+        TextSpan(
+          text: linkText,
           style: TextStyle(
-            color: isUser ? Colors.white : Colors.white70,
-            height: 1.45,
+            color: isUser ? Colors.white : AppTheme.secondary,
+            fontWeight: FontWeight.bold,
+            decoration: TextDecoration.underline,
+            decorationColor: isUser ? Colors.white30 : AppTheme.secondary.withOpacity(0.4),
           ),
+          recognizer: TapGestureRecognizer()
+            ..onTap = () {
+              debugPrint('[ASSISTANT] Link Tapped: $url');
+              String path = url;
+              if (url.startsWith('nav:')) {
+                path = url.replaceFirst('nav:', '');
+              }
+              if (!path.startsWith('/')) {
+                path = '/$path';
+              }
+
+              debugPrint('[ASSISTANT] Navigating to: $path');
+              try {
+                // Check if path is valid or if we need to handle specific logic
+                if (path == '/explore' || path == '/home' || path == '/ai' || path == '/profile' || path == '/inbox') {
+                  context.go(path);
+                } else {
+                  context.push(path);
+                }
+              } catch (e) {
+                debugPrint('[ASSISTANT] Navigation error: $e');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Could not open link: $path')),
+                );
+              }
+            },
         ),
+      );
+
+      lastMatchEnd = match.end;
+    }
+
+    // Add remaining text
+    if (lastMatchEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastMatchEnd)));
+    }
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Text.rich(
+        TextSpan(children: spans),
+        style: textStyle,
       ),
     );
   }
@@ -228,3 +348,4 @@ class _TypingBubble extends StatelessWidget {
     );
   }
 }
+

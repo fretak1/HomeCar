@@ -25,8 +25,8 @@ class AppShell extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final user = authState.user;
     final unreadCount = ref.watch(unreadNotificationsCountProvider);
-    final showPublicNav = user == null || user.isCustomer;
-    final showAskAi = user == null || user.isCustomer;
+    final showBrowseNav = user == null || user.isCustomer || user.isOwner;
+    final showAskAi = (user == null || user.isCustomer) && navigationShell.currentIndex != 3;
 
     return Scaffold(
       appBar: AppBar(
@@ -68,7 +68,12 @@ class AppShell extends ConsumerWidget {
           if (user != null)
             IconButton(
               tooltip: 'Notifications',
-              onPressed: () => context.push('/notifications'),
+              onPressed: () {
+                if (unreadCount > 0) {
+                  ref.read(notificationActionProvider.notifier).markAllAsRead();
+                }
+                context.push('/notifications');
+              },
               icon: Badge(
                 isLabelVisible: unreadCount > 0,
                 backgroundColor: Colors.red,
@@ -149,7 +154,7 @@ class AppShell extends ConsumerWidget {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
                   children: [
-                    if (showPublicNav) ...[
+                    if (showBrowseNav) ...[
                       _DrawerSectionTitle(label: 'Browse'),
                       _DrawerLink(
                         icon: Icons.home_outlined,
@@ -223,32 +228,6 @@ class AppShell extends ConsumerWidget {
                           context.push('/notifications');
                         },
                       ),
-                      _DrawerLink(
-                        icon: Icons.favorite_border,
-                        label: 'Favorites',
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          context.push('/favorites');
-                        },
-                      ),
-                      if (user.isOwnerOrAgent)
-                        _DrawerLink(
-                          icon: Icons.add_home_outlined,
-                          label: 'My Listings',
-                          onTap: () {
-                            Navigator.of(context).pop();
-                            context.push('/my-listings');
-                          },
-                        ),
-                      if (user.isOwnerOrAgent)
-                        _DrawerLink(
-                          icon: Icons.account_balance_outlined,
-                          label: 'Payout Setup',
-                          onTap: () {
-                            Navigator.of(context).pop();
-                            context.push('/payout-setup');
-                          },
-                        ),
                       if (user.isAgent)
                         _DrawerLink(
                           icon: Icons.verified_user_outlined,
@@ -474,7 +453,7 @@ class _DrawerLink extends StatelessWidget {
         selected: selected,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         tileColor: selected
-            ? AppTheme.primary.withValues(alpha: 0.08)
+            ? AppTheme.primary.withOpacity(0.08)
             : Colors.transparent,
         iconColor: foreground,
         textColor: foreground,
@@ -484,7 +463,7 @@ class _DrawerLink extends StatelessWidget {
             : Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.08),
+                  color: AppTheme.primary.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -519,7 +498,7 @@ class _UserAvatar extends StatelessWidget {
     final trimmed = imageUrl?.trim();
     return CircleAvatar(
       radius: 18,
-      backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+      backgroundColor: AppTheme.primary.withOpacity(0.1),
       backgroundImage: trimmed != null && trimmed.isNotEmpty
           ? CachedNetworkImageProvider(trimmed)
           : null,

@@ -250,3 +250,4 @@ class _BrowserDocumentFallback extends StatelessWidget {
     );
   }
 }
+

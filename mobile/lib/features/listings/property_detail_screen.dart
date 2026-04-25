@@ -8,6 +8,9 @@ import '../../core/theme/app_theme.dart';
 import '../applications/models/application_model.dart';
 import '../applications/providers/application_provider.dart';
 import '../auth/providers/auth_provider.dart';
+import 'providers/search_provider.dart';
+import 'widgets/listing_rail.dart';
+import 'providers/listing_provider.dart';
 import '../chat/providers/chat_provider.dart';
 import '../chat/repositories/chat_repository.dart';
 import '../reviews/models/review_model.dart';
@@ -157,572 +160,6 @@ class _PropertyDetailsView extends ConsumerWidget {
       isOwnListing: isOwnListing,
       canPayForListing: canPayForListing,
     );
-
-    return Container(
-      color: const Color(0xFFF8FAFC),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1180),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: AppTheme.border),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x14000000),
-                          blurRadius: 30,
-                          offset: Offset(0, 14),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        SizedBox(
-                          height: 420,
-                          width: double.infinity,
-                          child: ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(28),
-                            ),
-                            child: property.images.isNotEmpty
-                                ? PageView.builder(
-                                    itemCount: property.images.length,
-                                    itemBuilder: (context, index) {
-                                      return CachedNetworkImage(
-                                        imageUrl: property.images[index],
-                                        fit: BoxFit.cover,
-                                        placeholder: (_, __) => Container(
-                                          color: const Color(0xFFF3F4F6),
-                                          child: const Center(
-                                            child: CircularProgressIndicator(
-                                              color: AppTheme.primary,
-                                            ),
-                                          ),
-                                        ),
-                                        errorWidget: (_, __, ___) =>
-                                            const Center(
-                                              child: Icon(
-                                                Icons.broken_image_outlined,
-                                                color: AppTheme
-                                                    .mutedForeground,
-                                              ),
-                                            ),
-                                      );
-                                    },
-                                  )
-                                : Container(
-                                    color: const Color(0xFFF3F4F6),
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.image_not_supported_outlined,
-                                        color: AppTheme.mutedForeground,
-                                        size: 60,
-                                      ),
-                                    ),
-                                  ),
-                          ),
-                        ),
-                        if (property.images.length > 1)
-                          Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: SizedBox(
-                              height: 88,
-                              child: ListView.separated(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: property.images.length,
-                                separatorBuilder: (_, __) =>
-                                    const SizedBox(width: 12),
-                                itemBuilder: (context, index) {
-                                  return ClipRRect(
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: CachedNetworkImage(
-                                      imageUrl: property.images[index],
-                                      width: 110,
-                                      height: 88,
-                                      fit: BoxFit.cover,
-                                      placeholder: (_, __) => Container(
-                                        width: 110,
-                                        height: 88,
-                                        color: const Color(0xFFF3F4F6),
-                                      ),
-                                      errorWidget: (_, __, ___) => Container(
-                                        width: 110,
-                                        height: 88,
-                                        color: const Color(0xFFF3F4F6),
-                                        child: const Icon(
-                                          Icons.image_outlined,
-                                          color: AppTheme.mutedForeground,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1180),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: AppTheme.border),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x14000000),
-                          blurRadius: 28,
-                          offset: Offset(0, 14),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        property.title,
-                        style: const TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w900,
-                          color: AppTheme.foreground,
-                          height: 1.1,
-                        ),
-                      ),
-                    ),
-                    if (property.isVerified)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 8, left: 8),
-                        child: Icon(
-                          Icons.verified,
-                          color: AppTheme.secondary,
-                          size: 28,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '${property.price.toStringAsFixed(0)} ETB',
-                  style: const TextStyle(
-                    color: AppTheme.primary,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 18,
-                      color: AppTheme.primary,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        property.locationLabel,
-                        style: const TextStyle(
-                          color: AppTheme.mutedForeground,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (property.reviewCount > 0) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, size: 18, color: Colors.amber),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${property.rating.toStringAsFixed(1)} (${property.reviewCount} reviews)',
-                        style: const TextStyle(color: AppTheme.mutedForeground),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 20),
-                if (specs.isNotEmpty) ...[
-                  const Text(
-                    'Highlights',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.foreground,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: specs
-                        .map(
-                          (entry) => Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppTheme.border),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  entry.key,
-                                  style: const TextStyle(
-                                    color: AppTheme.mutedForeground,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  entry.value,
-                                  style: const TextStyle(
-                                    color: AppTheme.foreground,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-                if (property.owner != null) ...[
-                  const Text(
-                    'Owner / Lister',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.foreground,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  InkWell(
-                    onTap: property.owner!.id.isEmpty
-                        ? null
-                        : () => context.push(
-                            '/profile/view/${property.owner!.id}',
-                          ),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppTheme.border),
-                      ),
-                      child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor: const Color(0xFFE8F3EF),
-                          backgroundImage: property.owner!.profileImage != null
-                              ? CachedNetworkImageProvider(
-                                  property.owner!.profileImage!,
-                                )
-                              : null,
-                          child: property.owner!.profileImage == null
-                              ? Text(
-                                  property.owner!.name.characters.first
-                                      .toUpperCase(),
-                                )
-                              : null,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                property.owner!.name,
-                                style: const TextStyle(
-                                  color: AppTheme.foreground,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              if (property.owner!.role != null)
-                                Text(
-                                  property.owner!.role!,
-                                  style: const TextStyle(
-                                    color: AppTheme.mutedForeground,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const Icon(
-                          Icons.chevron_right_rounded,
-                          color: AppTheme.mutedForeground,
-                        ),
-                      ],
-                    ),
-                  ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-                const Text(
-                  'Description',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.foreground,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  property.description,
-                  style: const TextStyle(
-                    color: AppTheme.mutedForeground,
-                    height: 1.65,
-                    fontSize: 15,
-                  ),
-                ),
-                if (property.amenities.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  Text(
-                    property.isHome ? 'Amenities' : 'Features',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.foreground,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: property.amenities
-                        .map(
-                          (amenity) => Chip(
-                            label: Text(amenity),
-                            backgroundColor: const Color(0xFFF8FAFC),
-                            side: const BorderSide(color: AppTheme.border),
-                            labelStyle: const TextStyle(
-                              color: AppTheme.foreground,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                const Text(
-                  'Reviews',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.foreground,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                reviewsAsync.when(
-                  data: (reviews) {
-                    ReviewModel? myReview;
-                    if (currentUser != null) {
-                      for (final review in reviews) {
-                        if (review.reviewerId == currentUser.id) {
-                          myReview = review;
-                          break;
-                        }
-                      }
-                    }
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (canReview)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: _ReviewComposerCard(
-                              existingReview: myReview,
-                              isSubmitting: reviewActionState.isLoading,
-                              onSubmit: (rating, comment) async {
-                                await ref
-                                    .read(reviewActionProvider.notifier)
-                                    .submitReview(
-                                      propertyId: property.id,
-                                      rating: rating,
-                                      comment: comment,
-                                    );
-                                ref.invalidate(propertyDetailProvider(property.id));
-                              },
-                            ),
-                          ),
-                        if (reviews.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 20,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: AppTheme.border),
-                            ),
-                            child: const Text(
-                              'No reviews yet. Completed customers can leave one after payment.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: AppTheme.mutedForeground,
-                                height: 1.5,
-                              ),
-                            ),
-                          )
-                        else
-                          Column(
-                            children: reviews
-                                .map(
-                                  (review) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 12),
-                                    child: _ReviewCard(
-                                      review: review,
-                                      canDelete: false,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                      ],
-                    );
-                  },
-                  loading: () => const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  error: (error, _) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      error.toString().replaceFirst('Exception: ', ''),
-                      style: const TextStyle(color: Colors.redAccent),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                if (canApply && applicationsAsync.isLoading) ...[
-                  const LinearProgressIndicator(minHeight: 2),
-                  const SizedBox(height: 16),
-                ],
-                if (existingApplication != null) ...[
-                  _ApplicationStatusBanner(
-                    application: existingApplication,
-                    canPayForListing: canPayForListing,
-                  ),
-                  const SizedBox(height: 16),
-                ],
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: _buildPrimaryAction(
-                      context: context,
-                      ref: ref,
-                      isAuthenticated: currentUser != null,
-                      isCheckingApplications: applicationsAsync.isLoading,
-                      canApply: canApply,
-                      canPayForListing: canPayForListing,
-                      existingApplication: existingApplication,
-                      isSubmitting: submissionState.isSubmitting,
-                    ),
-                    icon: Icon(
-                      canPayForListing
-                          ? Icons.lock_outline
-                          : existingApplication == null
-                          ? Icons.assignment_turned_in_outlined
-                          : Icons.schedule,
-                    ),
-                    label: Text(
-                      _buildPrimaryLabel(
-                        property: property,
-                        existingApplication: existingApplication,
-                        isSubmitting: submissionState.isSubmitting,
-                        canPayForListing: canPayForListing,
-                        isAuthenticated: currentUser != null,
-                        canApply: canApply,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: property.owner == null || isOwnListing
-                        ? null
-                        : () => _openConversation(
-                            context,
-                            ref,
-                            existingApplication != null
-                                ? 'Hello, I am following up on my application for ${property.title}.'
-                                : property.isHome
-                                ? 'Hello, I would like to arrange a viewing for ${property.title}.'
-                                : 'Hello, I would like more details about ${property.title}.',
-                          ),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.primary,
-                      side: const BorderSide(color: AppTheme.primary),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: Text(
-                      existingApplication != null
-                          ? 'Message Owner'
-                          : property.isHome
-                          ? 'Book Viewing'
-                          : 'Ask About Vehicle',
-                      style: const TextStyle(
-                        color: AppTheme.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 40),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ),
-          ),
-        ],
-      ),
-      ),
-    );
   }
 
   String _formatListingTypeLabel(String value) {
@@ -799,6 +236,20 @@ class _PropertyDetailsView extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => context.pop(),
+                  icon: const Icon(Icons.arrow_back, size: 18),
+                  label: const Text(
+                    'Back to Listings',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppTheme.mutedForeground,
+                    padding: EdgeInsets.zero,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final isWide = constraints.maxWidth >= 980;
@@ -892,6 +343,34 @@ class _PropertyDetailsView extends ConsumerWidget {
                         const SizedBox(width: 24),
                         Expanded(child: sideColumn),
                       ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final similarAsync =
+                        ref.watch(similarListingsProvider(property.id));
+                    return similarAsync.when(
+                      data: (items) {
+                        if (items.isEmpty) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 40),
+                          child: SectionBlock(
+                            title: 'Similar',
+                            highlight:
+                                property.isHome ? 'Properties' : 'Vehicles',
+                            subtitle: 'More options like this in our inventory',
+                            gradientBand: true,
+                            child: ListingRail(items: items),
+                          ),
+                        );
+                      },
+                      loading: () => const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
                     );
                   },
                 ),
@@ -1103,35 +582,6 @@ class _PropertyDetailsView extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: property.owner == null || isOwnListing
-                  ? null
-                  : () => _openConversation(
-                      context,
-                      ref,
-                      existingApplication != null
-                          ? 'Hello, I am following up on my application for ${property.title}.'
-                          : property.isHome
-                          ? 'Hello, I would like to arrange a viewing for ${property.title}.'
-                          : 'Hello, I would like more details about ${property.title}.',
-                    ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppTheme.primary,
-                side: const BorderSide(color: AppTheme.primary),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              icon: const Icon(Icons.message_outlined),
-              label: Text(
-                messageLabel,
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
-          ),
           if (property.owner != null) ...[
             const SizedBox(height: 24),
             Container(
@@ -1146,7 +596,7 @@ class _PropertyDetailsView extends ConsumerWidget {
                     children: [
                       CircleAvatar(
                         radius: 24,
-                        backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                        backgroundColor: AppTheme.primary.withOpacity(0.1),
                         backgroundImage: property.owner!.profileImage != null
                             ? CachedNetworkImageProvider(
                                 property.owner!.profileImage!,
@@ -1194,12 +644,12 @@ class _PropertyDetailsView extends ConsumerWidget {
                       onPressed: property.owner!.id.isEmpty
                           ? null
                           : () => context.push(
-                              '/profile/view/${property.owner!.id}',
-                            ),
+                                '/profile/view/${property.owner!.id}',
+                              ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.primary,
                         side: BorderSide(
-                          color: AppTheme.primary.withValues(alpha: 0.2),
+                          color: AppTheme.primary.withOpacity(0.2),
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -1363,59 +813,7 @@ class _PropertyDetailsView extends ConsumerWidget {
                     ],
             ),
           ),
-          if (specs.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            const Text(
-              'Highlights',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.foreground,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: specs
-                  .map(
-                    (entry) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.border),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            entry.key,
-                            style: const TextStyle(
-                              color: AppTheme.mutedForeground,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            entry.value,
-                            style: const TextStyle(
-                              color: AppTheme.foreground,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ],
+          const SizedBox(height: 24),
           const SizedBox(height: 24),
           const Text(
             'Description',
@@ -1633,9 +1031,9 @@ class _PropertyDetailsView extends ConsumerWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: AppTheme.primary.withValues(alpha: 0.25),
+                        color: AppTheme.primary.withOpacity(0.25),
                       ),
-                      color: AppTheme.primary.withValues(alpha: 0.04),
+                      color: AppTheme.primary.withOpacity(0.04),
                     ),
                     child: Text(
                       label,
@@ -2192,10 +1590,10 @@ class _ReviewComposerCardState extends ConsumerState<_ReviewComposerCard> {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.05),
+        color: AppTheme.primary.withOpacity(0.05),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppTheme.primary.withValues(alpha: 0.18),
+          color: AppTheme.primary.withOpacity(0.18),
         ),
       ),
       child: Column(
@@ -2235,9 +1633,9 @@ class _ReviewComposerCardState extends ConsumerState<_ReviewComposerCard> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.72),
+              color: Colors.white.withOpacity(0.72),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
+              border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
             ),
             child: Column(
               children: [
@@ -2443,3 +1841,4 @@ class _ReviewCard extends StatelessWidget {
     );
   }
 }
+

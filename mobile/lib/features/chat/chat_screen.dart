@@ -34,18 +34,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      if (!mounted) {
-        return;
-      }
-      final threadState = ref.read(chatThreadProvider(widget.partnerId));
-      if (threadState.isSending) {
-        return;
-      }
-      ref
-          .read(chatThreadProvider(widget.partnerId).notifier)
-          .loadThread(refreshOnly: true);
-    });
   }
 
   @override
@@ -98,6 +86,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.foreground,
@@ -299,7 +288,7 @@ class _MessageBubble extends StatelessWidget {
                     _formatMessageTime(message.timestamp),
                     style: TextStyle(
                       color: isMine
-                          ? Colors.white.withValues(alpha: 0.75)
+                          ? Colors.white.withOpacity(0.75)
                           : AppTheme.mutedForeground,
                       fontSize: 11,
                     ),
@@ -326,7 +315,7 @@ class _PartnerAvatar extends StatelessWidget {
     final trimmedImage = imageUrl?.trim();
     return CircleAvatar(
       radius: radius,
-      backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+      backgroundColor: AppTheme.primary.withOpacity(0.1),
       backgroundImage: trimmedImage != null && trimmedImage.isNotEmpty
           ? CachedNetworkImageProvider(trimmedImage)
           : null,
@@ -353,7 +342,7 @@ class _EmptyThread extends StatelessWidget {
         children: [
           Icon(
             Icons.forum_outlined,
-            color: AppTheme.primary.withValues(alpha: 0.9),
+            color: AppTheme.primary.withOpacity(0.9),
             size: 42,
           ),
           const SizedBox(height: 16),
@@ -384,3 +373,4 @@ String _formatMessageTime(DateTime timestamp) {
   final minute = timestamp.minute.toString().padLeft(2, '0');
   return '$hour:$minute';
 }
+

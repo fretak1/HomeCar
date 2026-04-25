@@ -25,6 +25,9 @@ final managedApplicationsProvider = FutureProvider<List<PropertyApplication>>((
     return const [];
   }
 
+  // Debug logging
+  print('[MANAGED_APPS] Fetching applications for user: ${user.id} (${user.email})');
+
   return ref
       .watch(applicationRepositoryProvider)
       .getApplications(managerId: user.id);
@@ -155,3 +158,4 @@ final applicationStatusUpdateProvider =
     >((ref) {
       return ApplicationStatusUpdateNotifier(ref);
     });
+

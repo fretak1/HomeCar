@@ -467,3 +467,4 @@ final myListingsProvider = FutureProvider<List<PropertyModel>>((ref) async {
   }
   return repo.getPropertiesByOwnerId(user.id);
 });
+

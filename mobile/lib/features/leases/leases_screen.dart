@@ -163,7 +163,7 @@ class _LeaseCard extends ConsumerWidget {
                   runSpacing: 10,
                   children: [
                     OutlinedButton(
-                      onPressed: () => context.push('/leases/${lease.id}'),
+                      onPressed: () => context.go('/leases/${lease.id}'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.white,
                         side: const BorderSide(color: Colors.white24),
@@ -215,30 +215,6 @@ class _LeaseCard extends ConsumerWidget {
                               ? 'Confirm Cancel'
                               : 'Cancel Lease',
                         ),
-                      ),
-                    if (isCustomerView &&
-                        lease.isActive &&
-                        lease.owner?.chapaSubaccountId != null &&
-                        lease.owner!.chapaSubaccountId!.isNotEmpty)
-                      ElevatedButton(
-                        onPressed: () => context.push(
-                          '/checkout',
-                          extra: {
-                            'amount': lease.recurringAmount ?? lease.totalPrice,
-                            'title': lease.property?.title ?? 'Lease payment',
-                            'category': 'Lease Payment',
-                            'leaseId': lease.id,
-                            'propertyId': lease.propertyId,
-                            'payeeId': lease.ownerId,
-                            'subaccountId': lease.owner!.chapaSubaccountId,
-                            'meta': {
-                              'leaseId': lease.id,
-                              'month':
-                                  '${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().year}',
-                            },
-                          },
-                        ),
-                        child: const Text('Pay Rent'),
                       ),
                   ],
                 ),
@@ -435,3 +411,4 @@ class _EmptyLeases extends StatelessWidget {
 String _formatDate(DateTime date) {
   return '${date.day}/${date.month}/${date.year}';
 }
+

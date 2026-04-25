@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+  
+  /* Remove default web focus ring for all React Native TextInputs */
+  input:focus, textarea:focus {
+    outline: none !important;
+  }
+}

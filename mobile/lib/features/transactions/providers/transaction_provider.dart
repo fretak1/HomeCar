@@ -14,3 +14,4 @@ final transactionsProvider = FutureProvider<List<TransactionModel>>((
 
   return ref.watch(transactionRepositoryProvider).getTransactions();
 });
+

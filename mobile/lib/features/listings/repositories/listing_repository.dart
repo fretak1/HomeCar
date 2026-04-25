@@ -28,6 +28,16 @@ class ListingRepository {
         queryParameters: queryParams,
       );
 
+      // Handle paginated response structure
+      if (response.data is Map<String, dynamic> && response.data.containsKey('properties')) {
+        final List propertiesList = response.data['properties'] as List;
+        final mapped = propertiesList
+            .map((json) => PropertyModel.fromJson(json as Map<String, dynamic>))
+            .toList();
+        return mapped;
+      }
+
+      // Handle direct array response (legacy/fallback)
       if (response.data is! List) return [];
       return (response.data as List)
           .map((json) => PropertyModel.fromJson(json as Map<String, dynamic>))
@@ -94,3 +104,4 @@ class ListingRepository {
     }
   }
 }
+

@@ -25,11 +25,6 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
   @override
   void initState() {
     super.initState();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (mounted) {
-        ref.invalidate(chatConversationsProvider);
-      }
-    });
   }
 
   @override
@@ -349,7 +344,7 @@ class _ConversationAvatar extends StatelessWidget {
     final trimmedImage = imageUrl?.trim();
     return CircleAvatar(
       radius: 26,
-      backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+      backgroundColor: AppTheme.primary.withOpacity(0.1),
       backgroundImage: trimmedImage != null && trimmedImage.isNotEmpty
           ? CachedNetworkImageProvider(trimmedImage)
           : null,
@@ -404,7 +399,7 @@ class _InboxStatus extends StatelessWidget {
             width: 68,
             height: 68,
             decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.1),
+              color: AppTheme.primary.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: AppTheme.primary, size: 34),
@@ -463,3 +458,4 @@ String _formatConversationTime(DateTime timestamp) {
 
   return '${timestamp.day}/${timestamp.month}';
 }
+

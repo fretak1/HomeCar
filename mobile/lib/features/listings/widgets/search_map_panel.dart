@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' hide Path;
+
 import '../../../core/theme/app_theme.dart';
 import '../models/property_model.dart';
 
@@ -70,36 +73,47 @@ class _SearchMapPanelState extends State<SearchMapPanel> {
       child: Stack(
         children: [
           Positioned.fill(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFFF8FAFC), Color(0xFFEFF6FF)],
+            child: FlutterMap(
+              options: MapOptions(
+                initialCenter: LatLng(
+                  widget.properties.firstOrNull?.lat ?? 9.03,
+                  widget.properties.firstOrNull?.lng ?? 38.74,
                 ),
+                initialZoom: 13.0,
+                onPositionChanged: (position, hasGesture) {
+                  if (hasGesture && widget.onMapMoved != null) {
+                    widget.onMapMoved!(
+                      position.center.latitude,
+                      position.center.longitude,
+                      position.zoom,
+                    );
+                  }
+                },
               ),
-              child: InteractiveViewer(
-                transformationController: _transformationController,
-                minScale: 1,
-                maxScale: 3.2,
-                boundaryMargin: const EdgeInsets.all(120),
-                onInteractionEnd: (_) => _reportViewport(),
-                child: SizedBox(
-                  width: 960,
-                  height: 540,
-                  child: Stack(
-                    children: [
-                      const Positioned.fill(child: _MapBackdrop()),
-                      for (final marker in markers)
-                        Positioned(
-                          left: marker.left,
-                          top: marker.top,
-                          child: _MapMarkerChip(marker: marker),
-                        ),
-                    ],
+              children: [
+                TileLayer(
+                  urlTemplate:
+                      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                  userAgentPackageName: 'com.homecar.mobile',
+                ),
+                Opacity(
+                  opacity: 0.7,
+                  child: TileLayer(
+                    urlTemplate:
+                        'https://tiles.stadiamaps.com/tiles/stamen_toner_labels/{z}/{x}/{y}.png',
                   ),
                 ),
-              ),
+                MarkerLayer(
+                  markers: markers.map((markerData) {
+                    return Marker(
+                      point: LatLng(markerData.lat, markerData.lng),
+                      width: 120,
+                      height: 80,
+                      child: _MapMarkerChip(marker: markerData),
+                    );
+                  }).toList(),
+                ),
+              ],
             ),
           ),
           if (approximateCount > 0)
@@ -203,26 +217,12 @@ class _SearchMapPanelState extends State<SearchMapPanel> {
       );
     }
 
-    final latitudes = computed.map((item) => item.lat).toList();
-    final longitudes = computed.map((item) => item.lng).toList();
-
-    final minLat = latitudes.reduce((a, b) => a < b ? a : b);
-    final maxLat = latitudes.reduce((a, b) => a > b ? a : b);
-    final minLng = longitudes.reduce((a, b) => a < b ? a : b);
-    final maxLng = longitudes.reduce((a, b) => a > b ? a : b);
-
-    final latSpan = (maxLat - minLat).abs() < 0.001 ? 0.02 : (maxLat - minLat);
-    final lngSpan = (maxLng - minLng).abs() < 0.001 ? 0.02 : (maxLng - minLng);
-
     return computed.map((item) {
-      final normalizedX = ((item.lng - minLng) / lngSpan).clamp(0.0, 1.0);
-      final normalizedY = ((item.lat - minLat) / latSpan).clamp(0.0, 1.0);
-
       return _MapMarkerData(
         property: item.property,
         approximate: item.approximate,
-        left: 72 + normalizedX * 760,
-        top: 54 + (1 - normalizedY) * 390,
+        lat: item.lat,
+        lng: item.lng,
       );
     }).toList(growable: false);
   }
@@ -248,17 +248,6 @@ class _SearchMapPanelState extends State<SearchMapPanel> {
   }
 }
 
-class _MapBackdrop extends StatelessWidget {
-  const _MapBackdrop();
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _MapBackdropPainter(),
-      child: Container(),
-    );
-  }
-}
 
 class _MapMarkerChip extends StatelessWidget {
   const _MapMarkerChip({required this.marker});
@@ -473,12 +462,12 @@ class _MapMarkerData {
   const _MapMarkerData({
     required this.property,
     required this.approximate,
-    required this.left,
-    required this.top,
+    required this.lat,
+    required this.lng,
   });
 
   final PropertyModel property;
   final bool approximate;
-  final double left;
-  final double top;
+  final double lat;
+  final double lng;
 }

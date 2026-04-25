@@ -11,6 +11,8 @@ final exploreViewModeProvider = StateProvider<ExploreViewMode>((ref) {
   return ExploreViewMode.list;
 });
 
+final searchPageProvider = StateProvider<int>((ref) => 1);
+
 final exploreResultsProvider = FutureProvider.autoDispose<List<PropertyModel>>((
   ref,
 ) async {
@@ -23,6 +25,9 @@ final exploreResultsProvider = FutureProvider.autoDispose<List<PropertyModel>>((
   if (assetFilter == AssetFilter.cars) assetQuery = 'CAR';
 
   final apiParams = filters.toApiParams(assetQuery ?? 'HOME');
+  apiParams['page'] = ref.watch(searchPageProvider);
+  apiParams['limit'] = 20;
+
   if (assetQuery != null) {
     apiParams['assetType'] = assetQuery;
   }
@@ -32,3 +37,4 @@ final exploreResultsProvider = FutureProvider.autoDispose<List<PropertyModel>>((
     extraParams: apiParams,
   );
 });
+

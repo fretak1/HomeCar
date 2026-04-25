@@ -1,6 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../admin/repositories/admin_repository.dart';
+import '../../listings/models/property_model.dart';
+import '../../listings/repositories/listing_repository.dart';
 import '../models/lease_model.dart';
 import '../repositories/lease_repository.dart';
 
@@ -120,3 +124,15 @@ final leaseActionProvider =
     StateNotifierProvider<LeaseActionNotifier, LeaseActionState>((ref) {
       return LeaseActionNotifier(ref);
     });
+
+final usersProvider = FutureProvider<List<UserModel>>((ref) async {
+  return ref.watch(adminRepositoryProvider).getUsers();
+});
+
+final ownerPropertiesProvider = FutureProvider<List<PropertyModel>>((ref) async {
+  final user = ref.watch(authProvider).user;
+  if (user == null) return [];
+  final all = await ref.watch(listingRepositoryProvider).getProperties();
+  return all.where((p) => p.owner?.id == user.id).toList();
+});
+

@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { X, Send, Bot, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,11 +17,46 @@ import { useGlobalStore } from '@/store/useGlobalStore';
 // Define the API URL for the AI service
 const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8000';
 
+const normalizeChatHref = (rawHref: string): { isInternal: boolean; href: string } => {
+    const trimmed = rawHref.trim();
+    const sanitized = trimmed.replace(/[)\],.!?;:]+$/, '');
+    const toInternalPath = (value: string) => {
+        const withoutProtocolLike = value.replace(/^[a-zA-Z]+:\/*/, '');
+        const noLeadingSlash = withoutProtocolLike.replace(/^\/+/, '');
+        return `/${noLeadingSlash}`;
+    };
+
+    if (sanitized.startsWith('nav:')) {
+        const path = sanitized.replace(/^nav:\/*/, '');
+        return { isInternal: true, href: toInternalPath(path) };
+    }
+
+    if (sanitized.startsWith('/')) {
+        return { isInternal: true, href: `/${sanitized.replace(/^\/+/, '')}` };
+    }
+
+    if (/^(property|listings|search|dashboard|chat|profile)\b/i.test(sanitized)) {
+        return { isInternal: true, href: toInternalPath(sanitized) };
+    }
+
+    try {
+        const parsed = new URL(sanitized);
+        if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
+            const normalizedPath = `/${parsed.pathname.replace(/^\/+/, '')}`;
+            return { isInternal: true, href: `${normalizedPath}${parsed.search}${parsed.hash}` };
+        }
+        return { isInternal: false, href: sanitized };
+    } catch {
+        return { isInternal: false, href: sanitized };
+    }
+};
+
 export function AIChatWidget() {
     const { isAIChatOpen: isOpen, setAIChatOpen: setIsOpen } = useGlobalStore();
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [messages, setMessages] = useState<any[]>([]);
+    const router = useRouter();
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Auto-scroll to bottom of chat
@@ -119,20 +156,40 @@ export function AIChatWidget() {
                                                 <div
                                                     className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${message.role === 'user'
                                                         ? 'bg-primary text-primary-foreground rounded-br-none'
-                                                        : 'bg-muted text-foreground rounded-bl-none'
+                                                        : 'bg-muted text-foreground rounded-bl-none shadow-sm'
                                                         }`}
                                                 >
                                                     <ReactMarkdown
                                                         components={{
-                                                            a: ({ node, ...props }) => (
-                                                                <a 
-                                                                    {...props} 
-                                                                    className="text-[#065f46] hover:text-[#047857] hover:underline font-bold transition-all cursor-pointer inline-block pointer-events-auto" 
-                                                                    target="_blank" 
-                                                                    rel="noopener noreferrer"
-                                                                    style={{ textDecoration: 'underline' }}
-                                                                />
-                                                            ),
+                                                            a: ({ node, ...props }) => {
+                                                                const href = props.href || '';
+                                                                const normalized = normalizeChatHref(href);
+                                                                
+                                                                if (normalized.isInternal) {
+                                                                    const cleanPath = normalized.href;
+                                                                    
+                                                                    return (
+                                                                        <Link 
+                                                                            href={cleanPath}
+                                                                            className="text-primary hover:underline font-bold transition-all cursor-pointer inline-block"
+                                                                            onClick={(e) => {
+                                                                                e.preventDefault();
+                                                                                router.push(cleanPath);
+                                                                            }}
+                                                                        >
+                                                                            {props.children}
+                                                                        </Link>
+                                                                    );
+                                                                }
+
+                                                                return (
+                                                                    <a 
+                                                                        {...props} 
+                                                                        href={normalized.href}
+                                                                        className="text-primary hover:underline font-bold transition-all cursor-pointer inline-block" 
+                                                                    />
+                                                                );
+                                                            },
                                                             p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
                                                             ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
                                                             li: ({ children }) => <li className="mb-1">{children}</li>,

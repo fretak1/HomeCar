@@ -14,3 +14,4 @@ class ApiPaths {
   static const String reviews = '/api/reviews';
   static const String interactions = '/api/interactions';
 }
+

@@ -36,7 +36,7 @@ export default function Home() {
     const [carsApi, setCarsApi] = useState<CarouselApi>();
 
     useEffect(() => {
-        fetchProperties();
+        fetchProperties({ limit: 50 });
     }, [fetchProperties]);
 
     // Auto-slide logic for Homes
@@ -105,41 +105,35 @@ export default function Home() {
 
                     {/* Feature Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-24">
-                        <Card className="border-white/20 bg-white/10 backdrop-blur-md shadow-2xl hover:bg-white/20 transition-all duration-300 group">
-                            <CardContent className="p-8 text-center">
-                                <div className="bg-primary p-4 rounded-2xl w-fit mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform">
-                                    <Bot />
-                                </div>
-                                <h3 className="mb-3 text-xl font-bold text-white tracking-tight">AI-Powered Matching</h3>
-                                <p className="text-white/70 text-sm leading-relaxed font-medium">
-                                    Smart recommendations based on your preferences and behavior
-                                </p>
-                            </CardContent>
-                        </Card>
+                        <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md shadow-2xl hover:bg-white/20 transition-all duration-300 group p-8 text-center">
+                            <div className="bg-primary p-4 rounded-2xl w-fit mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform">
+                                <Bot className="h-8 w-8 text-white" />
+                            </div>
+                            <h3 className="mb-3 text-xl font-bold text-white tracking-tight">AI-Powered Matching</h3>
+                            <p className="text-white/70 text-sm leading-relaxed font-medium">
+                                Smart recommendations based on your preferences and behavior
+                            </p>
+                        </div>
 
-                        <Card className="border-white/20 bg-white/10 backdrop-blur-md shadow-2xl hover:bg-white/20 transition-all duration-300 group">
-                            <CardContent className="p-8 text-center">
-                                <div className="bg-secondary p-4 rounded-2xl w-fit mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform">
-                                    <TrendingUp className="h-8 w-8 text-white" />
-                                </div>
-                                <h3 className="mb-3 text-xl font-bold text-white tracking-tight">Price Predictions</h3>
-                                <p className="text-white/70 text-sm leading-relaxed font-medium">
-                                    AI-powered price predictions to help you make informed decisions
-                                </p>
-                            </CardContent>
-                        </Card>
+                        <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md shadow-2xl hover:bg-white/20 transition-all duration-300 group p-8 text-center">
+                            <div className="bg-secondary p-4 rounded-2xl w-fit mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform">
+                                <TrendingUp className="h-8 w-8 text-white" />
+                            </div>
+                            <h3 className="mb-3 text-xl font-bold text-white tracking-tight">Price Predictions</h3>
+                            <p className="text-white/70 text-sm leading-relaxed font-medium">
+                                AI-powered price predictions to help you make informed decisions
+                            </p>
+                        </div>
 
-                        <Card className="border-white/20 bg-white/10 backdrop-blur-md shadow-2xl hover:bg-white/20 transition-all duration-300 group">
-                            <CardContent className="p-8 text-center">
-                                <div className="bg-accent p-4 rounded-2xl w-fit mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform">
-                                    <Shield className="h-8 w-8 text-white" />
-                                </div>
-                                <h3 className="mb-3 text-xl font-bold text-white tracking-tight">Verified Listings</h3>
-                                <p className="text-white/70 text-sm leading-relaxed font-medium">
-                                    Safe and verified listings with trusted owners and agents
-                                </p>
-                            </CardContent>
-                        </Card>
+                        <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md shadow-2xl hover:bg-white/20 transition-all duration-300 group p-8 text-center">
+                            <div className="bg-accent p-4 rounded-2xl w-fit mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform">
+                                <Shield className="h-8 w-8 text-white" />
+                            </div>
+                            <h3 className="mb-3 text-xl font-bold text-white tracking-tight">Verified Listings</h3>
+                            <p className="text-white/70 text-sm leading-relaxed font-medium">
+                                Safe and verified listings with trusted owners and agents
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>

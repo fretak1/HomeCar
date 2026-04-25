@@ -1,27 +1,31 @@
+import psycopg2
 import os
-import pandas as pd
-from app.database import get_all_properties
 from dotenv import load_dotenv
 
-load_dotenv('server/.env')
+load_dotenv()
 
-def check_real_pool_matches():
-    print("Fetching real property pool from DB...")
-    pool = get_all_properties(include_images=False)
+def list_all_cheap_cars():
+    conn = psycopg2.connect(os.getenv("DATABASE_URL"))
+    cur = conn.cursor()
     
-    if pool.empty:
-        print("ERROR: Property pool is empty.")
-        return
-
-    test_types = ["5*5", "3*4", "Apartment", "Villa"]
+    query = """
+    SELECT p.id, p.title, p.price, p.brand, p.model, p.year, l.city, l.region
+    FROM "Property" p
+    LEFT JOIN "Location" l ON p."locationId" = l.id
+    WHERE p."assetType" = 'CAR' AND p.price < 500000
+    ORDER BY p.price ASC;
+    """
     
-    print(f"\nScanning pool ({len(pool)} total properties)...")
-    for t_type in test_types:
-        target = t_type.lower().strip()
-        matches = pool[pool['propertyType'].str.lower().str.strip() == target]
-        print(f"Type: '{t_type}' -> Found {len(matches)} matches.")
-        if not matches.empty:
-            print(f"   Example match IDs: {matches['id'].head(3).tolist()}")
+    cur.execute(query)
+    rows = cur.fetchall()
+    
+    print(f"Found {len(rows)} cars under 500,000 ETB:")
+    for r in rows:
+        loc = f"{r[6]}, {r[7]}" if r[6] else "NULL LOCATION"
+        print(f"ID: {r[0]} | {r[1]} | {r[2]:,.0f} ETB | {loc}")
+        
+    cur.close()
+    conn.close()
 
 if __name__ == "__main__":
-    check_real_pool_matches()
+    list_all_cheap_cars()

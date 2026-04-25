@@ -11,16 +11,13 @@ const Listings = () => {
     const { user } = useAuth();
     const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
     const { viewMode, filters, searchType, isFiltersFullOpen } = useGlobalStore();
-    const { properties, isLoading, error } = usePropertyStore();
+    const { properties, isLoading, error, page, totalPages, fetchProperties } = usePropertyStore();
 
-    const handleFavoriteToggle = async (itemId: string) => {
-        if (!user?.id) return;
-
-        if (isFavorite(itemId)) {
-            await removeFavorite(itemId);
-        } else {
-            await addFavorite(itemId);
-        }
+    const handlePageChange = (newPage: number) => {
+        // Find the current search params and update the page
+        // In a real app, this should probably come from the parent or a search context
+        // But for now we can trigger a re-fetch with the current filters and new page
+        fetchProperties({ ...filters, page: newPage, assetType: searchType === 'property' ? 'HOME' : 'CAR' });
     };
 
     if (isLoading) {
@@ -55,21 +52,49 @@ const Listings = () => {
                         <p className="text-sm text-gray-400 mt-1">Try adjusting your filters</p>
                     </div>
                 ) : (
-                    <div className={
-                        `grid gap-6 ${isFiltersFullOpen ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2'}` 
-                    }>
-                        {items.map((item: any) => (
-                            <Card
-                                key={item.id}
-                                item={item}
-                                type={searchType === 'property' ? 'property' : 'vehicle'}
-                                isFavorite={isFavorite(item.id)}
-                                onFavoriteToggle={() => handleFavoriteToggle(item.id)}
-                                showFavoriteButton={!!user}
-                                itemLink={`/${searchType === 'property' ? 'property' : 'vehicle'}/${item.id}`}
-                            />
-                        ))}
-                    </div>
+                    <>
+                        <div className={
+                            `grid gap-6 ${isFiltersFullOpen ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2'}` 
+                        }>
+                            {items.map((item: any) => (
+                                <Card
+                                    key={item.id}
+                                    item={item}
+                                    type={searchType === 'property' ? 'property' : 'vehicle'}
+                                    isFavorite={isFavorite(item.id)}
+                                    onFavoriteToggle={() => handleFavoriteToggle(item.id)}
+                                    showFavoriteButton={!!user}
+                                    itemLink={`/${searchType === 'property' ? 'property' : 'vehicle'}/${item.id}`}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                            <div className="mt-8 mb-4 flex items-center justify-center gap-4">
+                                <button
+                                    onClick={() => handlePageChange(page - 1)}
+                                    disabled={page === 1}
+                                    className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                                >
+                                    Previous
+                                </button>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-muted-foreground">Page</span>
+                                    <span className="text-sm font-bold text-foreground">{page}</span>
+                                    <span className="text-sm text-muted-foreground">of</span>
+                                    <span className="text-sm font-bold text-foreground">{totalPages}</span>
+                                </div>
+                                <button
+                                    onClick={() => handlePageChange(page + 1)}
+                                    disabled={page === totalPages}
+                                    className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>

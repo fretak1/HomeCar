@@ -584,3 +584,4 @@ class _PredictionScreenState extends ConsumerState<PredictionScreen> {
     );
   }
 }
+

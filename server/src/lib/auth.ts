@@ -3,11 +3,12 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import prisma from "./prisma.js";
 import { sendEmail } from "../services/emailService.js";
 import { emailOTP } from "better-auth/plugins";
+import { expo } from "@better-auth/expo";
 
 const configuredTrustedOrigins = (
     process.env.BETTER_AUTH_TRUSTED_ORIGINS ||
     process.env.CORS_ORIGINS ||
-    "http://localhost:3000,http://127.0.0.1:3000,http://10.0.2.2:3000"
+    "http://localhost:3000,http://127.0.0.1:3000,http://10.0.2.2:3000,homecar://,exp://"
 )
     .split(",")
     .map(origin => origin.trim())
@@ -40,6 +41,13 @@ export const auth = betterAuth({
                 type: "string",
                 defaultValue: "CUSTOMER",
             },
+            phoneNumber: { type: "string" },
+            gender: { type: "string" },
+            marriageStatus: { type: "string" },
+            kids: { type: "string" },
+            employmentStatus: { type: "string" },
+            profileImage: { type: "string" },
+            verified: { type: "boolean", defaultValue: false },
             verificationPhoto: {
                 type: "string",
             },
@@ -50,9 +58,6 @@ export const auth = betterAuth({
             role: {
                 type: "string",
                 defaultValue: "CUSTOMER",
-            },
-            verificationPhoto: {
-                type: "string",
             },
         },
     },
@@ -78,6 +83,7 @@ export const auth = betterAuth({
         autoSignInAfterVerification: true,
     },
     plugins: [
+        expo(),
         emailOTP({
             overrideDefaultEmailVerification: true,
             async sendVerificationOTP({ email, otp, type }) {

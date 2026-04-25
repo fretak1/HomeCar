@@ -37,6 +37,8 @@ class RoleDashboardScaffold extends StatelessWidget {
     required this.tabs,
     this.headerAction,
     this.topContent,
+    this.usePillTabs = false,
+    this.initialTabIndex = 0,
   });
 
   final String title;
@@ -45,6 +47,8 @@ class RoleDashboardScaffold extends StatelessWidget {
   final List<DashboardTabItem> tabs;
   final Widget? headerAction;
   final Widget? topContent;
+  final bool usePillTabs;
+  final int initialTabIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +58,7 @@ class RoleDashboardScaffold extends StatelessWidget {
 
         return DefaultTabController(
           length: tabs.length,
+          initialIndex: initialTabIndex,
           child: Scaffold(
             backgroundColor: const Color(0xFFF8FAFC),
             body: SafeArea(
@@ -152,40 +157,92 @@ class RoleDashboardScaffold extends StatelessWidget {
                     ),
                   Container(
                     width: double.infinity,
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: AppTheme.border),
-                      ),
-                    ),
+                    decoration: usePillTabs
+                        ? null
+                        : const BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(color: AppTheme.border),
+                            ),
+                          ),
                     child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isPhone ? 8 : 16,
+                      padding: EdgeInsets.fromLTRB(
+                        isPhone ? 8 : 16,
+                        usePillTabs ? 4 : 0,
+                        isPhone ? 8 : 16,
+                        usePillTabs ? 12 : 0,
                       ),
                       child: Align(
                         alignment: Alignment.centerLeft,
-                        child: TabBar(
-                          isScrollable: true,
-                          labelColor: AppTheme.foreground,
-                          unselectedLabelColor: AppTheme.mutedForeground,
-                          indicatorColor: AppTheme.primary,
-                          indicatorWeight: 3,
-                          dividerColor: Colors.transparent,
-                          tabAlignment: TabAlignment.start,
-                          labelPadding: EdgeInsets.symmetric(
-                            horizontal: isPhone ? 10 : 16,
-                          ),
-                          labelStyle: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: isPhone ? 13 : 14,
-                          ),
-                          unselectedLabelStyle: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: isPhone ? 13 : 14,
-                          ),
-                          tabs: [
-                            for (final tab in tabs) Tab(text: tab.label),
-                          ],
-                        ),
+                        child: usePillTabs
+                            ? DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: AppTheme.border),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x12000000),
+                                      blurRadius: 16,
+                                      offset: Offset(0, 8),
+                                    ),
+                                  ],
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(6),
+                                  child: TabBar(
+                                    isScrollable: true,
+                                    labelColor: Colors.white,
+                                    unselectedLabelColor:
+                                        AppTheme.mutedForeground,
+                                    indicatorSize: TabBarIndicatorSize.tab,
+                                    indicator: BoxDecoration(
+                                      color: AppTheme.primary,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    dividerColor: Colors.transparent,
+                                    tabAlignment: TabAlignment.start,
+                                    labelPadding: EdgeInsets.symmetric(
+                                      horizontal: isPhone ? 10 : 16,
+                                    ),
+                                    labelStyle: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: isPhone ? 13 : 14,
+                                    ),
+                                    unselectedLabelStyle: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: isPhone ? 13 : 14,
+                                    ),
+                                    tabs: [
+                                      for (final tab in tabs)
+                                        Tab(text: tab.label),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : TabBar(
+                                isScrollable: true,
+                                labelColor: AppTheme.foreground,
+                                unselectedLabelColor:
+                                    AppTheme.mutedForeground,
+                                indicatorColor: AppTheme.primary,
+                                indicatorWeight: 3,
+                                dividerColor: Colors.transparent,
+                                tabAlignment: TabAlignment.start,
+                                labelPadding: EdgeInsets.symmetric(
+                                  horizontal: isPhone ? 10 : 16,
+                                ),
+                                labelStyle: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: isPhone ? 13 : 14,
+                                ),
+                                unselectedLabelStyle: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: isPhone ? 13 : 14,
+                                ),
+                                tabs: [
+                                  for (final tab in tabs) Tab(text: tab.label),
+                                ],
+                              ),
                       ),
                     ),
                   ),
@@ -301,13 +358,13 @@ class DashboardEmptyState extends StatelessWidget {
   const DashboardEmptyState({
     super.key,
     required this.title,
-    required this.message,
+    this.message,
     this.actionLabel,
     this.onAction,
   });
 
   final String title;
-  final String message;
+  final String? message;
   final String? actionLabel;
   final VoidCallback? onAction;
 
@@ -343,15 +400,17 @@ class DashboardEmptyState extends StatelessWidget {
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppTheme.mutedForeground,
-                height: 1.5,
+            if (message != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                message!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppTheme.mutedForeground,
+                  height: 1.5,
+                ),
               ),
-            ),
+            ],
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 18),
               SizedBox(

@@ -128,3 +128,4 @@ class ChatRepository {
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   return ChatRepository(ref.watch(dioClientProvider));
 });
+

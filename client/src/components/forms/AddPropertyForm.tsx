@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
+import Link from 'next/link';
 import { usePropertyStore, Property } from '@/store/usePropertyStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useAIStore } from '@/store/useAIStore';
@@ -1491,9 +1492,11 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                         
                                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                             {similarListings.map((listing, idx) => (
-                                                                <div 
+                                                                <Link 
                                                                     key={listing.id || idx} 
-                                                                    className="group bg-white border border-border/40 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                                                                    href={`/property/${listing.id}`}
+                                                                    target="_blank"
+                                                                    className="group bg-white border border-border/40 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 block"
                                                                 >
                                                                     <div className="aspect-[4/3] relative overflow-hidden bg-muted">
                                                                         {listing.image ? (
@@ -1522,7 +1525,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                                             </p>
                                                                         </div>
                                                                     </div>
-                                                                </div>
+                                                                </Link>
                                                             ))}
                                                         </div>
                                                     </div>

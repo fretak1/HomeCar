@@ -66,7 +66,6 @@ class AuthRepository {
       );
 
       await _sessionStorage.writePendingEmail(email);
-      await sendVerificationOtp(email);
     } on DioException catch (error) {
       throw Exception(_messageFrom(error));
     }
@@ -153,6 +152,10 @@ class AuthRepository {
     String? name,
     String? email,
     String? phoneNumber,
+    String? marriageStatus,
+    int? kids,
+    String? gender,
+    String? employmentStatus,
     String? currentPassword,
     String? newPassword,
     String? profileImagePath,
@@ -167,6 +170,18 @@ class AuthRepository {
       }
       if (phoneNumber != null) {
         formData.fields.add(MapEntry('phoneNumber', phoneNumber));
+      }
+      if (marriageStatus != null) {
+        formData.fields.add(MapEntry('marriageStatus', marriageStatus));
+      }
+      if (kids != null) {
+        formData.fields.add(MapEntry('kids', kids.toString()));
+      }
+      if (gender != null) {
+        formData.fields.add(MapEntry('gender', gender));
+      }
+      if (employmentStatus != null) {
+        formData.fields.add(MapEntry('employmentStatus', employmentStatus));
       }
       if (currentPassword != null && currentPassword.isNotEmpty) {
         formData.fields.add(MapEntry('currentPassword', currentPassword));
@@ -245,3 +260,4 @@ class AuthRepository {
     return error.message ?? 'Authentication request failed.';
   }
 }
+

@@ -74,3 +74,4 @@ final favoritedIdsProvider = Provider<Set<String>>((ref) {
           .toSet() ??
       {};
 });
+

@@ -4,9 +4,21 @@ const prisma = new PrismaClient();
 const MARKET_DATA: any = {
   "Addis Ababa": {
     city: "Addis Ababa",
-    lat: 9.032, lng: 38.748,
-    subcities: ["Bole", "Yeka", "Arada", "Kirkos", "Lideta", "Akaky Kaliti", "Nifas Silk-Lafto", "Kolfe Keranio", "Gullele", "Addis Ketema", "Lemi Kura"],
-    villages: ["Kazanchis", "Piassa", "Saris", "Ayat", "CMC", "Gerji", "Bole Bulbula", "Old Airport", "Summit", "Jackros", "Gurd Shola", "Megenagna", "22 Mazoria", "Sarbet", "Mekanisa", "Jemo", "Kaliti", "Akaki", "Kotebe", "Ferensay", "Arat Kilo", "Merkato", "Cherkos", "Gotera", "Lebu", "Lafto"],
+    lat: 9.033, lng: 38.750,
+    subcities: ["Addis Ketema", "Akaky Kaliti", "Arada", "Bole", "Kirkos", "Kolfe Keranio", "Lideta", "Nifas Silk-Lafto", "Yeka", "Lemi Kura", "Gullele"],
+    villages: {
+      "Addis Ketema": ["Merkato", "Geja Sefer", "Wingate", "Autobus Tera"],
+      "Akaky Kaliti": ["Saris", "Kaliti", "Tulu Dimtu", "Hana Mariam"],
+      "Arada": ["Piassa", "Arat Kilo", "Sidist Kilo", "Jan Meda"],
+      "Bole": ["Bole Medhanialem", "Atlas", "CMC", "Ayat", "Gerji", "Summit"],
+      "Kirkos": ["Kazanchis", "Gotera", "Meskel Flower", "Mexico Area"],
+      "Kolfe Keranio": ["Ayer Tena", "Bethel", "Jemo 1", "Zenebe Werk"],
+      "Lideta": ["Abnet", "Torhailoch", "Sengatera", "Balcha"],
+      "Nifas Silk-Lafto": ["Jemo", "Lafto", "Lebu", "Mekanisa"],
+      "Yeka": ["Kotebe", "Megenagna", "Signal", "Yeka Abado"],
+      "Lemi Kura": ["Ayat Real Estate", "Goro Sefer", "Meri", "Arabsa"],
+      "Gullele": ["Shiro Meda", "Wingate", "Addisu Gebeya", "Entoto"]
+    },
     homes: {
       "compound": { sale: [18e6, 140e6], rent: [60000, 250000] },
       "apartment": { sale: [3e6, 18e6], rent: [15000, 75000] },
@@ -22,37 +34,34 @@ const MARKET_DATA: any = {
       "Suzuki Alto": { price: [900000, 2.2e6] }
     }
   },
-  "Tigray": {
-    city: "Mekelle",
-    lat: 13.496, lng: 39.475,
-    subcities: ["Hawelti", "Kedamay Weyane", "Quiha", "Adi Haki", "Hadnet"],
-    villages: ["Quiha Center", "Adi-Haqi Area", "Hadnet Kebele", "Semen", "Romanat Square"],
+  "Oromia": {
+    city: "Adama",
+    lat: 8.541, lng: 39.269,
+    subcities: ["Bole", "Dabe", "Dembi", "Lugama"],
+    villages: {
+      "Bole": ["Bole 1", "Bole 2", "Kebele 01"],
+      "Dabe": ["Boku", "Migira", "Melka Adama"],
+      "Dembi": ["Dembi Centre", "Adama University Area"],
+      "Lugama": ["Lugama 1", "Biftu"]
+    },
     homes: {
-      "compound": { sale: [10e6, 50e6], rent: [30000, 100000] },
-      "villa": { sale: [15e6, 60e6], rent: [35000, 120000] }
+      "compound": { sale: [11e6, 65e6], rent: [32000, 125000] },
+      "villa": { sale: [16e6, 75e6], rent: [32000, 125000] }
     },
     cars: {
-      "Toyota Corolla": { price: [1.2e6, 3.2e6] }
-    }
-  },
-  "Afar": {
-    city: "Semera",
-    lat: 11.792, lng: 40.958,
-    subcities: ["Main Center"],
-    villages: ["Logia", "Dubti", "Asayita Center", "Semera Town"],
-    homes: {
-      "compound": { sale: [6e6, 30e6], rent: [18000, 65000] },
-      "villa": { sale: [10e6, 40e6], rent: [20000, 75000] }
-    },
-    cars: {
-      "Toyota Hilux": { price: [3.5e6, 7.5e6] }
+      "Toyota Hilux": { price: [3.8e6, 8.5e6] }
     }
   },
   "Amhara": {
     city: "Bahir Dar",
-    lat: 11.593, lng: 37.390,
-    subcities: ["Belay Zeleke", "Shum Abo", "Hidar 11", "Tana", "Fasilo"],
-    villages: ["Tana Lake Side", "Abay Bridge Area", "Fasilo Garden", "Hidar 11 Center", "Ginnit Area"],
+    lat: 11.590, lng: 37.390,
+    subcities: ["Fasilo", "Belay Zeleke", "Gish Abay", "Sefene Selam"],
+    villages: {
+      "Fasilo": ["Kebele 1", "Kebele 14", "Fasilo Stadium Area"],
+      "Belay Zeleke": ["Kebele 3", "Diaspora Area", "Kebele 15"],
+      "Gish Abay": ["Kebele 5", "Lakeside", "Kebele 16"],
+      "Sefene Selam": ["Kebele 7", "Sefene 1"]
+    },
     homes: {
       "compound": { sale: [12e6, 85e6], rent: [35000, 140000] },
       "apartment": { sale: [2.8e6, 12e6], rent: [12000, 45000] },
@@ -62,72 +71,35 @@ const MARKET_DATA: any = {
       "Toyota Corolla": { price: [1.3e6, 3.8e6] }
     }
   },
-  "Oromia": {
-    city: "Adama",
-    lat: 8.541, lng: 39.270,
-    subcities: ["Bole", "Ganda Gara", "Dambala", "Adama Ketema"],
-    villages: ["Kuriftu Resort Area", "Melka Adama", "Industrial Zone Area", "Ganda Gara Center", "Bole Neighborhood"],
+  "Tigray": {
+    city: "Mekelle",
+    lat: 13.496, lng: 39.476,
+    subcities: ["Ayder", "Hawelti", "Kedamay Weyane", "Quiha", "Hadnet"],
+    villages: {
+      "Ayder": ["Ayder 1", "Ayder Hospital Area"],
+      "Hawelti": ["Hawelti Center", "Kebele 15"],
+      "Kedamay Weyane": ["Romanat", "Kedamay 2"],
+      "Quiha": ["Quiha Center", "Airport Road"],
+      "Hadnet": ["Hadnet 1", "Adi Haki"]
+    },
     homes: {
-      "compound": { sale: [11e6, 65e6], rent: [32000, 125000] },
-      "villa": { sale: [16e6, 75e6], rent: [32000, 125000] }
+      "compound": { sale: [10e6, 50e6], rent: [30000, 100000] },
+      "villa": { sale: [15e6, 60e6], rent: [35000, 120000] }
     },
     cars: {
-      "Toyota Hilux": { price: [3.8e6, 8.5e6] }
-    }
-  },
-  "Somali": {
-    city: "Jigjiga",
-    lat: 9.350, lng: 42.800,
-    subcities: ["Jigjiga Yar", "Shebele", "Karamara"],
-    villages: ["Shebele Area", "Karamara Hill Side", "Kebele 01 Center", "Kebele 05 Area"],
-    homes: {
-      "compound": { sale: [8e6, 40e6], rent: [20000, 75000] }
-    },
-    cars: {
-      "Toyota Land Cruiser": { price: [6e6, 16e6] }
-    }
-  },
-  "Benishangul-Gumuz": {
-    city: "Asosa",
-    lat: 10.066, lng: 34.533,
-    subcities: ["1st Kebele Area", "2nd Kebele Area"],
-    villages: ["Asosa Center", "Bambasi Residential", "Rural Kebele 08"],
-    homes: {
-      "compound": { sale: [7e6, 35e6], rent: [18000, 65000] }
-    },
-    cars: {
-      "Toyota Corolla": { price: [1.1e6, 2.8e6] }
-    }
-  },
-  "Gambela": {
-    city: "Gambela",
-    lat: 8.250, lng: 34.583,
-    subcities: ["Addis Ketema", "Urban Center"],
-    villages: ["Newland Kebele", "Baro River Side", "Kebele 01 Center", "Kebele 02 Area"],
-    homes: {
-      "compound": { sale: [6.5e6, 35e6], rent: [16000, 65000] }
-    },
-    cars: {
-      "Toyota Hilux": { price: [3.2e6, 7e6] }
-    }
-  },
-  "Harari": {
-    city: "Harar",
-    lat: 9.312, lng: 42.124,
-    subcities: ["Abadir", "Amir Nur", "Shenkor", "Jinela"],
-    villages: ["Harar Old Town", "Amir Nur Kebele", "Shenkor Residential", "Jinela Area"],
-    homes: {
-      "villa": { sale: [12e6, 50e6], rent: [22000, 85000] }
-    },
-    cars: {
-      "Toyota Vitz": { price: [700000, 1.5e6] }
+      "Toyota Corolla": { price: [1.2e6, 3.2e6] }
     }
   },
   "Sidama": {
     city: "Hawassa",
-    lat: 7.050, lng: 38.467,
-    subcities: ["Tabor", "Haik Dar", "Misrak", "Menaharia", "Datto"],
-    villages: ["Millennium Area", "Haik Dar Garden", "Gudumale Lake Front", "Menaheria Commercial", "Tabor Hill View"],
+    lat: 7.062, lng: 38.473,
+    subcities: ["Tabore", "Hayik Dar", "Menahariya", "Mehal Ketema"],
+    villages: {
+      "Tabore": ["Tabor 1", "Piazza", "Tabor 2"],
+      "Hayik Dar": ["Amora Gedel", "Gudumale", "Lakeside 2"],
+      "Menahariya": ["Bus Station Area", "Atote", "Mobil"],
+      "Mehal Ketema": ["Awasho", "Bolesh"]
+    },
     homes: {
       "compound": { sale: [11e6, 75e6], rent: [35000, 120000] },
       "apartment": { sale: [2.5e6, 10e6], rent: [10000, 35000] },
@@ -137,52 +109,83 @@ const MARKET_DATA: any = {
       "Toyota Land Cruiser": { price: [7e6, 22e6] }
     }
   },
-  "South Ethiopia": {
-    city: "Wolaita Sodo",
-    lat: 6.860, lng: 37.760,
-    subcities: ["Arada", "Mehal", "Merkato"],
-    villages: ["Arada Center", "Mehal Village", "Merkato Residential", "Wolaita Sodo University Area"],
-    homes: {
-      "compound": { sale: [8e6, 40e6], rent: [20000, 80000] }
-    },
-    cars: {
-      "Toyota Corolla": { price: [1.1e6, 3e6] }
-    }
-  },
-  "Central Ethiopia": {
-    city: "Hosaena",
-    lat: 7.550, lng: 37.850,
-    subcities: ["Gofer Meda", "Addis Ketema"],
-    villages: ["Gofer Meda Kebele", "Addis Ketema Area", "Bobicho Square"],
-    homes: {
-      "compound": { sale: [9e6, 45e6], rent: [28000, 90000] }
-    },
-    cars: {
-      "Toyota Hilux": { price: [3.5e6, 8e6] }
-    }
-  },
-  "South West Ethiopia": {
-    city: "Bonga",
-    lat: 7.266, lng: 36.233,
-    subcities: ["Kebele-based Division"],
-    villages: ["Bonga Center", "Kaffa Zone Residential", "Tepi Area Kebele 01"],
-    homes: {
-      "compound": { sale: [8.5e6, 40e6], rent: [22000, 85000] }
-    },
-    cars: {
-      "Toyota Corolla": { price: [1.2e6, 2.5e6] }
-    }
-  },
   "Dire Dawa": {
     city: "Dire Dawa",
-    lat: 9.600, lng: 41.866,
-    subcities: ["Urban Area"],
-    villages: ["Kezira", "Megala", "Sabian", "Gende Kore", "Legehare", "Gurgura"],
+    lat: 9.593, lng: 41.866,
+    subcities: ["Megala", "Aboker", "Gende Kore", "Depot"],
+    villages: {
+      "Megala": ["Megala 1", "Ashewa Meda", "Chat Tera"],
+      "Aboker": ["Taiwan", "Legehare", "Aboker 2"],
+      "Gende Kore": ["Sabian", "Gende Kore 2"],
+      "Depot": ["Railway Area", "Depot 2"]
+    },
     homes: {
       "villa": { sale: [15e6, 60e6], rent: [28000, 110000] }
     },
     cars: {
       "Toyota Corolla": { price: [1.2e6, 3.5e6] }
+    }
+  },
+  "Somali": {
+    city: "Jijiga",
+    lat: 9.350, lng: 42.800,
+    subcities: ["01 Kebele", "02 Kebele", "03 Kebele"],
+    villages: {
+      "01 Kebele": ["Taiwan Market Area", "Garab-ase"],
+      "02 Kebele": ["02 Center", "Jijiga 2"],
+      "03 Kebele": ["03 area", "University area"]
+    },
+    homes: {
+      "compound": { sale: [8e6, 40e6], rent: [20000, 75000] }
+    },
+    cars: {
+      "Toyota Land Cruiser": { price: [6e6, 16e6] }
+    }
+  },
+  "Harari": {
+    city: "Harar",
+    lat: 9.313, lng: 42.128,
+    subcities: ["Jegol", "Aboker", "Hundene"],
+    villages: {
+      "Jegol": ["Megala", "Berd Bari", "Shoa Gate"],
+      "Aboker": ["Aboker 1", "Aboker 2"],
+      "Hundene": ["Hundene 1", "Hundene 2"]
+    },
+    homes: {
+      "villa": { sale: [12e6, 50e6], rent: [22000, 85000] }
+    },
+    cars: {
+      "Toyota Vitz": { price: [700000, 1.5e6] }
+    }
+  },
+  "Afar": {
+    city: "Semera",
+    lat: 11.792, lng: 40.958,
+    subcities: ["01 Kebele"],
+    villages: {
+      "01 Kebele": ["Semera Center", "University Area", "Logia", "Dubti"]
+    },
+    homes: {
+      "compound": { sale: [6e6, 30e6], rent: [18000, 65000] },
+      "villa": { sale: [10e6, 40e6], rent: [20000, 75000] }
+    },
+    cars: {
+      "Toyota Hilux": { price: [3.5e6, 7.5e6] }
+    }
+  },
+  "SWEPR": {
+    city: "Bonga",
+    lat: 7.266, lng: 36.233,
+    subcities: ["01 Kebele", "02 Kebele"],
+    villages: {
+      "01 Kebele": ["Bonga Center"],
+      "02 Kebele": ["Wush Wush Area"]
+    },
+    homes: {
+      "compound": { sale: [8.5e6, 40e6], rent: [22000, 85000] }
+    },
+    cars: {
+      "Toyota Corolla": { price: [1.2e6, 2.5e6] }
     }
   }
 };
@@ -399,7 +402,7 @@ async function main() {
     
     const regionData = MARKET_DATA[regionName];
     const subcity = regionData.subcities ? getRandomFrom(regionData.subcities) : null;
-    const village = regionData.villages ? getRandomFrom(regionData.villages) : null;
+    const village = (regionData.villages && subcity) ? getRandomFrom(regionData.villages[subcity] || []) : null;
 
     // Phase 1: Create Location
     const location = await withRetry(() => prisma.location.create({

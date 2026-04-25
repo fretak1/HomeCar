@@ -316,3 +316,4 @@ class _EmptyApplications extends StatelessWidget {
     );
   }
 }
+

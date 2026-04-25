@@ -8,12 +8,49 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+const normalizeChatHref = (rawHref: string): { isInternal: boolean; href: string } => {
+    const trimmed = rawHref.trim();
+    const sanitized = trimmed.replace(/[)\],.!?;:]+$/, '');
+    const toInternalPath = (value: string) => {
+        const withoutProtocolLike = value.replace(/^[a-zA-Z]+:\/*/, '');
+        const noLeadingSlash = withoutProtocolLike.replace(/^\/+/, '');
+        return `/${noLeadingSlash}`;
+    };
+
+    if (sanitized.startsWith('nav:')) {
+        const path = sanitized.replace(/^nav:\/*/, '');
+        return { isInternal: true, href: toInternalPath(path) };
+    }
+
+    if (sanitized.startsWith('/')) {
+        return { isInternal: true, href: `/${sanitized.replace(/^\/+/, '')}` };
+    }
+
+    if (/^(property|listings|search|dashboard|chat|profile)\b/i.test(sanitized)) {
+        return { isInternal: true, href: toInternalPath(sanitized) };
+    }
+
+    try {
+        const parsed = new URL(sanitized);
+        if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
+            const normalizedPath = `/${parsed.pathname.replace(/^\/+/, '')}`;
+            return { isInternal: true, href: `${normalizedPath}${parsed.search}${parsed.hash}` };
+        }
+        return { isInternal: false, href: sanitized };
+    } catch {
+        return { isInternal: false, href: sanitized };
+    }
+};
 
 export const AskAIAssistant = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [message, setMessage] = useState('');
     const { chatHistory, isChatLoading, sendMessageToAI } = useAIStore();
     const scrollRef = useRef<HTMLDivElement>(null);
+    const router = useRouter();
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -91,20 +128,37 @@ export const AskAIAssistant = () => {
                                                 <div className="markdown-container text-[#344054] leading-relaxed">
                                                     <ReactMarkdown
                                                         components={{
-                                                            a: ({ node, ...props }) => (
-                                                                <a
-                                                                    href={props.href}
-                                                                    className="ai-link"
-                                                                    onClick={(e) => {
-                                                                        e.preventDefault();
-                                                                        if (props.href) {
-                                                                            window.location.href = props.href;
-                                                                        }
-                                                                    }}
-                                                                >
-                                                                    {props.children}
-                                                                </a>
-                                                            )
+                                                            a: ({ node, ...props }) => {
+                                                                const href = props.href || '';
+                                                                const normalized = normalizeChatHref(href);
+
+                                                                if (normalized.isInternal) {
+                                                                    const cleanPath = normalized.href;
+
+                                                                    return (
+                                                                        <Link
+                                                                            href={cleanPath}
+                                                                            className="ai-link"
+                                                                            onClick={(e) => {
+                                                                                e.preventDefault();
+                                                                                router.push(cleanPath);
+                                                                            }}
+                                                                        >
+                                                                            {props.children}
+                                                                        </Link>
+                                                                    );
+                                                                }
+
+                                                                return (
+                                                                    <a
+                                                                        {...props}
+                                                                        href={normalized.href}
+                                                                        className="ai-link"
+                                                                    >
+                                                                        {props.children}
+                                                                    </a>
+                                                                );
+                                                            }
                                                         }}
                                                     >
                                                         {m.parts}
