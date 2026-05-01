@@ -5,7 +5,7 @@ export default function DashboardLoading() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header Skeleton */}
-      <div className="bg-gradient-to-br from-[#005a41] via-[#005a41] to-[#1e3a8a] py-12">
+      <div className="bg-[#005a41] py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Skeleton className="h-10 w-64 bg-white/20 rounded-lg mb-2" />
           <Skeleton className="h-6 w-48 bg-white/10 rounded-md" />

@@ -125,68 +125,6 @@ const MARKET_DATA: any = {
     cars: {
       "Toyota Corolla": { price: [1.2e6, 3.5e6] }
     }
-  },
-  "Somali": {
-    city: "Jijiga",
-    lat: 9.350, lng: 42.800,
-    subcities: ["01 Kebele", "02 Kebele", "03 Kebele"],
-    villages: {
-      "01 Kebele": ["Taiwan Market Area", "Garab-ase"],
-      "02 Kebele": ["02 Center", "Jijiga 2"],
-      "03 Kebele": ["03 area", "University area"]
-    },
-    homes: {
-      "compound": { sale: [8e6, 40e6], rent: [20000, 75000] }
-    },
-    cars: {
-      "Toyota Land Cruiser": { price: [6e6, 16e6] }
-    }
-  },
-  "Harari": {
-    city: "Harar",
-    lat: 9.313, lng: 42.128,
-    subcities: ["Jegol", "Aboker", "Hundene"],
-    villages: {
-      "Jegol": ["Megala", "Berd Bari", "Shoa Gate"],
-      "Aboker": ["Aboker 1", "Aboker 2"],
-      "Hundene": ["Hundene 1", "Hundene 2"]
-    },
-    homes: {
-      "villa": { sale: [12e6, 50e6], rent: [22000, 85000] }
-    },
-    cars: {
-      "Toyota Vitz": { price: [700000, 1.5e6] }
-    }
-  },
-  "Afar": {
-    city: "Semera",
-    lat: 11.792, lng: 40.958,
-    subcities: ["01 Kebele"],
-    villages: {
-      "01 Kebele": ["Semera Center", "University Area", "Logia", "Dubti"]
-    },
-    homes: {
-      "compound": { sale: [6e6, 30e6], rent: [18000, 65000] },
-      "villa": { sale: [10e6, 40e6], rent: [20000, 75000] }
-    },
-    cars: {
-      "Toyota Hilux": { price: [3.5e6, 7.5e6] }
-    }
-  },
-  "SWEPR": {
-    city: "Bonga",
-    lat: 7.266, lng: 36.233,
-    subcities: ["01 Kebele", "02 Kebele"],
-    villages: {
-      "01 Kebele": ["Bonga Center"],
-      "02 Kebele": ["Wush Wush Area"]
-    },
-    homes: {
-      "compound": { sale: [8.5e6, 40e6], rent: [22000, 85000] }
-    },
-    cars: {
-      "Toyota Corolla": { price: [1.2e6, 2.5e6] }
-    }
   }
 };
 
@@ -210,18 +148,13 @@ const HOUSE_IMAGES = [
   "https://images.unsplash.com/photo-1580587771525-78b9dba3b914?q=80&w=800",
   "https://images.unsplash.com/photo-1518780664697-55e3ad937233?q=80&w=800",
   "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=800",
-  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800",
-  "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=800",
-  "https://images.unsplash.com/photo-1600607687940-477a66d39270?q=80&w=800"
+  "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=800"
 ];
 
 const CAR_IMAGES = [
   "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?q=80&w=800",
   "https://images.unsplash.com/photo-1503376780353-7e6692767b70?q=80&w=800",
-  "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?q=80&w=800",
-  "https://images.unsplash.com/photo-1525609004556-c46c7d6cf023?q=80&w=800",
-  "https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=800",
-  "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=800"
+  "https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=800"
 ];
 
 function getRandom(min: number, max: number) {
@@ -233,211 +166,129 @@ function getRandomFrom(arr: any[]) {
 }
 
 async function main() {
-  console.log("--- Resetting Database & Starting Balanced Seeding (2000 Items) ---");
+  console.log("--- Resetting Database & Starting Balanced Seeding (1100 Homes / 900 Cars) ---");
 
   // Helper for retrying DB operations on remote connections
-  const withRetry = async <T>(fn: () => Promise<T>, retries = 3): Promise<T> => {
+  const withRetry = async <T>(fn: () => Promise<T>, retries = 5): Promise<T> => {
     try {
       return await fn();
     } catch (e) {
       if (retries > 0) {
         console.log(`Connection weak, retrying... (${retries} left)`);
-        await new Promise(r => setTimeout(r, 1000));
+        await new Promise(r => setTimeout(r, 2000));
         return withRetry(fn, retries - 1);
       }
       throw e;
     }
   };
 
-  // 0. Cleanup existing data to start fresh
-  const deleteTable = async (name: string) => {
-    try {
-      await (prisma as any)[name].deleteMany({});
-      console.log(`Cleared ${name} table.`);
-    } catch (e) {
-      console.log(`Skip clearing ${name} (might not exist).`);
-    }
-  };
-
-  await deleteTable('propertyImage');
-  await deleteTable('propertyView');
-  await deleteTable('favorite');
-  await deleteTable('application');
-  await deleteTable('transaction');
-  await deleteTable('review');
-  await deleteTable('property');
-  await deleteTable('location');
-
-  // 1. Ensure Owner exists
+  // Cleanup
+  const tables = ['propertyImage', 'propertyView', 'favorite', 'application', 'transaction', 'review', 'maintenanceRequest', 'lease', 'property', 'location'];
+  for (const t of tables) {
+      await (prisma as any)[t].deleteMany({}).catch(() => {});
+      console.log(`Cleared ${t} table.`);
+  }
+  
+  // Ensure Owner
   let owner = await withRetry(() => prisma.user.findFirst({ where: { role: 'OWNER' } }));
   if (!owner) {
     owner = await withRetry(() => prisma.user.create({
-      data: {
-        name: "Synthetic Seeder",
-        email: "seeder@homecar.et",
-        role: Role.OWNER,
-        verified: true,
-      }
+      data: { name: "Synthetic Seeder", email: "seeder@homecar.et", role: Role.OWNER, verified: true }
     }));
   }
 
-  // --- Intelligent Valuation Model ---
-
-  // Base rates per SQM by city (in ETB)
-  const HOME_RATE: any = {
-    "Addis Ababa": 45000,
-    "Mekelle": 22000,
-    "Bahir Dar": 25000,
-    "Adama": 20000,
-    "Hawassa": 24000,
-    "Jigjiga": 16000,
-    "Dire Dawa": 24000,
-    "Harar": 18000,
-    "Asosa": 15000,
-    "Gambela": 14000,
-    "Wolaita Sodo": 15000,
-    "Hosaena": 16000,
-    "Bonga": 14000,
-    "Semera": 14000
-  };
-
   const calculateHousePrice = (type: string, area: number, beds: number, baths: number, city: string, isRent: boolean) => {
+    const HOME_RATE: any = { "Addis Ababa": 45000, "Bahir Dar": 25000, "Hawassa": 24000, "Adama": 20000, "Mekelle": 22000 };
     const rate = HOME_RATE[city] || 15000;
-    
-    // Type Multipliers
-    const typeMult: any = {
-      villa: 1.8,
-      compound: 1.2,
-      apartment: 1.0,
-      condominium: 0.8,
-      studio: 0.7,
-      building: 2.5
-    };
-    
-    let basePrice = area * rate * (typeMult[type] || 1.0);
-    
-    // Feature Premiums
-    const bedPremium = beds * 1500000;
-    const bathPremium = baths * 800000;
-    
-    let total = basePrice + bedPremium + bathPremium;
-    
-    // Rent is approx 0.4% - 0.6% of sale price per month
-    if (isRent) {
-      return Math.floor((total * 0.005) / 1000) * 1000;
-    }
-    return Math.floor(total / 10000) * 10000;
+    const typeMult: any = { villa: 1.8, compound: 1.2, apartment: 1.0, condominium: 0.8, studio: 0.7, building: 2.5 };
+    let total = (area * rate * (typeMult[type] || 1.0)) + (beds * 1500000) + (baths * 800000);
+    return isRent ? Math.floor((total * 0.005) / 1000) * 1000 : Math.floor(total / 10000) * 10000;
   };
 
-  const calculateCarPrice = (brand: string, model: string, year: number, trans: string, region: string, fuel: string) => {
-    const carKey = `${brand} ${model}`;
-    const basePrices: any = {
-      "Toyota Corolla": 3000000,
-      "Toyota Hilux": 8000000,
-      "Hyundai Tucson": 6000000,
-      "Suzuki Alto": 1800000,
-      "Toyota Land Cruiser": 15000000,
-      "Toyota Vitz": 1200000,
-      "Toyota Prius": 4500000,
-      "Toyota bZ4X": 7500000,
-      "BYD Song Plus": 6500000,
-      "BYD Seagull": 2500000,
-      "BYD Han": 9000000,
-      "Volkswagen ID.4": 7000000,
-      "Volkswagen ID.6": 8500000
-    };
-    
-    const base = basePrices[carKey] || 2500000;
-    
-    // 7% Annual Depreciation (compounded)
-    const age = Math.max(0, 2025 - year);
-    let finalPrice = base * Math.pow(0.93, age);
-    
-    // Transmission Premium
+  const calculateCarPrice = (brand: string, model: string, year: number, trans: string, fuel: string) => {
+    const basePrices: any = { "Toyota Corolla": 3000000, "Toyota Hilux": 8000000, "Hyundai Tucson": 6000000, "Suzuki Alto": 1800000, "BYD Song Plus": 6500000 };
+    const base = basePrices[`${brand} ${model}`] || 2500000;
+    let finalPrice = base * Math.pow(0.93, Math.max(0, 2025 - year));
     if (trans === "Automatic") finalPrice *= 1.12;
-    
-    // Regional/City adjustment (high variance to impact AI model)
-    const regionMult: any = {
-      "Addis Ababa": 1.5,
-      "Oromia": 1.2,
-      "Sidama": 1.15,
-      "Amhara": 1.1,
-      "Dire Dawa": 1.05,
-      "Harari": 1.0,
-      "Tigray": 0.95,
-      "Somali": 0.85,
-      "South Ethiopia": 0.8,
-      "Central Ethiopia": 0.8,
-      "Afar": 0.75,
-      "Benishangul-Gumuz": 0.6,
-      "South West Ethiopia": 0.6,
-      "Gambela": 0.5
-    };
-    finalPrice *= (regionMult[region] || 1.0);
-    
-    // Fuel Type adjustment (Massive variance for Electric)
-    const fuelMult: any = {
-      "Electric": 1.20,
-      "Hybrid": 1.15,
-      "Petrol": 1.00,
-      "Diesel": 0.90
-    };
-    finalPrice *= (fuelMult[fuel] || 1.0);
-    
+    if (fuel === "Electric") finalPrice *= 1.20;
     return Math.floor(finalPrice / 5000) * 5000;
   };
 
-  const regions = Object.keys(MARKET_DATA);
-  const otherRegions = regions.filter(r => r !== "Addis Ababa");
+  // --- 1. PREPARE TASKS (1100 Homes + 900 Cars) ---
+  type SeedTask = { type: 'HOME' | 'CAR' };
+  const tasks: SeedTask[] = [
+    ...Array(1100).fill({ type: 'HOME' }),
+    ...Array(900).fill({ type: 'CAR' })
+  ];
 
-  const totalToSeed = 2000;
-  const addisTarget = 1000;
+  // Shuffle tasks to mix Homes and Cars in the chronological feed
+  for (let i = tasks.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [tasks[i], tasks[j]] = [tasks[j], tasks[i]];
+  }
 
-  console.log(`Target: 1000 in Addis Ababa, 1000 in other regions.`);
+  console.log(`Starting interleaved seeding of ${tasks.length} properties...`);
 
-  for (let i = 0; i < totalToSeed; i++) {
-    const isAddisPhase = i < addisTarget;
-    const assetType = Math.random() > 0.5 ? AssetType.HOME : AssetType.CAR;
-    const regionName = isAddisPhase ? "Addis Ababa" : getRandomFrom(otherRegions);
+  let addisHomesCreated = 0;
+
+  for (let i = 0; i < tasks.length; i++) {
+    const task = tasks[i];
     
-    const regionData = MARKET_DATA[regionName];
-    const subcity = regionData.subcities ? getRandomFrom(regionData.subcities) : null;
-    const village = (regionData.villages && subcity) ? getRandomFrom(regionData.villages[subcity] || []) : null;
+    // Determine region based on requirements (600 Addis homes, rest random)
+    let regionName: string;
+    if (task.type === 'HOME') {
+        if (addisHomesCreated < 600) {
+            regionName = "Addis Ababa";
+            addisHomesCreated++;
+        } else {
+            regionName = getRandomFrom(Object.keys(MARKET_DATA).filter(r => r !== "Addis Ababa"));
+        }
+    } else {
+        regionName = getRandomFrom(Object.keys(MARKET_DATA));
+    }
 
-    // Phase 1: Create Location
+    const regionData = MARKET_DATA[regionName];
+    const subcity = getRandomFrom(regionData.subcities);
+    const village = getRandomFrom(regionData.villages[subcity]);
+
     const location = await withRetry(() => prisma.location.create({
-      data: {
-        region: regionName,
-        city: regionData.city,
-        subcity,
-        village,
-        lat: (regionData.lat || 9.0) + (Math.random() - 0.5) * 0.05,
-        lng: (regionData.lng || 38.7) + (Math.random() - 0.5) * 0.05
+      data: { 
+          region: regionName, 
+          city: regionData.city, 
+          subcity, 
+          village, 
+          lat: regionData.lat + (Math.random() - 0.5) * 0.1, 
+          lng: regionData.lng + (Math.random() - 0.5) * 0.1 
       }
     }));
 
-    if (assetType === AssetType.HOME) {
-      const types = Object.keys(regionData.homes);
-      const pType = getRandomFrom(types);
-      const isRent = Math.random() > 0.7;
+    if (task.type === 'HOME') {
+      const pType = getRandomFrom(['apartment', 'villa', 'condo', 'studio', 'penthouse']);
+      const isRent = Math.random() > 0.5;
       
-      const area = pType === 'studio' ? getRandom(30, 50) : getRandom(100, 500);
-      const beds = getRandom(1, 6);
-      const baths = getRandom(1, 4);
-
+      let beds = 0;
+      let area = 0;
+      if (pType === 'studio') {
+          beds = 0;
+          area = getRandom(25, 45);
+      } else {
+          beds = getRandom(1, 6);
+          area = beds * 60 + getRandom(20, 100);
+      }
+      const baths = Math.max(1, beds - 1);
       const finalPrice = calculateHousePrice(pType, area, beds, baths, regionData.city, isRent);
 
       const property = await withRetry(() => prisma.property.create({
         data: {
-          title: `${pType.toUpperCase()} in ${village || regionData.city}`,
-          description: `A professionally valued ${pType} in ${village || regionData.city}. Features ${beds} bedrooms and ${baths} bathrooms.`,
+          title: `${pType.charAt(0).toUpperCase() + pType.slice(1)} in ${village}`,
+          description: `Stunning ${pType} in ${village}. Perfectly sized at ${area}sqm.`,
           assetType: AssetType.HOME,
           listingType: [isRent ? ListingType.RENT : ListingType.BUY],
           price: finalPrice,
           propertyType: pType,
           bedrooms: beds,
           bathrooms: baths,
-          area: area,
+          area,
           ownerId: owner.id,
           listedById: owner.id,
           locationId: location.id,
@@ -447,26 +298,18 @@ async function main() {
         }
       }));
 
-      await withRetry(() => prisma.propertyImage.create({
-        data: {
-          url: getRandomFrom(HOUSE_IMAGES),
-          isMain: true,
-          propertyId: property.id
-        }
-      }));
-
+      await withRetry(() => prisma.propertyImage.create({ data: { url: getRandomFrom(HOUSE_IMAGES), isMain: true, propertyId: property.id } }));
     } else {
       const brandData = getRandomFrom(CAR_TEMPLATES);
       const model = getRandomFrom(brandData.models);
       const year = getRandom(2010, 2024);
       const trans = Math.random() > 0.5 ? "Automatic" : "Manual";
-
-      const finalPrice = calculateCarPrice(brandData.brand, model, year, trans, regionName, brandData.fuel);
+      const finalPrice = calculateCarPrice(brandData.brand, model, year, trans, brandData.fuel);
 
       const property = await withRetry(() => prisma.property.create({
         data: {
-          title: `${year} ${brandData.brand} ${model} (${trans})`,
-          description: `Professionally valued ${brandData.brand} ${model} from ${year}. Condition: Excellent.`,
+          title: `${year} ${brandData.brand} ${model}`,
+          description: `Excellent ${brandData.brand} ${model} for sale in ${regionData.city}.`,
           assetType: AssetType.CAR,
           listingType: [ListingType.BUY],
           price: finalPrice,
@@ -485,30 +328,13 @@ async function main() {
         }
       }));
 
-      await withRetry(() => prisma.propertyImage.create({
-        data: {
-          url: getRandomFrom(CAR_IMAGES),
-          isMain: true,
-          propertyId: property.id
-        }
-      }));
+      await withRetry(() => prisma.propertyImage.create({ data: { url: getRandomFrom(CAR_IMAGES), isMain: true, propertyId: property.id } }));
     }
 
-    if (i % 50 === 0) {
-      console.log(`Seeded ${i} items...`);
-      // Stability pause
-      await new Promise(r => setTimeout(r, 100));
-    }
+    if (i % 100 === 0) console.log(`Seeded ${i}/${tasks.length} properties...`);
   }
 
-  console.log("--- Balanced Seeding Complete! (All have images) ---");
+  console.log("--- Seeding Complete! ---");
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().catch(e => { console.error(e); process.exit(1); }).finally(async () => { await prisma.$disconnect(); });

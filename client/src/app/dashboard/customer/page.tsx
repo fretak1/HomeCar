@@ -73,6 +73,7 @@ import {
     MaintenanceCardSkeleton,
     ListItemSkeleton,
     TableRowSkeleton,
+    DashboardSkeleton,
 } from '@/components/ui/dashboard-skeletons';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
@@ -158,14 +159,7 @@ export default function CustomerDashboardPage() {
     }, [activeTab, currentCustomer?.id, fetchApplications, fetchRequests, fetchTransactions]);
 
     if (isUserLoading && !currentCustomer) {
-        return (
-            <div className="min-h-screen bg-background flex items-center justify-center pb-20">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    <p className="text-muted-foreground animate-pulse font-medium">Restoring your session...</p>
-                </div>
-            </div>
-        );
+        return <DashboardSkeleton />;
     }
 
 
@@ -303,8 +297,8 @@ export default function CustomerDashboardPage() {
 
     return (
         <>
-            <div className="min-h-screen bg-background">
-                <div className="bg-gradient-to-br from-primary via-primary to-secondary py-12">
+            <div className="min-h-screen bg-[#F8FAFC]">
+                <div className="bg-primary py-12">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex items-center justify-between">
                             <div>
@@ -328,7 +322,7 @@ export default function CustomerDashboardPage() {
                                             <p className="text-sm text-muted-foreground mb-1">Active Leases</p>
                                             <p className="text-3xl text-foreground font-bold">{leases.filter(l => l.status === 'Active' || l.status === 'ACTIVE').length}</p>
                                         </div>
-                                        <div className="bg-primary/10 p-3 rounded-lg">
+                                        <div className="p-3 rounded-lg">
                                             <FileText className="h-6 w-6 text-primary" />
                                         </div>
                                     </div>
@@ -342,7 +336,7 @@ export default function CustomerDashboardPage() {
                                             <p className="text-sm text-muted-foreground mb-1">Applications</p>
                                             <p className="text-3xl text-foreground font-bold">{applications.length}</p>
                                         </div>
-                                        <div className="bg-purple-100 p-3 rounded-lg">
+                                        <div className=" p-3 rounded-lg">
                                             <ClipboardList className="h-6 w-6 text-purple-600" />
                                         </div>
                                     </div>
@@ -359,7 +353,7 @@ export default function CustomerDashboardPage() {
                                             <p className="text-sm text-muted-foreground mb-1">Favorites</p>
                                             <p className="text-3xl text-foreground font-bold">{favorites.length}</p>
                                         </div>
-                                        <div className="bg-secondary/10 p-3 rounded-lg">
+                                        <div className=" p-3 rounded-lg">
                                             <Heart className="h-6 w-6 text-secondary" />
                                         </div>
                                     </div>
@@ -395,7 +389,7 @@ export default function CustomerDashboardPage() {
                                             <p className="text-sm text-muted-foreground mb-1">Maintenance</p>
                                             <p className="text-3xl text-foreground font-bold">{maintenanceRequests.length}</p>
                                         </div>
-                                        <div className="bg-yellow-100 p-3 rounded-lg">
+                                        <div className=" p-3 rounded-lg">
                                             <Wrench className="h-6 w-6 text-yellow-600" />
                                         </div>
                                     </div>

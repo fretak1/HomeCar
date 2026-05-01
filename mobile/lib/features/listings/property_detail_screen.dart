@@ -710,6 +710,37 @@ class _PropertyDetailsView extends ConsumerWidget {
                     const SizedBox(height: 10),
                     Row(
                       children: [
+                        Text(
+                          'ETB ${property.price.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                        if (property.propertyType != null) ...[
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              property.propertyType!.toLowerCase().replaceAll('_', ' '),
+                              style: const TextStyle(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
                         const Icon(
                           Icons.location_on_outlined,
                           size: 18,

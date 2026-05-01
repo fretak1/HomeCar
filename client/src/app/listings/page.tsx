@@ -88,6 +88,7 @@ function ListingContent() {
             propertyType: 'any',
             vehicleType: 'any',
             brand: 'any',
+            model: 'any',
             year: [1990, 2025],
             fuelTech: 'any',
             transmission: 'any',
@@ -190,6 +191,7 @@ function ListingContent() {
             if (filters.amenities && filters.amenities.length > 0) params.amenities = filters.amenities;
         } else {
             if (filters.brand !== 'any') params.brand = filters.brand;
+            if (filters.model !== 'any') params.model = filters.model;
             if (filters.year[0]) params.yearMin = filters.year[0];
             if (filters.year[1]) params.yearMax = filters.year[1];
             if (filters.fuelTech !== 'any') params.fuelType = filters.fuelTech;

@@ -171,13 +171,12 @@ export const AskAIAssistant = () => {
 
                                 {isChatLoading && (
                                     <div className="flex justify-start">
-                                        <div className="bg-white border border-black/5 p-4 rounded-[1.4rem] rounded-tl-none flex items-center gap-3 shadow-sm">
-                                            <div className="flex gap-1">
+                                        <div className="bg-white border border-black/5 px-4 py-3 rounded-[1.4rem] rounded-tl-none flex items-center gap-2 shadow-sm">
+                                            <div className="flex gap-1.5">
                                                 <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
                                                 <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
                                                 <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce" />
                                             </div>
-                                            <span className="text-xs font-medium text-[#667085]">AI is thinking</span>
                                         </div>
                                     </div>
                                 )}

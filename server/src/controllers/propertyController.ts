@@ -276,7 +276,7 @@ export const getProperties = async (req: any, res: Response) => {
         if (sort === 'price-high') orderBy = [{ price: 'desc' }, { id: 'asc' }];
 
         // Pagination Math
-        const pLimit = Math.min(parseInt(limit as string) || 20, 100);
+        const pLimit = Math.min(parseInt(limit as string) || 20, 500);
         const pPage = Math.max(parseInt(page as string) || 1, 1);
         const skip = (pPage - 1) * pLimit;
 

@@ -39,6 +39,8 @@ import {
 } from "@/components/ui/dialog";
 import { format, differenceInMonths, isBefore, startOfMonth, endOfMonth, isSameMonth, addMonths, differenceInDays, addDays, isWithinInterval } from 'date-fns';
 
+import { LeaseDetailSkeleton } from '@/components/ui/dashboard-skeletons';
+
 export default function LeaseDetailsPage() {
     const router = useRouter();
     const params = useParams();
@@ -132,13 +134,8 @@ export default function LeaseDetailsPage() {
         }
     };
 
-    if (isLeaseLoading || isPropertyLoading) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 gap-4">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-muted-foreground font-medium animate-pulse">Loading agreements...</p>
-            </div>
-        );
+    if ((isLeaseLoading || isPropertyLoading) && (!lease || !property)) {
+        return <LeaseDetailSkeleton />;
     }
 
     if (!lease || !property) {

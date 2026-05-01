@@ -18,6 +18,9 @@ interface AIRecommendationsProps {
   title?: string;
 }
 
+import { PropertyGridSkeleton } from './ui/dashboard-skeletons';
+import { Skeleton } from './ui/skeleton';
+
 export function AIRecommendations({ title }: AIRecommendationsProps) {
   const { currentUser } = useUserStore();
   const { recommendations, fetchRecommendations, isRecommendationLoading } = useAIStore();
@@ -39,12 +42,14 @@ export function AIRecommendations({ title }: AIRecommendationsProps) {
 
   if (isRecommendationLoading) {
     return (
-      <div className="py-16 flex flex-col items-center justify-center space-y-4">
-        <div className="relative">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <Bot className="h-5 w-5 text-primary absolute inset-0 m-auto" />
+      <div className="max-w-7xl mx-auto py-16 px-4">
+        <div className="flex justify-between items-end mb-10">
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-64 rounded" />
+            <Skeleton className="h-4 w-96 rounded" />
+          </div>
         </div>
-        <p className="text-muted-foreground font-medium animate-pulse">Personalizing suggestions for you...</p>
+        <PropertyGridSkeleton count={3} />
       </div>
     );
   }
@@ -55,7 +60,7 @@ export function AIRecommendations({ title }: AIRecommendationsProps) {
   }
 
   return (
-    <div className="bg-gradient-to-br from-accent/5 to-secondary/5 py-16 px-4 sm:px-6 lg:px-8 overflow-hidden relative group">
+    <div className="bg-[#F8FAFC] py-16 px-4 sm:px-6 lg:px-8 overflow-hidden relative group">
       <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full -mr-48 -mt-48 blur-3xl group-hover:bg-primary/10 transition-colors" />
 
       <div className="max-w-7xl mx-auto relative z-10">

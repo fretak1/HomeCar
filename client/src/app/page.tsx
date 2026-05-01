@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import RootLoading from './loading';
 import Link from 'next/link';
 import { SearchBar } from '@/components/SearchBar';
 import { PropertyCard } from '@/components/PropertyCard';
@@ -17,10 +18,15 @@ import {
     Loader2,
     ChevronLeft,
     ChevronRight,
+    ShieldCheck, 
+    Zap, 
+    Verified, 
+    Handshake,
+    CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
     Carousel,
     CarouselContent,
@@ -29,6 +35,15 @@ import {
     CarouselPrevious,
     type CarouselApi
 } from "@/components/ui/carousel";
+import { PropertyGridSkeleton } from '@/components/ui/dashboard-skeletons';
+
+const partners = [
+    { name: "Verified agents", icon: ShieldCheck },
+    { name: "Fast Processing", icon: Zap },
+    { name: "Secure Transactions", icon: Verified },
+    { name: "Trusted Owners", icon: Handshake },
+    { name: "Easy to use", icon: CheckCircle2 },
+];
 
 export default function Home() {
     const { properties, fetchProperties, isLoading } = usePropertyStore();
@@ -36,7 +51,7 @@ export default function Home() {
     const [carsApi, setCarsApi] = useState<CarouselApi>();
 
     useEffect(() => {
-        fetchProperties({ limit: 50 });
+        fetchProperties({ limit: 200 });
     }, [fetchProperties]);
 
     // Auto-slide logic for Homes
@@ -72,7 +87,7 @@ export default function Home() {
     ).slice(0, 9); // Limit to 9 for slider
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-[#F8FAFC]">
             {/* Hero Section */}
             <div className="relative overflow-hidden pt-24 pb-40 min-h-[700px] flex items-center">
                 {/* Background Image with Overlay */}
@@ -144,73 +159,71 @@ export default function Home() {
             </section>
 
             {/* Featured Properties */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-                <div className="flex justify-between items-end mb-12">
-                    <div>
-                        <h2 className="text-4xl font-black text-foreground tracking-tight">Featured <span className="text-primary italic">Homes</span></h2>
-                        <p className="text-muted-foreground text-lg mt-2">Discover our most exceptional residential listings</p>
-                    </div>
-                    <Link href="/listings">
-                        <Button variant="ghost" className="group font-bold hover:bg-primary/5 hover:text-primary rounded-xl px-6">
-                            View All Homes
-                            <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                        </Button>
-                    </Link>
-                </div>
-
-                {isLoading ? (
-                    <div className="flex justify-center py-24">
-                        <Loader2 className="h-12 w-12 animate-spin text-primary opacity-20" />
-                    </div>
-                ) : featuredHomes.length > 0 ? (
-                    featuredHomes.length > 3 ? (
-                        <Carousel
-                            setApi={setHomesApi}
-                            opts={{
-                                align: "start",
-                                loop: true,
-                            }}
-                            className="w-full"
-                        >
-                            <CarouselContent className="-ml-6">
-                                {featuredHomes.map((property) => (
-                                    <CarouselItem key={property.id} className="pl-6 md:basis-1/2 lg:basis-1/3">
-                                        <PropertyCard property={property} />
-                                    </CarouselItem>
-                                ))}
-                            </CarouselContent>
-
-                        </Carousel>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {featuredHomes.map((property) => (
-                                <PropertyCard key={property.id} property={property} />
-                            ))}
-                        </div>
-                    )
-                ) : (
-                    <div className="text-center py-24 bg-muted/20 rounded-[2.5rem] border border-dashed border-border/60 relative overflow-hidden group">
-                        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                        <div className="relative z-10">
-                            <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
-                                <HomeIcon className="h-10 w-10 text-muted-foreground/40" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-2">No New Properties Yet</h3>
-                            <p className="text-muted-foreground max-w-sm mx-auto">We're constantly adding new verified homes. Check back soon or explore our existing listings.</p>
-                            <Link href="/listings" className="mt-8 inline-block">
-                                <Button className="rounded-2xl px-10 font-black tracking-tight h-12">Browse All Properties</Button>
-                            </Link>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Featured Cars Section */}
-            <div className="bg-muted/30 py-24 border-y border-border/40">
+            <div className="bg-[#F8FAFC] py-20 border-t border-border/40">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-end mb-12">
                         <div>
+                            <h2 className="text-4xl font-black text-foreground tracking-tight">Featured <span className="text-primary italic">Homes</span></h2>
+                            <p className="text-muted-foreground text-lg mt-2">Discover our most exceptional residential listings</p>
+                        </div>
+                        <Link href="/listings">
+                            <Button variant="ghost" className="group font-bold hover:bg-primary/5 hover:text-primary rounded-xl px-6">
+                                View All Homes
+                                <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                            </Button>
+                        </Link>
+                    </div>
 
+                    {isLoading ? (
+                        <PropertyGridSkeleton count={3} />
+                    ) : featuredHomes.length > 0 ? (
+                        featuredHomes.length > 3 ? (
+                            <Carousel
+                                setApi={setHomesApi}
+                                opts={{
+                                    align: "start",
+                                    loop: true,
+                                }}
+                                className="w-full"
+                            >
+                                <CarouselContent className="-ml-6">
+                                    {featuredHomes.map((property) => (
+                                        <CarouselItem key={property.id} className="pl-6 md:basis-1/2 lg:basis-1/3">
+                                            <PropertyCard property={property} />
+                                        </CarouselItem>
+                                    ))}
+                                </CarouselContent>
+                            </Carousel>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {featuredHomes.map((property) => (
+                                    <PropertyCard key={property.id} property={property} />
+                                ))}
+                            </div>
+                        )
+                    ) : (
+                        <div className="text-center py-24 bg-muted/20 rounded-[2.5rem] border border-dashed border-border/60 relative overflow-hidden group">
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                            <div className="relative z-10">
+                                <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <HomeIcon className="h-10 w-10 text-muted-foreground/40" />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">No New Properties Yet</h3>
+                                <p className="text-muted-foreground max-w-sm mx-auto">We're constantly adding new verified homes. Check back soon or explore our existing listings.</p>
+                                <Link href="/listings" className="mt-8 inline-block">
+                                    <Button className="rounded-2xl px-10 font-black tracking-tight h-12">Browse All Properties</Button>
+                                </Link>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Featured Cars Section */}
+            <div className="bg-[#F8FAFC] py-20 border-y border-border/40">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-end mb-12">
+                        <div>
                             <h2 className="text-4xl font-black text-foreground tracking-tight">Featured <span className="text-primary italic">Cars</span></h2>
                             <p className="text-muted-foreground text-lg mt-2">Premium curated vehicles for performance and style</p>
                         </div>
@@ -223,9 +236,7 @@ export default function Home() {
                     </div>
 
                     {isLoading ? (
-                        <div className="flex justify-center py-24">
-                            <Loader2 className="h-12 w-12 animate-spin text-secondary opacity-20" />
-                        </div>
+                        <PropertyGridSkeleton count={3} />
                     ) : featuredCars.length > 0 ? (
                         featuredCars.length > 3 ? (
                             <Carousel
@@ -243,7 +254,6 @@ export default function Home() {
                                         </CarouselItem>
                                     ))}
                                 </CarouselContent>
-
                             </Carousel>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -271,7 +281,7 @@ export default function Home() {
             </div>
 
             {/* CTA Section */}
-            <div className="bg-gradient-to-br from-primary via-primary to-secondary py-20">
+            <div className="bg-[#005a41] py-20">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
@@ -295,6 +305,37 @@ export default function Home() {
                             </Link>
                         </div>
                     </motion.div>
+                </div>
+                {/* Trust Marquee inside CTA */}
+                <div className="mt-16 border-t border-white/10 pt-10 overflow-hidden">
+                    <div className="relative flex overflow-x-hidden">
+                        <motion.div
+                            className="flex whitespace-nowrap"
+                            animate={{
+                                x: [0, -1035],
+                            }}
+                            transition={{
+                                x: {
+                                    repeat: Infinity,
+                                    repeatType: "loop",
+                                    duration: 30,
+                                    ease: "linear",
+                                },
+                            }}
+                        >
+                            {[...partners, ...partners].map((partner, index) => (
+                                <div
+                                    key={index}
+                                    className="flex items-center gap-3 px-12 opacity-40 hover:opacity-100 transition-opacity duration-300 cursor-default grayscale hover:grayscale-0"
+                                >
+                                    <partner.icon className="h-6 w-6 text-secondary" />
+                                    <span className="text-lg font-black tracking-tight uppercase text-white">
+                                        {partner.name}
+                                    </span>
+                                </div>
+                            ))}
+                        </motion.div>
+                    </div>
                 </div>
             </div>
         </div>

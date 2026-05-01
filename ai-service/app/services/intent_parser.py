@@ -17,19 +17,22 @@ class IntentParser:
         1. Ignore conversational fillers like "I live in", "My name is", "I am staying", "Hello", "Hi".
         2. Detect Intent: 
            - 'SEARCH_CAR': Searching for vehicles.
-           - 'SEARCH_HOME': Searching for properties/houses/apartments.
-           - 'GENERAL': Greetings, platform questions, or non-search statements.
+           - 'SEARCH_HOME': Searching for properties/houses/apartments/studios. If a property type or vehicle is mentioned in a question about availability or price, it is ALWAYS a search intent.
+           - 'GENERAL': Greetings, platform questions, or non-search statements. If the user asks "do you have", "what is", or "show me" regarding properties, it is NOT GENERAL.
         3. Extract Filters: 
            - 'locations': List of detected cities or neighborhoods (e.g. ["Addis Ababa", "Bole"]).
            - 'entities': A list of objects, each containing:
                 - 'brand': Detected car brand (e.g. "Toyota").
                 - 'model': Detected car model or fragment (e.g. "Vitz", "Tucson").
+                - 'transmission': Detected transmission (e.g. "Manual", "Automatic").
                 - 'prop_type': Detected property type (e.g. "VILLA", "APARTMENT").
                 - 'bedrooms': Number of bedrooms (integer).
            - 'price_max': Maximum price in ETB.
            - 'price_min': Minimum price in ETB.
-           - 'listing_intent': 'BUY' or 'RENT'.
-           - 'query_text': Any remaining relevant keywords. DO NOT include adjectives like "fuel-efficient", "cheap", "nice", "affordable" here as they are unlikely to be in listing titles. Only include concrete features like "automatic", "luxury", "furnished", "pool".
+           - 'price_min': Minimum price in ETB.
+           - 'listing_intent': 'BUY', 'RENT', or null if the user does not specify (e.g., "what's the cheapest studio" should be null).
+           - 'query_text': Any remaining relevant keywords. DO NOT include adjectives like "fuel-efficient", "cheap", "cheapest", "affordable", "nice" here as they are unlikely to be in listing titles. Only include concrete features like "automatic", "luxury", "furnished", "pool".
+        4. Strict History Isolation: Do NOT carry over price limits (price_max/min), property types, or brands from the conversation history into the new filters UNLESS the user explicitly asks to modify them (e.g., "what about under 5 million?" or "show me Toyota instead"). If the user asks a completely complete standalone sentence like "Show me a villa in addis ababa", DROP all previous constraints like budget.
         
         Example Input: "compare toyota vitz and hyundai tucson for sale in addis"
         Example Output: 
@@ -47,7 +50,7 @@ class IntentParser:
           }
         }
         
-        NOTE: If user asks "show me", "search", "find", or "is there any", set "is_search" to true.
+        NOTE: If user asks "show me", "search", "find", "is there any", "what is", or asks about availability, you MUST set "is_search" to true and extract the proper intent (SEARCH_HOME or SEARCH_CAR).
         Return ONLY valid JSON.
         """
 

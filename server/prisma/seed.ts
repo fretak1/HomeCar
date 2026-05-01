@@ -1,17 +1,46 @@
-import { PrismaClient, Role, AssetType, PropertyStatus, MaintenanceCategory, LeaseStatus } from '@prisma/client';
+import { PrismaClient, Role, AssetType, PropertyStatus, MaintenanceCategory, LeaseStatus, ListingType } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-async function main() {
-    console.log('Start seeding...');
+const CITIES_REGIONAL = [
+    { city: 'Bahir Dar', region: 'Amhara', subcity: 'Tana', village: 'Abay' },
+    { city: 'Hawassa', region: 'Sidama', subcity: 'Tabor', village: 'Lake View' },
+    { city: 'Adama', region: 'Oromia', subcity: 'Bole', village: 'Posta' },
+    { city: 'Mekelle', region: 'Tigray', subcity: 'Hadnet', village: 'Adi Haki' },
+    { city: 'Dire Dawa', region: 'Dire Dawa', subcity: 'Kezira', village: 'Gende Tesfa' }
+];
 
-    // 1. Clear existing data (in order of dependencies)
+const ADDIS_ABABA_DISTRICTS = [
+    { subcity: 'Bole', village: 'Summit' },
+    { subcity: 'Bole', village: 'Atlas' },
+    { subcity: 'Arada', village: 'Piazza' },
+    { subcity: 'Kirkos', village: 'Kazanchis' },
+    { subcity: 'Yeka', village: 'Megenagna' },
+    { subcity: 'Lideta', village: 'Old Airport' }
+];
+
+const PROPERTY_TYPES = ['Apartment', 'Villa', 'Penthouse', 'Studio', 'Townhouse'];
+const CAR_BRANDS = {
+    'Toyota': ['Corolla', 'Camry', 'RAV4', 'Land Cruiser', 'Hilux', 'Vitz'],
+    'Tesla': ['Model 3', 'Model Y', 'Model S'],
+    'Ford': ['F-150', 'Explorer', 'Ranger'],
+    'Hyundai': ['Elantra', 'Tucson', 'Santa Fe'],
+    'Mercedes-Benz': ['C-Class', 'E-Class', 'G-Class']
+};
+
+async function main() {
+    console.log('--- Start Deep Seeding (2000 Units) ---');
+
+    // 1. Clear existing data
+    await prisma.propertyView.deleteMany();
+    await prisma.searchFilterLog.deleteMany();
+    await prisma.mapInteraction.deleteMany();
+    await prisma.favorite.deleteMany();
     await prisma.review.deleteMany();
     await prisma.maintenanceRequest.deleteMany();
     await prisma.lease.deleteMany();
     await prisma.application.deleteMany();
-    await prisma.favorite.deleteMany();
     await prisma.chat.deleteMany();
     await prisma.propertyImage.deleteMany();
     await prisma.document.deleteMany();
@@ -19,193 +48,99 @@ async function main() {
     await prisma.location.deleteMany();
     await prisma.user.deleteMany();
 
-    console.log('Existing data cleared.');
+    console.log('Data cleared.');
 
-    // 2. Create Users
+    // 2. Create Base Users
     const passwordHash = await bcrypt.hash('password123', 10);
+    const admin = await prisma.user.create({ data: { name: 'Admin', email: 'admin@homecar.com', passwordHash, role: Role.ADMIN, verified: true } });
+    const agent = await prisma.user.create({ data: { name: 'Abebe Agent', email: 'agent@homecar.com', passwordHash, role: Role.AGENT, verified: true } });
+    const owner = await prisma.user.create({ data: { name: 'Kassa Owner', email: 'owner@homecar.com', passwordHash, role: Role.OWNER, verified: true } });
+    const customer = await prisma.user.create({ data: { name: 'Sami Customer', email: 'customer@homecar.com', passwordHash, role: Role.CUSTOMER, verified: true } });
 
-    const admin = await prisma.user.create({
-        data: {
-            name: 'System Admin',
-            email: 'admin@homecar.com',
-            passwordHash,
-            role: Role.ADMIN,
-            verified: true,
-            phoneNumber: '+251911223344',
-        },
-    });
+    // 3. Generate Locations
+    console.log('Generating locations...');
+    const addisLocs = await Promise.all(ADDIS_ABABA_DISTRICTS.map(d => 
+        prisma.location.create({ data: { city: 'Addis Ababa', region: 'Addis Ababa', ...d } })
+    ));
+    const regionalLocs = await Promise.all(CITIES_REGIONAL.map(c => 
+        prisma.location.create({ data: c })
+    ));
 
-    const agent = await prisma.user.create({
-        data: {
-            name: 'Agent Abebe',
-            email: 'agent@homecar.com',
-            passwordHash,
-            role: Role.AGENT,
-            verified: true, // Mark verified for demo purposes
-            phoneNumber: '+251922334455',
-        },
-    });
-
-    const owner = await prisma.user.create({
-        data: {
-            name: 'Property Owner',
-            email: 'owner@homecar.com',
-            passwordHash,
-            role: Role.OWNER,
-            verified: true,
-            phoneNumber: '+251933445566',
-        },
-    });
-
-    const customer = await prisma.user.create({
-        data: {
-            name: 'Tenant User',
-            email: 'customer@homecar.com',
-            passwordHash,
-            role: Role.CUSTOMER,
-            verified: true,
-            phoneNumber: '+251944556677',
-        },
-    });
-
-    console.log('Users created.');
-
-    // 3. Create Locations
-    const locBole = await prisma.location.create({
-        data: { city: 'Addis Ababa', subcity: 'Bole', region: 'Addis Ababa', village: 'Summit' }
-    });
-
-    const locOldAiport = await prisma.location.create({
-        data: { city: 'Addis Ababa', subcity: 'Lideta', region: 'Addis Ababa', village: 'Old Airport' }
-    });
-
-    // 4. Create Properties (Homes)
-    const home1 = await prisma.property.create({
-        data: {
-            title: 'Modern 3-Bedroom Villa',
-            description: 'A beautiful modern villa with a spacious garden and balcony in a secured neighborhood.',
-            assetType: AssetType.HOME,
-            listingType: ['RENT'],
-            price: 45000,
-            propertyType: 'Villa',
-            bedrooms: 3,
-            bathrooms: 2,
-            area: 250,
-            amenities: ['Wifi', 'Water', 'Security', 'Parking'],
-            ownerId: owner.id,
-            listedById: agent.id,
-            locationId: locBole.id,
-            status: PropertyStatus.AVAILABLE,
-            isVerified: true,
-            images: {
-                create: [
-                    { url: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=800', isMain: true },
-                    { url: 'https://images.unsplash.com/photo-1613490493576-7fde63acd811?q=80&w=800' }
-                ]
-            }
-        },
-    });
-
-    const home2 = await prisma.property.create({
-        data: {
-            title: 'Luxury Apartment with View',
-            description: 'Stunning apartment overlooking the city skyline with top-notch security.',
-            assetType: AssetType.HOME,
-            listingType: ['RENT'],
-            price: 32000,
-            propertyType: 'Apartment',
-            bedrooms: 2,
-            bathrooms: 2,
-            area: 120,
-            amenities: ['Gym', 'Pool', 'Elevator', 'Security'],
-            ownerId: owner.id,
-            listedById: agent.id,
-            locationId: locOldAiport.id,
-            status: PropertyStatus.AVAILABLE,
-            isVerified: true,
-            images: {
-                create: [
-                    { url: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=800', isMain: true }
-                ]
-            }
-        },
-    });
-
-    // 5. Create Properties (Cars)
-    const car1 = await prisma.property.create({
-        data: {
-            title: 'Toyota RAV4 2022',
-            description: 'Practically new Toyota RAV4, full option, hybrid engine.',
-            assetType: AssetType.CAR,
-            listingType: ['RENT'],
-            price: 4500,
-            brand: 'Toyota',
-            model: 'RAV4',
-            year: 2022,
-            fuelType: 'Hybrid',
-            transmission: 'Automatic',
-            mileage: 15000,
-            ownerId: owner.id,
-            listedById: agent.id,
-            status: PropertyStatus.AVAILABLE,
-            isVerified: true,
-            images: {
-                create: [
-                    { url: 'https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=800', isMain: true }
-                ]
-            }
+    // 4. Generate 1100 Homes
+    console.log('Seeding 1100 Homes...');
+    for (let i = 0; i < 1100; i++) {
+        const isAddis = i < 600;
+        const loc = isAddis ? addisLocs[i % addisLocs.length] : regionalLocs[i % regionalLocs.length];
+        const propType = PROPERTY_TYPES[Math.floor(Math.random() * PROPERTY_TYPES.length)];
+        
+        let beds = 0;
+        let area = 0;
+        
+        if (propType === 'Studio') {
+            beds = 0;
+            area = 25 + Math.random() * 20; // 25-45 sqm
+        } else {
+            beds = Math.floor(Math.random() * 4) + 1; // 1-4 beds
+            area = beds * (50 + Math.random() * 100); // Scaled area
         }
-    });
 
-    console.log('Properties created.');
+        await prisma.property.create({
+            data: {
+                title: `${beds || ''} ${propType} in ${loc.village}`,
+                description: `A beautiful ${propType} located in the heart of ${loc.city}. Perfect for modern living.`,
+                assetType: AssetType.HOME,
+                listingType: [Math.random() > 0.3 ? 'RENT' : 'FOR_SALE'],
+                price: beds === 0 ? 15000 + Math.random() * 10000 : beds * (20000 + Math.random() * 50000),
+                propertyType: propType,
+                bedrooms: beds,
+                bathrooms: Math.max(1, beds - 1),
+                area: Math.round(area),
+                amenities: ['Wifi', 'Parking', 'Security'],
+                ownerId: owner.id,
+                listedById: agent.id,
+                locationId: loc.id,
+                status: PropertyStatus.AVAILABLE,
+                isVerified: true,
+                images: { create: [{ url: `https://images.unsplash.com/photo-${1512917774080 + i % 1000}-9991f1c4c750?q=80&w=800` }] }
+            }
+        });
+    }
 
-    // 6. Create Applications
-    await prisma.application.create({
-        data: {
-            status: 'pending',
-            message: 'I am very interested in this villa, is it still available?',
-            propertyId: home1.id,
-            customerId: customer.id,
-            managerId: agent.id,
-        },
-    });
+    // 5. Generate 900 Cars
+    console.log('Seeding 900 Cars...');
+    const brands = Object.keys(CAR_BRANDS) as (keyof typeof CAR_BRANDS)[];
+    for (let i = 0; i < 900; i++) {
+        const brand = brands[Math.floor(Math.random() * brands.length)];
+        const model = CAR_BRANDS[brand][Math.floor(Math.random() * CAR_BRANDS[brand].length)];
+        const year = 2010 + Math.floor(Math.random() * 15);
 
-    // 7. Create Leases
-    await prisma.lease.create({
-        data: {
-            startDate: new Date(),
-            endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-            totalPrice: 384000,
-            recurringAmount: 32000,
-            terms: 'Sample lease terms: No smoking, quiet hours after 10 PM.',
-            status: LeaseStatus.ACTIVE,
-            ownerAccepted: true,
-            customerAccepted: true,
-            propertyId: home2.id,
-            customerId: customer.id,
-            ownerId: owner.id,
-        }
-    });
+        await prisma.property.create({
+            data: {
+                title: `${brand} ${model} ${year}`,
+                description: `Well maintained ${brand} ${model} in excellent condition. High performance and fuel efficient.`,
+                assetType: AssetType.CAR,
+                listingType: [Math.random() > 0.5 ? 'RENT' : 'FOR_SALE'],
+                price: 1500 + Math.random() * 5000,
+                brand,
+                model,
+                year,
+                fuelType: Math.random() > 0.8 ? 'Electric' : 'Petrol',
+                transmission: Math.random() > 0.3 ? 'Automatic' : 'Manual',
+                mileage: Math.floor(Math.random() * 100000),
+                ownerId: owner.id,
+                listedById: agent.id,
+                status: PropertyStatus.AVAILABLE,
+                isVerified: true,
+                images: { create: [{ url: `https://images.unsplash.com/photo-${1583121274602 + i % 1000}-3e2820c69888?q=80&w=800` }] }
+            }
+        });
+    }
 
-    // 8. Create Maintenance Request
-    await prisma.maintenanceRequest.create({
-        data: {
-            category: MaintenanceCategory.PLUMBING,
-            description: 'The kitchen sink is leaking heavily.',
-            status: 'pending',
-            images: ['https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800'],
-            propertyId: home2.id,
-            customerId: customer.id,
-        }
-    });
-
-    console.log('Seeding finished.');
+    console.log('--- Seeding Completed (2000 Total Units) ---');
 }
 
 main()
-    .then(async () => {
-        await prisma.$disconnect();
-    })
+    .then(async () => { await prisma.$disconnect(); })
     .catch(async (e) => {
         console.error(e);
         await prisma.$disconnect();

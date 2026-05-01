@@ -102,8 +102,8 @@ const FiltersFull = () => {
                                 <SelectContent className="rounded-xl shadow-2xl">
                                     <SelectItem value="any">No Minimum</SelectItem>
                                     {(searchType === 'property' 
-                                        ? [500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000, 50000000] 
-                                        : [50000, 100000, 250000, 500000, 1000000, 2500000, 5000000, 10000000, 25000000, 50000000]
+                                        ? [500, 1000, 2500, 5000, 10000, 15000, 20000, 25000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000, 50000000] 
+                                        : [10000, 15000, 20000, 25000, 50000, 100000, 250000, 500000, 1000000, 2500000, 5000000, 10000000, 25000000, 50000000]
                                     ).map(p => (
                                         <SelectItem key={p} value={p.toString()}>ETB {p.toLocaleString()}</SelectItem>
                                     ))}
@@ -126,8 +126,8 @@ const FiltersFull = () => {
                                 <SelectContent className="rounded-xl shadow-2xl">
                                     <SelectItem value="any">No Maximum</SelectItem>
                                     {(searchType === 'property' 
-                                        ? [1000, 5000, 10000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000, 50000000, 100000000] 
-                                        : [100000, 500000, 1000000, 2500000, 5000000, 10000000, 25000000, 50000000, 100000000]
+                                        ? [1000, 5000, 10000, 15000, 20000, 25000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000, 50000000, 100000000] 
+                                        : [10000, 15000, 20000, 25000, 100000, 500000, 1000000, 2500000, 5000000, 10000000, 25000000, 50000000, 100000000]
                                     ).map(p => (
                                         <SelectItem key={p} value={p.toString()}>ETB {p.toLocaleString()}</SelectItem>
                                     ))}
@@ -279,7 +279,7 @@ const FiltersFull = () => {
                                 <Select 
                                     value={filters.year[0]?.toString() || "any"} 
                                     onValueChange={v => {
-                                        const year = v === "any" ? 1980 : parseInt(v);
+                                        const year = v === "any" ? 1990 : parseInt(v);
                                         updateFilter({ year: [year, filters.year[1] || 2025] });
                                     }}
                                 >
@@ -288,7 +288,7 @@ const FiltersFull = () => {
                                     </SelectTrigger>
                                     <SelectContent className="max-h-[300px]">
                                         <SelectItem value="any">From (Any)</SelectItem>
-                                        {Array.from({ length: 2025 - 1980 + 1 }, (_, i) => (2025 - i).toString()).map(y => (
+                                        {Array.from({ length: 2025 - 1990 + 1 }, (_, i) => (2025 - i).toString()).map(y => (
                                             <SelectItem key={y} value={y}>{y}</SelectItem>
                                         ))}
                                     </SelectContent>
@@ -298,7 +298,7 @@ const FiltersFull = () => {
                                     value={filters.year[1]?.toString() || "any"} 
                                     onValueChange={v => {
                                         const year = v === "any" ? 2025 : parseInt(v);
-                                        updateFilter({ year: [filters.year[0] || 1980, year] });
+                                        updateFilter({ year: [filters.year[0] || 1990, year] });
                                     }}
                                 >
                                     <SelectTrigger className="rounded-xl h-11 bg-muted/20 border-border/50">
@@ -306,7 +306,7 @@ const FiltersFull = () => {
                                     </SelectTrigger>
                                     <SelectContent className="max-h-[300px]">
                                         <SelectItem value="any">To (Any)</SelectItem>
-                                        {Array.from({ length: 2025 - 1980 + 1 }, (_, i) => (2025 - i).toString()).map(y => (
+                                        {Array.from({ length: 2025 - 1990 + 1 }, (_, i) => (2025 - i).toString()).map(y => (
                                             <SelectItem key={y} value={y}>{y}</SelectItem>
                                         ))}
                                     </SelectContent>
@@ -378,6 +378,7 @@ const FiltersFull = () => {
                                 propertyType: 'any',
                                 vehicleType: 'any',
                                 brand: 'any',
+                                model: 'any',
                                 year: [1990, 2025],
                                 fuelTech: 'any',
                                 transmission: 'any',
@@ -399,6 +400,7 @@ const FiltersFull = () => {
         </div>
     );
 };
+
 
 const FilterButton = ({ active, onClick, children }: { active: boolean, onClick: () => void, children: React.ReactNode }) => (
     <div

@@ -27,7 +27,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
     const { getMe, currentUser, isLoading } = useUserStore();
     const { fetchFavorites } = useFavoriteStore();
-    const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password" || pathname === "/reset-password";
+    const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password" || pathname === "/reset-password" || pathname === "/verify-email";
 
     useEffect(() => {
         getMe();

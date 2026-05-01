@@ -130,9 +130,9 @@ function ListRowSkeleton() {
 // Full-page skeleton — exact visual replica of the admin dashboard layout
 function AdminDashboardSkeleton() {
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-[#F8FAFC]">
             {/* Green Gradient Header Skeleton */}
-            <div className="bg-gradient-to-br from-[#005a41] via-[#005a41] to-[#1e3a8a] py-12">
+            <div className="bg-[#005a41] py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <Skeleton className="h-10 w-64 bg-white/20 rounded-lg mb-3" />
                     <Skeleton className="h-5 w-48 bg-white/10 rounded-md" />
@@ -488,8 +488,8 @@ export default function AdminDashboardPage() {
     if (isLoading) return <AdminDashboardSkeleton />;
 
     return (
-        <div className="min-h-screen bg-background">
-            <div className="bg-gradient-to-br from-[#005a41] via-[#005a41] to-[#1e3a8a] py-12">
+        <div className="min-h-screen bg-[#F8FAFC]">
+            <div className="bg-[#005a41] py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between">
                         <div>

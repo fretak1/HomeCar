@@ -29,6 +29,8 @@ interface ReceiptDetailProps {
     role: 'customer' | 'owner' | 'agent';
 }
 
+import { ReceiptSkeleton } from '@/components/ui/dashboard-skeletons';
+
 export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
     const { transactions, fetchTransactions, isLoading: isTxLoading } = useTransactionStore();
     const receiptRef = useRef<HTMLDivElement>(null);
@@ -43,12 +45,7 @@ export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
     const transaction = transactions.find(t => t.id === id);
 
     if (isTxLoading && !transaction) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-background p-4 gap-4">
-                <Loader2 className="h-12 w-12 animate-spin text-[#005a41]" />
-                <p className="text-muted-foreground font-medium animate-pulse">Fetching revenue record...</p>
-            </div>
-        );
+        return <ReceiptSkeleton />;
     }
 
     if (!transaction) {

@@ -10,6 +10,8 @@ import { useChatStore } from '@/store/useChatStore';
 
 const api = createApi();
 
+import { ProfileSkeleton } from '@/components/ui/dashboard-skeletons';
+
 export default function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
@@ -46,12 +48,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-muted/30">
-                <Loader2 className="h-10 w-10 animate-spin text-[#005a41]" />
-                <p className="text-muted-foreground font-bold animate-pulse">Loading profile...</p>
-            </div>
-        );
+        return <ProfileSkeleton />;
     }
 
     if (error || !user) {

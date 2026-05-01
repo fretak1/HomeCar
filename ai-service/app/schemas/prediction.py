@@ -67,4 +67,4 @@ class InteractionHistory(BaseModel):
 class RecommendationRequest(BaseModel):
     userId: Optional[str] = None
     history: Optional[List[InteractionHistory]] = None
-    limit: Optional[int] = 10
+    limit: int = 15

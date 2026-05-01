@@ -100,8 +100,8 @@ export default function AgentDashboardPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-background">
-            <div className="bg-gradient-to-br from-primary via-primary to-secondary py-12">
+        <div className="min-h-screen bg-[#F8FAFC]">
+            <div className="bg-primary py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between">
                         <div>

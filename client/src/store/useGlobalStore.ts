@@ -11,6 +11,7 @@ export interface Filters {
     propertyType: string;
     vehicleType: string;
     brand: string;
+    model: string;
     year: [number, number];
     fuelTech: string;
     transmission: string;
@@ -45,7 +46,8 @@ const initialFilters: Filters = {
     propertyType: 'any',
     vehicleType: 'any',
     brand: 'any',
-    year: [2010, 2025],
+    model: 'any',
+    year: [1990, 2025],
     fuelTech: 'any',
     transmission: 'any',
     mileage: null,

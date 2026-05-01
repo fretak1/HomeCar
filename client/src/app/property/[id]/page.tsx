@@ -52,6 +52,8 @@ import { usePaymentStore } from '@/store/usePaymentStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
 import { useInteractionStore } from '@/store/useInteractionStore';
 
+import { PropertyDetailSkeleton } from '@/components/ui/dashboard-skeletons';
+
 export default function PropertyDetailPage() {
     const params = useParams();
     const id = params?.id as string;
@@ -171,12 +173,8 @@ export default function PropertyDetailPage() {
         }
     };
 
-    if (isPropertyLoading) {
-        return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        );
+    if (isPropertyLoading && !property) {
+        return <PropertyDetailSkeleton />;
     }
 
     if (!property) {
@@ -397,6 +395,16 @@ export default function PropertyDetailPage() {
                                 <div className="flex items-start justify-between mb-4">
                                     <div>
                                         <h1 className="text-3xl mb-2 font-bold text-foreground">{property.title}</h1>
+                                        <div className="flex items-center flex-wrap gap-3 mb-4">
+                                            <span className="text-2xl font-bold text-primary">
+                                                ETB {property.price.toLocaleString()}
+                                            </span>
+                                            {property.propertyType && (
+                                                <Badge variant="secondary" className="capitalize font-bold bg-primary/10 text-primary hover:bg-primary/20">
+                                                    {property.propertyType.toLowerCase().replace('_', ' ')}
+                                                </Badge>
+                                            )}
+                                        </div>
                                         <div className="flex items-center text-muted-foreground mb-2">
                                             <MapPin className="h-5 w-5 mr-2 text-primary" />
                                             <span>{formatLocation(property.location)}</span>

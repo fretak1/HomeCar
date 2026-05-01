@@ -9,6 +9,7 @@ import { Loader2, Sparkles, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { motion } from 'motion/react';
+import { PropertyGridSkeleton } from '@/components/ui/dashboard-skeletons';
 
 export default function RecommendationsPage() {
     const { currentUser } = useUserStore();
@@ -25,7 +26,7 @@ export default function RecommendationsPage() {
             <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/5 rounded-full blur-3xl -ml-64 -mb-64" />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                <div className="mb-8">
+                <div className="mb-12">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
                             <h1 className="text-4xl md:text-5xl font-black text-foreground tracking-tight">
@@ -39,17 +40,7 @@ export default function RecommendationsPage() {
                 </div>
 
                 {isRecommendationLoading ? (
-                    <div className="py-32 flex flex-col items-center justify-center space-y-8">
-                        <div className="relative">
-                            <div className="absolute -inset-4 bg-primary/20 blur-xl rounded-full animate-pulse" />
-                            <Loader2 className="h-16 w-16 animate-spin text-primary relative z-10" />
-                            <BotIcon className="h-8 w-8 text-primary absolute inset-0 m-auto z-20" />
-                        </div>
-                        <div className="text-center space-y-2">
-                            <h3 className="text-2xl font-black text-foreground tracking-tight uppercase">Scanning Neural Pathway</h3>
-                            <p className="text-muted-foreground font-mono text-sm animate-pulse uppercase tracking-[0.2em]">Tracing Intent Signals...</p>
-                        </div>
-                    </div>
+                    <PropertyGridSkeleton count={6} />
                 ) : recommendations.length > 0 ? (
                     <motion.div
                         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pb-12"
