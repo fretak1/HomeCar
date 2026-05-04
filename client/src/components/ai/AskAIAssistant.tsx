@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 const normalizeChatHref = (rawHref: string): { isInternal: boolean; href: string } => {
     const trimmed = rawHref.trim();
     const sanitized = trimmed.replace(/[)\],.!?;:]+$/, '');
+    
     const toInternalPath = (value: string) => {
         const withoutProtocolLike = value.replace(/^[a-zA-Z]+:\/*/, '');
         const noLeadingSlash = withoutProtocolLike.replace(/^\/+/, '');
@@ -21,8 +22,7 @@ const normalizeChatHref = (rawHref: string): { isInternal: boolean; href: string
     };
 
     if (sanitized.startsWith('nav:')) {
-        const path = sanitized.replace(/^nav:\/*/, '');
-        return { isInternal: true, href: toInternalPath(path) };
+        return { isInternal: true, href: toInternalPath(sanitized) };
     }
 
     if (sanitized.startsWith('/')) {
@@ -34,11 +34,17 @@ const normalizeChatHref = (rawHref: string): { isInternal: boolean; href: string
     }
 
     try {
-        const parsed = new URL(sanitized);
-        if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
-            const normalizedPath = `/${parsed.pathname.replace(/^\/+/, '')}`;
-            return { isInternal: true, href: `${normalizedPath}${parsed.search}${parsed.hash}` };
+        // If it starts with http, it might be internal or external
+        if (sanitized.startsWith('http')) {
+            const parsed = new URL(sanitized);
+            if (typeof window !== 'undefined' && parsed.origin === window.location.origin) {
+                const normalizedPath = `/${parsed.pathname.replace(/^\/+/, '')}`;
+                return { isInternal: true, href: `${normalizedPath}${parsed.search}${parsed.hash}` };
+            }
+            return { isInternal: false, href: sanitized };
         }
+        
+        // If it doesn't start with http/nav// and it's not a known internal route, treat it as relative/unknown
         return { isInternal: false, href: sanitized };
     } catch {
         return { isInternal: false, href: sanitized };
@@ -130,30 +136,25 @@ export const AskAIAssistant = () => {
                                                         components={{
                                                             a: ({ node, ...props }) => {
                                                                 const href = props.href || '';
+                                                                console.log('[ChatBot] Link detected:', { href });
                                                                 const normalized = normalizeChatHref(href);
+                                                                const cleanPath = normalized.isInternal ? normalized.href : href;
 
-                                                                if (normalized.isInternal) {
-                                                                    const cleanPath = normalized.href;
-
-                                                                    return (
-                                                                        <Link
-                                                                            href={cleanPath}
-                                                                            className="ai-link"
-                                                                            onClick={(e) => {
-                                                                                e.preventDefault();
-                                                                                router.push(cleanPath);
-                                                                            }}
-                                                                        >
-                                                                            {props.children}
-                                                                        </Link>
-                                                                    );
-                                                                }
+                                                                const handleClick = (e: React.MouseEvent) => {
+                                                                    if (normalized.isInternal) {
+                                                                        e.preventDefault();
+                                                                        console.log('[ChatBot] Internal navigation to:', cleanPath);
+                                                                        router.push(cleanPath);
+                                                                        setTimeout(() => setIsOpen(false), 100);
+                                                                    }
+                                                                };
 
                                                                 return (
                                                                     <a
-                                                                        {...props}
-                                                                        href={normalized.href}
-                                                                        className="ai-link"
+                                                                        href={cleanPath}
+                                                                        className="text-[#004e3b] hover:underline font-bold transition-all cursor-pointer inline-block"
+                                                                        onClick={handleClick}
+                                                                        {...(!normalized.isInternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                                                                     >
                                                                         {props.children}
                                                                     </a>
@@ -161,7 +162,7 @@ export const AskAIAssistant = () => {
                                                             }
                                                         }}
                                                     >
-                                                        {m.parts}
+                                                        {m.parts.replace(/nav:(\/*)/g, '/')}
                                                     </ReactMarkdown>
                                                 </div>
                                             )}

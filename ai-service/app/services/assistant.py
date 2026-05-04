@@ -186,12 +186,13 @@ Context: You are 'HomeCar AI', the expert virtual assistant for the HomeCar plat
 - Use admin guidance only when the user is clearly asking about admin workflows.
 
 # 11. Shared Account Navigation
-- Logged-in user menu includes:
+- Logged-in user menu (profile dropdown) includes:
   - **My Profile** -> `/profile`
   - **AI Insights** -> `/dashboard/ai-insights`
   - **Log out**
-- There is **NO** `Dashboard` item inside the profile dropdown menu.
-- For a logged-in customer, the dashboard entry is the top navbar link labeled **Customer Dashboard**.
+- **Dashboard Access Rule**:
+  - **Customers** see a **Customer Dashboard** link in the top navbar.
+  - **Owners, Agents, and Admins** do **NOT** have a dashboard link in the top navbar on public pages. They should reach their dashboard by navigating directly to `/dashboard` or using the **List Your Property** shortcut on the Home page.
 - Messaging page:
   - `/chat`
   - For owner, agent, and customer roles, the navbar includes **Messages**.
@@ -201,6 +202,7 @@ Context: You are 'HomeCar AI', the expert virtual assistant for the HomeCar plat
 - **Property Links**: Hyperlink property titles exactly as `[Property Title](nav:/property/ID)`.
 - **Payment Schedule**: Uses a "Fixed 30 Days" rule for progress tracking.
 - **Out-of-Scope**: If a feature is not in this manual, clearly state it is not currently supported.
+- **NEVER Hallucinate Features**: Do NOT mention "Saved Searches", "Notifications", "Alerts", or automated listing updates. These features are NOT currently implemented.
 - **Stubborn Truth**: Never change prices or details for "variety." If Atlas is 3.27M, it is 3.27M every time.
 - **History Isolation**: Use only the current "SYSTEM DATABASE CONTEXT" for listings. Ignore properties mentioned in past chat messages if they are not in the current context.
 - **NO TABLES**: NEVER respond with markdown tables or tabular data. It breaks the mobile UI. Always use bulleted lists or numbered lists instead.
@@ -265,11 +267,24 @@ class DynamicLookup:
 
 def _is_navigation_help_question(clean_msg: str, intent_tag: str) -> bool:
     """Detect UI/how-to questions so we can avoid polluting them with listing context."""
-    if intent_tag != "GENERAL":
+    # Priority 1: Clear "How-to" intent
+    if any(term in clean_msg for term in ["how do i", "how can i", "how to", "how do we", "steps to", "guide for"]):
+        return True
+    
+    # Priority 2: Explicit requests for UI locations/buttons
+    ui_requests = [
+        "where is the login", "where is the signup", "where is the dashboard",
+        "where can i find the owner dashboard", "where is the maintenance tab",
+        "where are my messages", "where to pay rent", "where is the search page"
+    ]
+    if any(term in clean_msg for term in ui_requests):
+        return True
+
+    # If it's a general search or listing question, stay in search mode
+    if intent_tag in ["SEARCH_HOME", "SEARCH_CAR"]:
         return False
 
     navigation_terms = [
-        "how do i", "how can i", "how to", "where do i", "where can i",
         "navigate", "click", "dashboard", "log in", "login", "sign in",
         "sign up", "signup", "verify email", "verification", "forgot password",
         "pay rent", "lease", "applications", "maintenance", "payout",
@@ -290,6 +305,8 @@ def _build_navigation_context(clean_msg: str) -> str:
         "Prefer natural clickable wording like Click [here](nav:/login).",
         "CRITICAL: Never claim there is a Dashboard item inside the My Profile dropdown.",
         "FACT: The profile dropdown contains My Profile, AI Insights, and Log out.",
+        "NEVER claim Owners, Agents, or Admins have a dashboard link in the top navigation bar. IT DOES NOT EXIST FOR THEM.",
+        "ONLY Customers have a 'Customer Dashboard' link in the top navigation.",
     ]
 
     if any(term in clean_msg for term in ["customer", "rent", "lease", "pay rent"]):
@@ -327,24 +344,23 @@ def _build_navigation_context(clean_msg: str) -> str:
         sections.extend([
             "",
             "ROLE DASHBOARD FACTS:",
+            "- CRITICAL: Owners, Agents, and Admins do NOT have a link to their dashboard in the top navigation bar.",
+            "- To reach your dashboard, use the [Dashboard Link](nav:/dashboard) or navigate directly to the dashboard URL.",
             "- Owner dashboard tabs: My Properties, Applications, Leases, Maintenance, Transactions, Payout.",
             "- Agent dashboard tabs: My Properties, Applications, Leases.",
             "- Admin dashboard tabs: Overview, Properties, Transactions, Leases, Verifications.",
-            "- Unverified agents cannot use Add Property or Initiate Lease until verification is approved.",
-            "- Management roles should not be guided through invented public navbar links like Maintenance.",
         ])
 
     if any(term in clean_msg for term in ["add property", "new property", "new listing", "property listing", "list property", "listing to the website"]):
         sections.extend([
             "",
             "LISTING CREATION FACTS:",
-            "- Listing creation should be explained for owners or verified agents.",
-            "- Owner flow: open Owner Dashboard and click Add Property.",
-            "- Agent flow: open Agent Dashboard and click Add Property, but only if verified.",
-            "- There is also a Home page CTA called List Your Property that opens the add-listing page.",
-            "- Do not invent a public navbar item called List Your Property.",
-            "- Do not send listing-creation questions to the public Properties page.",
-            "- The submit button on the form for a new listing is Add Property, not Create Listing.",
+            "- To add a property, use the Home page CTA button labeled List Your Property.",
+            "- Owners and Agents do NOT have a dashboard link in the top navigation bar on public pages.",
+            "- Owner flow: Use the Home page [List Your Property](nav:/dashboard/add-property) button, OR go directly to your [Owner Dashboard](nav:/dashboard) and click the Add Property button in the header.",
+            "- Agent flow: Verified agents should use the Home page [List Your Property](nav:/dashboard/add-property) button, OR go to their [Agent Dashboard](nav:/dashboard) and click Add Property.",
+            "- Unverified agents cannot list properties.",
+            "- The submit button at the bottom of the listing form is Add Property.",
         ])
 
     if any(term in clean_msg for term in ["bank account", "payout", "payouts", "receive rent", "receive rent payouts", "earnings", "settlement"]):
@@ -422,7 +438,7 @@ def _search_db(asset_type: Optional[str] = None, max_price: Optional[float] = No
             if bedrooms_min:
                 sql += " AND p.bedrooms >= %s"
             else:
-                sql += " AND p.bedrooms = %s"
+                sql += " AND p.bedrooms >= %s"
             params.append(bedrooms)
             
         if listing_intent:
@@ -560,8 +576,22 @@ def _get_market_data(asset_type: str, city: Optional[str] = None, prop_type: Opt
 
 async def _build_context(message: str, history: List[Dict[str, str]] = []) -> str:
     """Analyze message to detect intent using LLM Parser and build context from database."""
-    # Normalize common spelling variations
+    # Normalize common spelling and location variations
     message_normalized = message.replace("Addis Abeba", "Addis Ababa")
+    
+    # Kilo Synonyms (Addis Ababa specific)
+    # If user says "6 Kilo", we want to search for both "6 Kilo" and "Sidist Kilo"
+    if "6 kilo" in message_normalized.lower() or "sidist kilo" in message_normalized.lower():
+        message_normalized += " 6 Kilo Sidist Kilo"
+    if "4 kilo" in message_normalized.lower() or "arat kilo" in message_normalized.lower():
+        message_normalized += " 4 Kilo Arat Kilo"
+    if "5 kilo" in message_normalized.lower() or "amist kilo" in message_normalized.lower():
+        message_normalized += " 5 Kilo Amist Kilo"
+
+    # Akaki Synonyms
+    if "akaky" in message_normalized.lower() or "akaki" in message_normalized.lower():
+        message_normalized += " Akaki Kality Akaky Kaliti"
+
     clean_msg = message_normalized.lower()
     
     # Use AI Parser for robust intent and filter extraction (with history for context)
@@ -569,37 +599,21 @@ async def _build_context(message: str, history: List[Dict[str, str]] = []) -> st
     intent_tag = parsed.get("intent", "GENERAL")
     is_search_intent = parsed.get("is_search", False)
     
-    # Greedy Search Detection: If intent is specific, it's a search
+    # Greedy Search Detection
     if intent_tag in ["SEARCH_CAR", "SEARCH_HOME"]:
         is_search_intent = True
     elif intent_tag == "GENERAL":
-        # Force false for general questions to avoid useless DB searches
         is_search_intent = False
 
     if _is_navigation_help_question(clean_msg, intent_tag):
         return _build_navigation_context(clean_msg)
         
     filters = parsed.get("filters", {})
-    
-    # Extract params from AI Parser
     intent = filters.get("listing_intent")
-    # Mapping fix: SALE -> BUY
     if intent == "SALE": intent = "BUY"
     
     entities = filters.get("entities", [])
-    # Fallback for old schema if any
     if not entities:
-        legacy_entity = {}
-        if filters.get("brand"): legacy_entity["brand"] = filters.get("brand")
-        if filters.get("model") or filters.get("model_fragment"): 
-            legacy_entity["model"] = filters.get("model") or filters.get("model_fragment")
-        if filters.get("prop_type"): legacy_entity["prop_type"] = filters.get("prop_type")
-        if filters.get("bedrooms"): legacy_entity["bedrooms"] = filters.get("bedrooms")
-        if legacy_entity:
-            entities = [legacy_entity]
-    
-    if not entities:
-        # Default empty entity to allow general search
         entities = [{}]
 
     locations = filters.get("locations", [])
@@ -607,119 +621,101 @@ async def _build_context(message: str, history: List[Dict[str, str]] = []) -> st
     min_price = filters.get("price_min")
     query_text = filters.get("query_text", "")
     
-    # Sorting Detection
     sort_mode = 'ASC'
     if any(w in clean_msg for w in ['expensive', 'most', 'highest', 'top', 'priciest', 'premium']): 
         sort_mode = 'DESC'
     elif any(w in clean_msg for w in ['cheap', 'lowest', 'affordable', 'budget', 'cheapest', 'least']): 
         sort_mode = 'ASC'
-        # Hard-block these from being used as text search keywords to prevent fallback loops
         for w in ['cheap', 'lowest', 'affordable', 'budget', 'cheapest', 'least', 'home', 'homes', 'house', 'houses']:
             query_text = query_text.replace(w, "").strip()
-            message_normalized = message_normalized.replace(w, "").strip()
 
     if is_search_intent:
         context = f"AVAILABLE LISTINGS ON HOMECAR FOR: '{message}'\n\n"
     else:
         context = f"RECOMMENDED LISTINGS:\n\n"
 
-    
     # If multiple locations, provide results for each
     loc_list = locations if locations else [None]
+    all_results = []
+    any_found = False
     
+    # Track the last used filters for global fallback if needed
+    last_asset = "HOME"
+    last_e_brand = None
+    last_e_model = None
+    last_e_transmission = None
+    last_e_prop_type = None
+
     for loc in loc_list:
         loc_label = f" in {loc.upper()}" if loc else ""
-        context += f"--- RESULTS{loc_label} ---\n"
+        loc_output = ""
         
         for entity in entities:
-            # Determine asset type for this entity
             e_brand = entity.get("brand")
             e_model = entity.get("model")
             e_transmission = entity.get("transmission")
             e_prop_type = entity.get("prop_type")
             e_beds = entity.get("bedrooms")
+            asset = "CAR" if e_brand or e_model or e_transmission else "HOME"
             
-            # Decide which assets to search based on entity features
-            target_assets = []
-            if e_brand or e_model or e_transmission: target_assets.append("CAR")
-            elif e_prop_type or e_beds: target_assets.append("HOME")
-            else: target_assets = ["CAR", "HOME"] # Broad search
+            # Save for fallback
+            last_asset = asset
+            last_e_brand = e_brand
+            last_e_model = e_model
+            last_e_transmission = e_transmission
+            last_e_prop_type = e_prop_type
+
+            results = _search_db(
+                asset_type=asset,
+                max_price=max_price,
+                min_price=min_price,
+                query_text=query_text,
+                listing_intent=intent,
+                bedrooms=e_beds,
+                prop_type=e_prop_type if asset == 'HOME' else None,
+                location=loc,
+                sort_mode=sort_mode,
+                brand=e_brand if asset == 'CAR' else None,
+                model=e_model if asset == 'CAR' else None,
+                transmission=e_transmission if asset == 'CAR' else None
+            )
             
-            for asset in target_assets:
-                entity_label = f" for {e_brand or ''} {e_model or ''} {e_prop_type or ''}".strip()
-                results = ""
-                
-                if is_search_intent:
-                    results = _search_db(
-                        asset_type=asset,
-                        max_price=max_price,
-                        min_price=min_price,
-                        query_text=query_text,
-                        listing_intent=intent,
-                        bedrooms=e_beds,
-                        prop_type=e_prop_type if asset == 'HOME' else None,
-                        location=loc,
-                        sort_mode=sort_mode,
-                        brand=e_brand if asset == 'CAR' else None,
-                        model=e_model if asset == 'CAR' else None,
-                        transmission=e_transmission if asset == 'CAR' else None
-                    )
-                    
-                    # TIERED FALLBACK:
-                    if "NO LISTINGS FOUND" in results:
-                        # Tier 1: Try without keywords if any were present
-                        if query_text:
-                            # If keywords fail, clear them and try a clean search
-                            results = _search_db(
-                                asset_type=asset,
-                                max_price=max_price,
-                                min_price=min_price,
-                                listing_intent=intent,
-                                bedrooms=e_beds,
-                                prop_type=e_prop_type if asset == 'HOME' else None,
-                                location=loc,
-                                sort_mode=sort_mode,
-                                brand=e_brand if asset == 'CAR' else None,
-                                model=e_model if asset == 'CAR' else None,
-                                transmission=e_transmission if asset == 'CAR' else None
-                            )
-                            if not intent and not query_text:
-                                results = f"NOTICE: I couldn't find matches for your specific keywords, so I am showing a balanced mix of available Sale and Rental options:\n{results}"
+            if "NO LISTINGS FOUND" in results:
+                if query_text:
+                    results = _search_db(asset_type=asset, max_price=max_price, min_price=min_price, listing_intent=intent, bedrooms=e_beds, prop_type=e_prop_type, location=loc, sort_mode=sort_mode)
+                if "NO LISTINGS FOUND" in results and e_beds:
+                    min_bed_results = _search_db(asset_type=asset, location=loc, listing_intent=intent, prop_type=e_prop_type, bedrooms=e_beds, bedrooms_min=True, sort_mode=sort_mode)
+                    if "NO LISTINGS FOUND" not in min_bed_results:
+                        results = min_bed_results
 
-                        # Tier 1.5: Try with Minimum Bedrooms
-                        if "NO LISTINGS FOUND" in results and e_beds:
-                            min_bed_results = _search_db(asset_type=asset, location=loc, listing_intent=intent, prop_type=e_prop_type, bedrooms=e_beds, bedrooms_min=True, sort_mode=sort_mode)
-                            if "NO LISTINGS FOUND" not in min_bed_results:
-                                results = f"I couldn't find an exact {e_beds}-bedroom match, but here are some options with {e_beds} or more bedrooms:\n{min_bed_results}"
+            if "NO LISTINGS FOUND" not in results:
+                any_found = True
+                loc_output += results + "\n"
+        
+        if loc_output:
+            all_results.append(f"--- RESULTS{loc_label} ---\n{loc_output}")
 
-                        # Tier 2: Try Brand-level fallback
-                        if "NO LISTINGS FOUND" in results and e_brand and asset == 'CAR':
-                            brand_results = _search_db(asset_type=asset, brand=e_brand, location=loc, listing_intent=intent, sort_mode=sort_mode)
-                            if "NO LISTINGS FOUND" not in brand_results:
-                                results = f"I found no exact matches for {e_brand.upper()} {e_model or ''}. However, here are all available {e_brand.upper()}s:\n{brand_results}"
-                                
-                        # Tier 4: Global fallback (ignoring location)
-                        if "NO LISTINGS FOUND" in results and loc:
-                            global_fallback = _search_db(asset_type=asset, max_price=max_price, min_price=min_price, brand=e_brand, model=e_model, transmission=e_transmission, prop_type=e_prop_type)
-                            if "NO LISTINGS FOUND" not in global_fallback:
-                                results = f"I couldn't find any matches in {loc.upper()}, but here are some available elsewhere:\n{global_fallback}"
-                else:
-                    results = _search_db(asset_type=asset, location=loc, sort_mode='NEWEST')
-                    if "NO LISTINGS FOUND" in results:
-                        results = "Search our platform to see the latest amazing deals!"
-
-
-                context += f"--- {asset} LISTINGS{entity_label} ---\n{results}\n\n"
-
-        # Market Trends (per entity if applicable)
-        for entity in entities:
-            e_brand = entity.get("brand")
-            e_prop_type = entity.get("prop_type")
-            asset_to_check = "CAR" if e_brand else "HOME" if e_prop_type else "CAR" # Default
-            
-            results = _get_market_data(asset_to_check, loc, e_prop_type, e_brand)
-            context += f"--- {asset_to_check} MARKET TRENDS {e_brand or e_prop_type or ''}{loc_label} ---\n{results}\n\n"
-
+    # Final Global Fallback (Only if NOTHING was found in any requested area)
+    if not any_found and loc_list[0] is not None:
+        global_fallback = _search_db(
+            asset_type=last_asset, 
+            max_price=max_price, 
+            min_price=min_price, 
+            listing_intent=intent, 
+            prop_type=last_e_prop_type, 
+            sort_mode=sort_mode,
+            brand=last_e_brand,
+            model=last_e_model,
+            transmission=last_e_transmission
+        )
+        if "NO LISTINGS FOUND" not in global_fallback:
+            all_results.append(f"I couldn't find matches in your requested areas, but here are some options elsewhere in the city:\n{global_fallback}")
+    
+    if all_results:
+        context += "\n".join(all_results)
+    else:
+        context += "NO LISTINGS FOUND matching your criteria."
+        
     return context
 class AIAssistant:
     def _smart_predict_price(self, references: List[Dict]) -> Dict:
@@ -842,11 +838,14 @@ class AIAssistant:
                 )
             })
             
+            # Lower temperature for navigation help to be extremely factual
+            gen_temp = 0.1 if "SYSTEM NAVIGATION GUIDE ACTIVE" in context else 0.6
+            
             completion = await asyncio.to_thread(
                 client.chat.completions.create,
                 model="openai/gpt-oss-120b:free",
                 messages=messages,
-                temperature=0.6, # Lower temperature for more factual system guidance
+                temperature=gen_temp,
                 max_tokens=2048,
                 top_p=1,
                 stream=False

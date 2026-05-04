@@ -33,6 +33,9 @@ class IntentParser:
            - 'listing_intent': 'BUY', 'RENT', or null if the user does not specify (e.g., "what's the cheapest studio" should be null).
            - 'query_text': Any remaining relevant keywords. DO NOT include adjectives like "fuel-efficient", "cheap", "cheapest", "affordable", "nice" here as they are unlikely to be in listing titles. Only include concrete features like "automatic", "luxury", "furnished", "pool".
         4. Strict History Isolation: Do NOT carry over price limits (price_max/min), property types, or brands from the conversation history into the new filters UNLESS the user explicitly asks to modify them (e.g., "what about under 5 million?" or "show me Toyota instead"). If the user asks a completely complete standalone sentence like "Show me a villa in addis ababa", DROP all previous constraints like budget.
+        5. Family & Person Inference: If the user describes their family/group (e.g., "me, my wife and 3 kids" or "moving with 4 friends"), calculate the minimum bedrooms needed and set the 'bedrooms' filter. (e.g., a family of 5 usually needs at least 3 bedrooms).
+        6. Landmark & Campus Detection: If a user mentions a campus, school, hospital, or specific landmark (e.g., "4 Kilo campus", "AAU", "Black Lion", "Akaki Kality"), extract it as a location so the system can search for listings in that vicinity.
+        7. Kilo Location Synonyms: Always extract "4 Kilo", "Arat Kilo", "5 Kilo", "Amist Kilo", "6 Kilo", and "Sidist Kilo" as entries in the 'locations' list. They are primary geographic filters.
         
         Example Input: "compare toyota vitz and hyundai tucson for sale in addis"
         Example Output: 

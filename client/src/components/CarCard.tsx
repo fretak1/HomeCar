@@ -112,9 +112,6 @@ export function CarCard({ car }: CarCardProps) {
               <p className="text-2xl font-bold text-primary leading-none">
                 <span className="text-xs mr-1 font-semibold opacity-80">ETB</span>
                 {car.price.toLocaleString()}
-                {listingTypes.some(type => type.toLowerCase().includes('rent') || type.toLowerCase().includes('lease')) && (
-                  <span className="text-sm text-muted-foreground font-normal ml-1">/day</span>
-                )}
               </p>
             </div>
           </div>

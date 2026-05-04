@@ -163,39 +163,46 @@ export function AIChatWidget() {
                                                         components={{
                                                             a: ({ node, ...props }) => {
                                                                 const href = props.href || '';
+                                                                console.log('[ChatBot] Link detected in markdown:', { href, text: props.children });
                                                                 const normalized = normalizeChatHref(href);
-                                                                
-                                                                if (normalized.isInternal) {
-                                                                    const cleanPath = normalized.href;
+                                                                const cleanPath = normalized.isInternal ? normalized.href : href;
+
+                                                                const handleClick = (e: React.MouseEvent) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    console.log('[ChatBot] Click handled for:', { cleanPath, isInternal: normalized.isInternal });
                                                                     
-                                                                    return (
-                                                                        <Link 
-                                                                            href={cleanPath}
-                                                                            className="text-primary hover:underline font-bold transition-all cursor-pointer inline-block"
-                                                                            onClick={(e) => {
-                                                                                e.preventDefault();
-                                                                                router.push(cleanPath);
-                                                                            }}
-                                                                        >
-                                                                            {props.children}
-                                                                        </Link>
-                                                                    );
-                                                                }
+                                                                    if (normalized.isInternal) {
+                                                                        router.push(cleanPath);
+                                                                        setTimeout(() => setIsOpen(false), 100);
+                                                                    } else if (href) {
+                                                                        window.open(href, '_blank', 'noopener,noreferrer');
+                                                                    }
+                                                                };
 
                                                                 return (
-                                                                    <a 
-                                                                        {...props} 
-                                                                        href={normalized.href}
-                                                                        className="text-primary hover:underline font-bold transition-all cursor-pointer inline-block" 
-                                                                    />
+                                                                    <a
+                                                                        href={cleanPath}
+                                                                        className="text-primary hover:underline font-bold transition-all cursor-pointer inline-block"
+                                                                        onClick={handleClick}
+                                                                    >
+                                                                        {props.children}
+                                                                    </a>
                                                                 );
                                                             },
-                                                            p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                                                            p: ({ children }) => {
+                                                                console.log('[ChatBot] Rendering paragraph');
+                                                                return <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>;
+                                                            },
                                                             ul: ({ children }) => <ul className="list-disc ml-4 mb-2">{children}</ul>,
                                                             li: ({ children }) => <li className="mb-1">{children}</li>,
                                                         }}
                                                     >
-                                                        {message.text}
+                                                        {(() => {
+                                                            const processedText = message.text.replace(/nav:(\/*)/g, '/');
+                                                            console.log('[ChatBot] Rendering message text:', { original: message.text, processed: processedText });
+                                                            return processedText;
+                                                        })()}
                                                     </ReactMarkdown>
                                                 </div>
                                             </div>
