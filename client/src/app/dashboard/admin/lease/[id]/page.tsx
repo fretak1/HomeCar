@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import {
     ChevronLeft,
     MapPin,
@@ -26,7 +26,6 @@ import { format, differenceInDays, isBefore, isWithinInterval, addDays } from 'd
 export default function AdminLeaseDetailsPage() {
     const params = useParams();
     const id = params?.id as string;
-    const router = useRouter();
 
     const { leases, isLoading } = useLeaseStore();
     const { properties } = usePropertyStore();
