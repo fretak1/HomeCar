@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from '@/contexts/LanguageContext';
 import { cn } from "@/lib/utils";
 import {
     Wrench,
@@ -81,10 +82,12 @@ import {
     TabListSkeleton,
     ListItemSkeleton,
     TableRowSkeleton,
+    DashboardRouteSkeleton,
 } from '@/components/ui/dashboard-skeletons';
 
 export default function OwnerDashboardPage() {
     const router = useRouter();
+    const { t } = useTranslation();
     const { currentUser } = useUserStore();
     const [activeTab, setActiveTab] = useState('properties');
     const [itemToDelete, setItemToDelete] = useState<any>(null);
@@ -93,6 +96,8 @@ export default function OwnerDashboardPage() {
     const [transactionSearch, setTransactionSearch] = useState('');
     const [transactionDateFilter, setTransactionDateFilter] = useState('all');
     const [transactionStatus, setTransactionStatus] = useState('all');
+    const [hasStartedInitialLoad, setHasStartedInitialLoad] = useState(false);
+    const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false);
 
     const { properties, fetchPropertiesByOwnerId, isLoading: isPropLoading, error: propError, deleteProperty } = usePropertyStore();
     const { applications, fetchApplications, updateApplicationStatus, isLoading: isAppLoading } = useApplicationStore();
@@ -106,6 +111,7 @@ export default function OwnerDashboardPage() {
 
     useEffect(() => {
         if (currentUser?.id) {
+            setHasStartedInitialLoad(true);
             fetchPropertiesByOwnerId(currentUser.id);
             fetchApplications({ managerId: currentUser.id });
             fetchMaintenanceRequests(currentUser.id);
@@ -117,6 +123,12 @@ export default function OwnerDashboardPage() {
         }
     }, [fetchPropertiesByOwnerId, fetchApplications, fetchMaintenanceRequests, fetchLeases, fetchTransactions, currentUser, connectSocket]);
 
+    useEffect(() => {
+        if (hasStartedInitialLoad && !isLoading) {
+            setHasCompletedInitialLoad(true);
+        }
+    }, [hasStartedInitialLoad, isLoading]);
+
 
 
     const toggleSchedule = (id: string) => {
@@ -126,12 +138,12 @@ export default function OwnerDashboardPage() {
     };
 
     const ownerTabs = [
-        { value: 'properties', label: 'My Properties' },
-        { value: 'applications', label: 'Applications' },
-        { value: 'leases', label: 'Leases' },
-        { value: 'maintenance', label: 'Maintenance' },
-        { value: 'transactions', label: 'Transactions' },
-        { value: 'payout', label: 'Payout' },
+        { value: 'properties', label: t('ownerDashboard.tabs.properties') },
+        { value: 'applications', label: t('ownerDashboard.tabs.applications') },
+        { value: 'leases', label: t('ownerDashboard.tabs.leases') },
+        { value: 'maintenance', label: t('ownerDashboard.tabs.maintenance') },
+        { value: 'transactions', label: t('ownerDashboard.tabs.transactions') },
+        { value: 'payout', label: t('ownerDashboard.tabs.payout') },
     ];
 
     const ownerTransactions = transactions.filter(t => t.payeeId === currentUser?.id);
@@ -139,24 +151,26 @@ export default function OwnerDashboardPage() {
     const totalRevenue = completedTransactions.reduce((sum, t) => sum + t.amount, 0);
 
     const stats = [
-        { label: 'My Properties', value: properties.length.toString(), icon: Building2 },
-        { label: 'Total Revenue', value: `ETB ${totalRevenue.toLocaleString()}`, icon: Wallet },
-        { label: 'Applications', value: applications.length.toString(), icon: FileText },
-        { label: 'Maintenance', value: maintenanceRequests.length.toString(), icon: Wrench },
+        { label: t('ownerDashboard.myProperties'), value: properties.length.toString(), icon: Building2 },
+        { label: t('ownerDashboard.totalRevenue'), value: `ETB ${totalRevenue.toLocaleString()}`, icon: Wallet },
+        { label: t('ownerDashboard.tabs.applications'), value: applications.length.toString(), icon: FileText },
+        { label: t('ownerDashboard.tabs.maintenance'), value: maintenanceRequests.length.toString(), icon: Wrench },
     ];
 
+    if (isLoading && !hasCompletedInitialLoad) return <DashboardRouteSkeleton />;
+
     return (
-        <div className="min-h-screen bg-[#F8FAFC]">
+        <div className="min-h-screen bg-white">
             <div className="bg-primary py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-4xl mb-2 text-white font-bold">Owner Dashboard</h1>
-                            <p className="text-xl text-white/90">Manage your real estate portfolio and tenants</p>
+                            <h1 className="text-4xl mb-2 text-white font-bold">{t('ownerDashboard.title')}</h1>
+                            <p className="text-xl text-white/90">{t('ownerDashboard.subtitle')}</p>
                         </div>
                         <Link href="/dashboard/add-property">
                             <Button className="bg-white text-[#005a41] hover:bg-white/90">
-                                <Plus className="mr-2 h-4 w-4" /> Add Property
+                                <Plus className="mr-2 h-4 w-4" /> {t('ownerDashboard.addProperty')}
                             </Button>
                         </Link>
                     </div>
@@ -164,8 +178,59 @@ export default function OwnerDashboardPage() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Property Verification Banners */}
+                {properties.some(p => !p.isVerified) && (
+                    <div className="space-y-4 mb-8">
+                        {properties.filter(p => !p.isVerified).map(property => (
+                            <Card key={`alert-${property.id}`} className={cn(
+                                "border shadow-sm overflow-hidden",
+                                property.rejectionReason 
+                                    ? "border-rose-200 bg-rose-50/50" 
+                                    : "border-amber-200 bg-amber-50/50"
+                            )}>
+                                <CardContent className="p-0">
+                                    <div className="flex flex-col md:flex-row items-center gap-4 p-6">
+                                        <div className={cn(
+                                            "p-4 rounded-2xl",
+                                            property.rejectionReason ? "bg-rose-100 text-rose-600" : "bg-amber-100 text-amber-600"
+                                        )}>
+                                            {property.rejectionReason ? <AlertCircle className="h-8 w-8" /> : <Clock className="h-8 w-8 animate-pulse" />}
+                                        </div>
+                                        <div className="flex-1 text-center md:text-left">
+                                            <h3 className={cn(
+                                                "text-lg font-bold mb-1",
+                                                property.rejectionReason ? "text-rose-900" : "text-amber-900"
+                                            )}>
+                                                {property.rejectionReason ? 'Property Verification Rejected' : 'Property Verification Pending'}
+                                            </h3>
+                                            <p className={cn(
+                                                "text-sm max-w-2xl font-medium",
+                                                property.rejectionReason ? "text-rose-800/80" : "text-amber-800/80"
+                                            )}>
+                                                <span className="font-bold underline">{property.title}</span>: {
+                                                    property.rejectionReason 
+                                                    ? `Rejected due to: ${property.rejectionReason}`
+                                                    : 'Our administrators are currently reviewing your property documents. This usually takes 24-48 hours.'
+                                                }
+                                            </p>
+                                        </div>
+                                        <Button
+                                            onClick={() => router.push(`/dashboard/add-property?id=${property.id}`)}
+                                            className={cn(
+                                                "font-bold px-8 py-4 rounded-xl shadow-lg transition-all active:scale-95",
+                                                property.rejectionReason ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-amber-600 hover:bg-amber-700 text-white"
+                                            )}
+                                        >
+                                            {property.rejectionReason ? 'Fix Documents' : 'Update Details'}
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                )}
                 {/* Owner Stats */}
-                {isLoading
+                {isLoading && !hasCompletedInitialLoad
                     ? <StatCardsSkeleton count={4} />
                     : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -173,7 +238,7 @@ export default function OwnerDashboardPage() {
                                 <Card key={i} className="border-border">
                                     <CardContent className="p-6">
                                         <div className="flex items-center gap-4">
-                                            <div className="p-3 bg-[#005a41]/10 rounded-xl text-[#005a41]">
+                                            <div className="p-3 rounded-xl text-[#005a41]">
                                                 <stat.icon className="h-6 w-6" />
                                             </div>
                                             <div>
@@ -199,17 +264,17 @@ export default function OwnerDashboardPage() {
                             {propError ? (
                                 <div className="col-span-full py-10 px-4 bg-rose-50 border border-rose-100 rounded-2xl text-center">
                                     <AlertCircle className="h-8 w-8 text-rose-500 mx-auto mb-2" />
-                                    <p className="text-rose-600 font-medium font-bold">Error loading properties</p>
+                                    <p className="text-rose-600 font-medium font-bold">{t('common.error' as any) || 'Error loading properties'}</p>
                                     <p className="text-rose-500 text-sm">{propError}</p>
                                     <Button
                                         variant="outline"
                                         className="mt-4 border-rose-200 text-rose-600 hover:bg-rose-50"
                                         onClick={() => currentUser?.id && fetchPropertiesByOwnerId(currentUser.id)}
                                     >
-                                        Try Again
+                                        {t('common.tryAgain' as any) || 'Try Again'}
                                     </Button>
                                 </div>
-                            ) : isPropLoading ? (
+                            ) : isPropLoading && !hasCompletedInitialLoad ? (
                                 <PropertyGridSkeleton count={6} />
                             ) : properties.length > 0 ? (
                                 properties.map((property) => (
@@ -225,10 +290,10 @@ export default function OwnerDashboardPage() {
                                 ))
                             ) : (
                                 <div className="col-span-full py-20 text-center border-2 border-dashed border-border rounded-2xl bg-muted/5">
-                                    <h3 className="text-lg font-bold text-muted-foreground">No properties found</h3>
-                                    <p className="text-sm text-muted-foreground mt-2">Start by adding your first property listing.</p>
+                                    <h3 className="text-lg font-bold text-muted-foreground">{t('ownerDashboard.noProperties')}</h3>
+                                    <p className="text-sm text-muted-foreground mt-2">{t('ownerDashboard.startByAdding')}</p>
                                     <Link href="/dashboard/add-property">
-                                        <Button className="mt-4 bg-[#005a41]">Add New Property</Button>
+                                        <Button className="mt-4 bg-[#005a41]">{t('ownerDashboard.addNewProperty')}</Button>
                                     </Link>
                                 </div>
                             )}
@@ -237,22 +302,21 @@ export default function OwnerDashboardPage() {
 
                     {/* Leases Tab */}
                     <TabsContent value="leases">
-                        <Card className="border-border">
-                            <CardHeader className="flex flex-row items-center justify-between pb-6">
+                        <div className="space-y-6">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div>
-                                    <CardTitle className="text-xl font-bold">Active Agreements</CardTitle>
-                                    <p className="text-sm text-muted-foreground mt-1">Manage and track your formal lease documentation</p>
+                                    <h2 className="text-2xl font-bold text-foreground">{t('ownerDashboard.activeAgreements')}</h2>
+                                    <p className="text-muted-foreground">{t('ownerDashboard.manageLeaseDocs')}</p>
                                 </div>
                                 <Link href="/dashboard/owner/lease/create">
                                     <Button className="bg-[#005a41] hover:bg-[#004a35] text-white rounded-xl shadow-lg transition-all active:scale-95 font-bold flex items-center gap-2">
                                         <Plus className="h-4 w-4" />
-                                        Create New Lease
+                                        {t('ownerDashboard.createNewLease')}
                                     </Button>
                                 </Link>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-4">
-                                    {isLeaseLoading ? (
+                            </div>
+                            <div className="space-y-4">
+                                    {isLeaseLoading && !hasCompletedInitialLoad ? (
                                         <div className="space-y-4">
                                             {Array.from({ length: 3 }).map((_, i) => <LeaseCardSkeleton key={i} />)}
                                         </div>
@@ -279,12 +343,12 @@ export default function OwnerDashboardPage() {
                                                                     </p>
                                                                     <p className="text-xs font-semibold text-[#005a41] mb-2 flex items-center">
                                                                         <User2 className="h-3 w-3 mr-1" />
-                                                                        Tenant: {tenantName}
+                                                                        {t('common.tenant')}: {tenantName}
                                                                     </p>
                                                                     <div className="flex items-center space-x-4 text-sm">
                                                                         <div className="flex items-center text-muted-foreground">
                                                                             <Calendar className="h-4 w-4 mr-1" />
-                                                                            <span>Started: {new Date(lease.startDate).toLocaleDateString()}</span>
+                                                                            <span>{t('common.started')}: {format(new Date(lease.startDate), 'MMM dd, yyyy')}</span>
                                                                         </div>
                                                                         <Badge className={cn(
                                                                             "border-none",
@@ -293,20 +357,20 @@ export default function OwnerDashboardPage() {
                                                                                 lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700 font-bold" :
                                                                                 "bg-gray-100 text-gray-700"
                                                                         )}>
-                                                                            {lease.status === 'CANCELLATION_PENDING' ? 'CANCELLATION PENDING' : lease.status}
+                                                                            {lease.status === 'CANCELLATION_PENDING' ? t('common.cancellationPending') : (t(`common.${lease.status.toLowerCase()}` as any) || lease.status)}
                                                                         </Badge>
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center justify-between mt-4 md:mt-0 p-4 bg-muted/5 border border-border/10 rounded-xl md:bg-transparent md:border-none md:p-0">
                                                                 <div className="text-left md:text-right w-full">
-                                                                    <p className="text-sm text-muted-foreground mb-1">{lease.recurringAmount ? 'Monthly Payment' : 'Total Payment'}</p>
-                                                                    <p className="text-2xl font-black text-[#005a41] mb-2">ETB {(lease.recurringAmount || lease.totalPrice || property.price).toLocaleString()}</p>
+                                                                    <p className="text-sm text-muted-foreground mb-1">{lease.recurringAmount ? t('ownerDashboard.monthlyPayment') : t('ownerDashboard.totalPayment')}</p>
+                                                                    <p className="text-2xl font-black text-[#005a41] mb-2">{t('common.etb')} {(lease.recurringAmount || lease.totalPrice || property.price).toLocaleString()}</p>
                                                                     <div className="flex flex-wrap md:justify-end gap-2">
                                                                         <Link href={`/dashboard/owner/lease/${lease.id}`}>
                                                                             <Button variant="outline" size="sm" className="h-9 px-4 rounded-xl border-border bg-white hover:bg-muted/10">
                                                                                 <FileText className="h-4 w-4 mr-2 text-[#005a41]" />
-                                                                                View Detail
+                                                                                {t('common.viewDetail')}
                                                                             </Button>
                                                                         </Link>
                                                                         {(lease.status === 'ACTIVE' || (lease.status === 'CANCELLATION_PENDING' && !lease.ownerCancelled)) && (
@@ -323,7 +387,7 @@ export default function OwnerDashboardPage() {
                                                                                 disabled={isLoading}
                                                                             >
                                                                                 <X className="h-4 w-4 mr-2" />
-                                                                                {lease.status === 'CANCELLATION_PENDING' ? 'Confirm Cancellation' : 'Cancel Lease'}
+                                                                                {lease.status === 'CANCELLATION_PENDING' ? t('ownerDashboard.confirmCancellation') : t('ownerDashboard.cancelLease')}
                                                                             </Button>
                                                                         )}
                                                                         {lease.status === 'CANCELLATION_PENDING' && lease.ownerCancelled && (
@@ -334,13 +398,13 @@ export default function OwnerDashboardPage() {
                                                                                 className="h-9 px-4 rounded-xl text-amber-600 border-amber-200 bg-amber-50/50 font-bold"
                                                                             >
                                                                                 <Clock className="h-4 w-4 mr-2" />
-                                                                                Requested
+                                                                                {t('ownerDashboard.requested')}
                                                                             </Button>
                                                                         )}
                                                                         {lease.status === 'PENDING' && !lease.ownerAccepted && (
                                                                             <Button size="sm" onClick={() => acceptLease(lease.id, 'owner')} className="h-9 px-4 rounded-xl bg-[#005a41] hover:bg-[#004a35] text-white">
                                                                                 <CheckCircle className="h-4 w-4 mr-2" />
-                                                                                Accept Lease
+                                                                                {t('ownerDashboard.acceptLease')}
                                                                             </Button>
                                                                         )}
 
@@ -355,10 +419,10 @@ export default function OwnerDashboardPage() {
                                                             >
                                                                 <h4 className="text-sm font-semibold text-foreground flex items-center">
                                                                     <DollarSign className="h-4 w-4 mr-1 text-[#005a41]" />
-                                                                    {lease.recurringAmount ? 'Payment Collection Schedule' : 'Lease Payment Settlement'}
+                                                                    {lease.recurringAmount ? t('ownerDashboard.paymentCollection') : t('ownerDashboard.settlement')}
                                                                 </h4>
                                                                 <div className="flex items-center space-x-2">
-                                                                    <Badge variant="outline" className="text-[10px] uppercase">{lease.recurringAmount ? 'MONTHLY' : 'ONE-TIME'}</Badge>
+                                                                    <Badge variant="outline" className="text-[10px] uppercase">{lease.recurringAmount ? t('ownerDashboard.monthly') : t('ownerDashboard.oneTime')}</Badge>
                                                                     {expandedSchedules.includes(lease.id) ? (
                                                                         <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-[#005a41] transition-colors" />
                                                                     ) : (
@@ -414,7 +478,7 @@ export default function OwnerDashboardPage() {
                                                                                                             {format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd')}
                                                                                                         </h5>
                                                                                                         {isCurrentMonth && (
-                                                                                                            <Badge className="bg-[#005a41] text-white text-[8px] h-4 px-1 border-none shadow-sm">PROCESSING</Badge>
+                                                                                                            <Badge className="bg-[#005a41] text-white text-[8px] h-4 px-1 border-none shadow-sm">{t('common.processing').toUpperCase()}</Badge>
                                                                                                         )}
                                                                                                     </div>
                                                                                                     <p className="text-2xl font-black text-foreground">
@@ -424,9 +488,9 @@ export default function OwnerDashboardPage() {
 
                                                                                                 <div className="flex-1 space-y-2">
                                                                                                     <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
-                                                                                                        <span>{lease.recurringAmount ? 'Payment progress (Fixed 30 Days)' : 'Lease Term Progress'}</span>
+                                                                                                        <span>{lease.recurringAmount ? t('customerDashboard.billingProgress') : t('customerDashboard.leaseTermProgress')}</span>
                                                                                                         <span className={isMonthPast ? 'text-green-600' : isCurrentMonth ? 'text-[#005a41]' : ''}>
-                                                                                                            {lease.recurringAmount ? `${daysFilled}/30 Days` : `${Math.round(progressPercentage)}%`}
+                                                                                                            {lease.recurringAmount ? `${daysFilled}/30 ${t('customerDashboard.days')}` : `${Math.round(progressPercentage)}%`}
                                                                                                         </span>
                                                                                                     </div>
                                                                                                     <div className="flex gap-0.5 h-3">
@@ -443,28 +507,28 @@ export default function OwnerDashboardPage() {
                                                                                                 </div>
 
                                                                                                 <div className="md:w-56 flex justify-end">
-                                                                                                    {isPaid ? (
-                                                                                                        <div className="flex items-center text-green-600 font-bold text-xs bg-green-50 py-2.5 rounded-xl border border-green-100 w-full md:w-auto justify-center px-4">
-                                                                                                            <CheckCircle className="h-4 w-4 mr-2" />
-                                                                                                            Received
-                                                                                                        </div>
-                                                                                                    ) : isPending ? (
-                                                                                                        <div className="flex items-center text-amber-600 font-bold text-xs bg-amber-50 py-2.5 rounded-xl border border-amber-100 w-full md:w-auto justify-center px-4">
-                                                                                                            <Clock className="h-4 w-4 mr-2" />
-                                                                                                            Pending
-                                                                                                        </div>
-                                                                                                    ) : isCurrentMonth ? (
-                                                                                                        <div className="flex items-center text-[#005a41] font-bold text-xs bg-[#005a41]/5 py-2.5 rounded-xl border border-[#005a41]/20 w-full md:w-auto justify-center px-4">
-                                                                                                            <Clock className="h-4 w-4 mr-2" />
-                                                                                                            Expected soon
-                                                                                                        </div>
-                                                                                                    ) : (
-                                                                                                        <div className="flex items-center text-muted-foreground font-bold text-xs bg-muted/30 py-2.5 rounded-xl border border-border/10 w-full md:w-auto justify-center px-4">
-                                                                                                            <Clock className="h-4 w-4 mr-2" />
-                                                                                                            Upcoming
-                                                                                                        </div>
-                                                                                                    )}
-                                                                                                </div>
+                                                                    {isPaid ? (
+                                                                        <div className="flex items-center text-green-600 font-bold text-xs bg-green-50 py-2.5 rounded-xl border border-green-100 w-full md:w-auto justify-center px-4">
+                                                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                                                            {t('ownerDashboard.received')}
+                                                                        </div>
+                                                                    ) : isPending ? (
+                                                                        <div className="flex items-center text-amber-600 font-bold text-xs bg-amber-50 py-2.5 rounded-xl border border-amber-100 w-full md:w-auto justify-center px-4">
+                                                                            <Clock className="h-4 w-4 mr-2" />
+                                                                            {t('ownerDashboard.pending')}
+                                                                        </div>
+                                                                    ) : isCurrentMonth ? (
+                                                                        <div className="flex items-center text-[#005a41] font-bold text-xs bg-[#005a41]/5 py-2.5 rounded-xl border border-[#005a41]/20 w-full md:w-auto justify-center px-4">
+                                                                            <Clock className="h-4 w-4 mr-2" />
+                                                                            {t('ownerDashboard.expectedSoon')}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex items-center text-muted-foreground font-bold text-xs bg-muted/30 py-2.5 rounded-xl border border-border/10 w-full md:w-auto justify-center px-4">
+                                                                            <Clock className="h-4 w-4 mr-2" />
+                                                                            {t('ownerDashboard.upcoming')}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                                                             </div>
                                                                                         </div>
                                                                                     );
@@ -488,8 +552,8 @@ export default function OwnerDashboardPage() {
                                                                 return (
                                                                     <>
                                                                         <div className="flex justify-between items-center mb-2">
-                                                                            <span className="text-sm text-muted-foreground">Lease Completion (Fixed 30 Days)</span>
-                                                                            <span className="text-sm text-foreground font-bold">{Math.max(0, Math.min(currentMonthIndex + 1, totalLeaseMonths))} of {totalLeaseMonths} months</span>
+                                                                            <span className="text-sm text-muted-foreground">{t('ownerDashboard.leaseCompletion')} (30 {t('customerDashboard.days')})</span>
+                                                                            <span className="text-sm text-foreground font-bold">{Math.max(0, Math.min(currentMonthIndex + 1, totalLeaseMonths))} {t('ownerDashboard.of')} {totalLeaseMonths} {t('ownerDashboard.months')}</span>
                                                                         </div>
                                                                         <Progress value={leaseProgressValue} className="h-2" />
                                                                     </>
@@ -503,13 +567,12 @@ export default function OwnerDashboardPage() {
                                     ) : (
                                         <div className="py-20 text-center border-2 border-dashed border-border rounded-2xl">
                                             <FileText className="h-12 w-12 mx-auto text-muted-foreground/20 mb-4" />
-                                            <h3 className="text-lg font-bold text-muted-foreground">No active leases</h3>
-                                            <p className="text-sm text-muted-foreground mt-2">You don't have any formal lease agreements at the moment.</p>
+                                            <h3 className="text-lg font-bold text-muted-foreground">{t('ownerDashboard.noActiveLeases')}</h3>
+                                            <p className="text-sm text-muted-foreground mt-2">{t('ownerDashboard.noLeaseAgreements')}</p>
                                         </div>
                                     )}
                                 </div>
-                            </CardContent>
-                        </Card>
+                            </div>
                     </TabsContent>
 
                     {/* Applications Tab */}
@@ -517,23 +580,23 @@ export default function OwnerDashboardPage() {
                         <div className="space-y-6">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div>
-                                    <h2 className="text-2xl font-bold text-foreground">Property Applications</h2>
-                                    <p className="text-muted-foreground">Review and manage incoming property applications</p>
+                                    <h2 className="text-2xl font-bold text-foreground">{t('ownerDashboard.propertyApplications')}</h2>
+                                    <p className="text-muted-foreground">{t('ownerDashboard.manageIncomingApps')}</p>
                                 </div>
                                 <div className="flex gap-2">
                                     <Badge variant="outline" className="bg-white border-border py-1.5 px-3">
                                         <Clock className="h-3 w-3 mr-1.5 text-blue-500" />
-                                        <span className="text-xs font-semibold">{applications.filter(a => a.status === 'pending').length} Pending</span>
+                                        <span className="text-xs font-semibold">{applications.filter(a => a.status === 'pending').length} {t('ownerDashboard.pendingApps')}</span>
                                     </Badge>
                                     <Badge variant="outline" className="bg-white border-border py-1.5 px-3">
                                         <CheckCircle className="h-3 w-3 mr-1.5 text-green-500" />
-                                        <span className="text-xs font-semibold">{applications.filter(a => a.status === 'accepted').length} Accepted</span>
+                                        <span className="text-xs font-semibold">{applications.filter(a => a.status === 'accepted').length} {t('ownerDashboard.acceptedApps')}</span>
                                     </Badge>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 gap-6">
-                                {isAppLoading ? (
+                                {isAppLoading && !hasCompletedInitialLoad ? (
                                     <div className="space-y-4">
                                         {Array.from({ length: 4 }).map((_, i) => <ListItemSkeleton key={i} />)}
                                     </div>
@@ -561,7 +624,7 @@ export default function OwnerDashboardPage() {
                                                                     </h3>
                                                                     <p className="text-sm text-muted-foreground flex items-center">
                                                                         <User2 className="h-3 w-3 mr-1.5" />
-                                                                        {app.customer?.name || 'Unknown Applicant'}
+                                                                        {app.customer?.name || t('common.unknownApplicant')}
                                                                     </p>
                                                                     <p className="text-[10px] text-muted-foreground font-medium flex items-center mt-1">
                                                                         <Clock className="h-3 w-3 mr-1" />
@@ -573,14 +636,14 @@ export default function OwnerDashboardPage() {
                                                                     app.status === 'accepted' ? "bg-green-100 text-green-700" :
                                                                     app.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"
                                                                 )}>
-                                                                    {app.status}
+                                                                    {t(`common.${app.status.toLowerCase()}` as any) || app.status}
                                                                 </Badge>
                                                             </div>
 
                                                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                                                                 <div className="bg-muted/30 p-2.5 rounded-lg border border-border/50">
-                                                                    <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight mb-1">{app.listingType === 'rent' ? 'Rent' : 'Price'}</p>
-                                                                    <p className="text-sm font-bold text-foreground">ETB {app.price != null ? app.price.toLocaleString() : 'N/A'}{app.listingType === 'rent' ? '/mo' : ''}</p>
+                                                                    <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight mb-1">{app.listingType === 'rent' ? t('common.rent') : t('common.price')}</p>
+                                                                    <p className="text-sm font-bold text-foreground">{t('common.etb')} {app.price != null ? app.price.toLocaleString() : t('common.na')}{app.listingType === 'rent' ? t('common.perMo') : ''}</p>
                                                                 </div>
                                                             </div>
                                                             {app.message && (
@@ -608,7 +671,7 @@ export default function OwnerDashboardPage() {
                                                             }}
                                                         >
                                                             <User className="h-3.5 w-3.5 mr-2" />
-                                                            See Profile
+                                                            {t('common.seeProfile' as any) || 'See Profile'}
                                                         </Button>
                                                         {app.status === 'pending' && (
                                                             <>
@@ -620,7 +683,7 @@ export default function OwnerDashboardPage() {
                                                                         updateApplicationStatus(app.id, 'accepted');
                                                                     }}
                                                                 >
-                                                                    <Check className="h-3.5 w-3.5 mr-1" /> Accept
+                                                                    <Check className="h-3.5 w-3.5 mr-1" /> {t('common.accept' as any) || 'Accept'}
                                                                 </Button>
                                                                 <Button
                                                                     size="sm"
@@ -631,7 +694,7 @@ export default function OwnerDashboardPage() {
                                                                         updateApplicationStatus(app.id, 'rejected');
                                                                     }}
                                                                 >
-                                                                    <X className="h-3.5 w-3.5 mr-1" /> Reject
+                                                                    <X className="h-3.5 w-3.5 mr-1" /> {t('common.reject' as any) || 'Reject'}
                                                                 </Button>
                                                             </>
                                                         )}
@@ -645,7 +708,7 @@ export default function OwnerDashboardPage() {
                                                                     updateApplicationStatus(app.id, 'pending');
                                                                 }}
                                                             >
-                                                                Reset
+                                                                {t('common.reset')}
                                                             </Button>
                                                         )}
                                                     </div>
@@ -656,8 +719,8 @@ export default function OwnerDashboardPage() {
                                 ) : (
                                     <div className="text-center py-20 bg-muted/5 rounded-2xl border-2 border-dashed border-border">
                                         <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/20 mb-4" />
-                                        <h3 className="text-lg font-bold text-muted-foreground">No applications found</h3>
-                                        <p className="text-sm text-muted-foreground mt-2">When potential customers apply for your properties, they will appear here.</p>
+                                        <h3 className="text-lg font-bold text-muted-foreground">{t('ownerDashboard.noApplications')}</h3>
+                                        <p className="text-sm text-muted-foreground mt-2">{t('ownerDashboard.applicationsWillAppear')}</p>
                                     </div>
                                 )}
                             </div>
@@ -668,14 +731,14 @@ export default function OwnerDashboardPage() {
                         <div className="space-y-6">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div>
-                                    <h2 className="text-2xl font-bold text-foreground">Maintenance Management</h2>
-                                    <p className="text-muted-foreground">Monitor and resolve property maintenance requests</p>
+                                    <h2 className="text-2xl font-bold text-foreground">{t('ownerDashboard.maintenanceManagement')}</h2>
+                                    <p className="text-muted-foreground">{t('ownerDashboard.monitorMaintenance')}</p>
                                 </div>
 
                             </div>
 
                             <div className="grid grid-cols-1 gap-4">
-                                {isMaintenanceLoading ? (
+                                {isMaintenanceLoading && !hasCompletedInitialLoad ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {Array.from({ length: 4 }).map((_, i) => <MaintenanceCardSkeleton key={i} />)}
                                     </div>
@@ -683,7 +746,7 @@ export default function OwnerDashboardPage() {
                                     maintenanceRequests.map((request) => {
                                         const handleUpdateStatus = (id: string, status: 'inProgress' | 'completed') => {
                                             updateRequestStatus(id, status);
-                                            toast.success(`Status updated to ${status === 'inProgress' ? 'In Progress' : 'Completed'}`);
+                                            toast.success(t('ownerDashboard.statusUpdated' as any) || `Status updated to ${status === 'inProgress' ? 'In Progress' : 'Completed'}`);
                                         };
 
                                         return (
@@ -745,7 +808,7 @@ export default function OwnerDashboardPage() {
                                                                                 className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold"
                                                                             >
                                                                                 <Clock className="h-3.5 w-3.5 mr-1.5" />
-                                                                                Start Progress
+                                                                                {t('ownerDashboard.startProgress' as any) || 'Start Progress'}
                                                                             </Button>
                                                                         )}
 
@@ -753,14 +816,14 @@ export default function OwnerDashboardPage() {
                                                                             <DialogTrigger asChild>
                                                                                 <Button variant="outline" size="sm" className="rounded-lg text-xs font-bold border-border hover:bg-muted/50">
                                                                                     <Eye className="h-3.5 w-3.5 mr-1.5" />
-                                                                                    See Detail
+                                                                                    {t('common.viewDetail')}
                                                                                 </Button>
                                                                             </DialogTrigger>
                                                                             <DialogContent className="sm:max-w-[500px] rounded-2xl border-border">
                                                                                 <DialogHeader>
                                                                                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
                                                                                         <Wrench className="h-5 w-5 text-[#005a41]" />
-                                                                                        Request Details
+                                                                                        {t('ownerDashboard.requestDetails' as any) || 'Request Details'}
                                                                                     </DialogTitle>
                                                                                     <DialogDescription>
                                                                                         Reference ID: {request.id}
@@ -822,8 +885,8 @@ export default function OwnerDashboardPage() {
                                     })
                                 ) : (
                                     <div className="py-20 text-center border-2 border-dashed border-border rounded-2xl bg-muted/5">
-                                        <h3 className="text-lg font-bold text-muted-foreground">No maintenance requests</h3>
-                                        <p className="text-sm text-muted-foreground mt-2">All clear! No pending issues at the moment.</p>
+                                        <h3 className="text-lg font-bold text-muted-foreground">{t('ownerDashboard.noMaintenance')}</h3>
+                                        <p className="text-sm text-muted-foreground mt-2">{t('ownerDashboard.allClear')}</p>
                                     </div>
                                 )}
                             </div>
@@ -835,7 +898,7 @@ export default function OwnerDashboardPage() {
                         <div className="space-y-6">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div>
-                                    <h2 className="text-2xl font-bold text-foreground font-black tracking-tighter">My Transactions</h2>
+                                    <h2 className="text-2xl font-bold text-foreground font-black tracking-tighter">{t('ownerDashboard.myTransactions')}</h2>
                                 </div>
                                 <Card className="py-2.5 px-5 border-border bg-[#005a41]/5 rounded-2xl border-dashed">
                                     <div className="flex items-center gap-3">
@@ -843,7 +906,7 @@ export default function OwnerDashboardPage() {
                                             <Wallet className="h-5 w-5" />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] text-[#005a41] font-black uppercase tracking-widest leading-none">Total Revenue</p>
+                                            <p className="text-[10px] text-[#005a41] font-black uppercase tracking-widest leading-none">{t('ownerDashboard.totalRevenue')}</p>
                                             <p className="text-xl font-black text-foreground">ETB {totalRevenue.toLocaleString()}</p>
                                         </div>
                                     </div>
@@ -855,30 +918,30 @@ export default function OwnerDashboardPage() {
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                         <CardTitle className="text-lg font-bold flex items-center gap-2">
                                             <FileText className="h-5 w-5 text-[#005a41]" />
-                                            Transaction History
+                                            {t('ownerDashboard.transactionHistory')}
                                         </CardTitle>
                                         <div className="flex items-center gap-2">
                                             <Select value={transactionDateFilter} onValueChange={setTransactionDateFilter}>
                                                 <SelectTrigger className="h-9 w-[130px] text-xs font-bold rounded-xl border-border bg-white shadow-sm hover:shadow-md transition-all">
-                                                    <SelectValue placeholder="Date Range" />
+                                                    <SelectValue placeholder={t('common.dateRange' as any) || 'Date Range'} />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl border-border">
-                                                    <SelectItem value="all">All Time</SelectItem>
-                                                    <SelectItem value="today">Today</SelectItem>
-                                                    <SelectItem value="yesterday">Yesterday</SelectItem>
-                                                    <SelectItem value="this-month">This Month</SelectItem>
-                                                    <SelectItem value="this-year">This Year</SelectItem>
+                                                    <SelectItem value="all">{t('common.allTime' as any) || 'All Time'}</SelectItem>
+                                                    <SelectItem value="today">{t('common.today' as any) || 'Today'}</SelectItem>
+                                                    <SelectItem value="yesterday">{t('common.yesterday' as any) || 'Yesterday'}</SelectItem>
+                                                    <SelectItem value="this-month">{t('common.thisMonth' as any) || 'This Month'}</SelectItem>
+                                                    <SelectItem value="this-year">{t('common.thisYear' as any) || 'This Year'}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <Select value={transactionStatus} onValueChange={setTransactionStatus}>
                                                 <SelectTrigger className="h-9 w-[130px] text-xs font-bold rounded-xl border-border bg-white shadow-sm hover:shadow-md transition-all">
-                                                    <SelectValue placeholder="Status" />
+                                                    <SelectValue placeholder={t('common.status')} />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl border-border">
-                                                    <SelectItem value="all">All Status</SelectItem>
-                                                    <SelectItem value="completed">Completed</SelectItem>
-                                                    <SelectItem value="pending">Pending</SelectItem>
-                                                    <SelectItem value="failed">Failed</SelectItem>
+                                                    <SelectItem value="all">{t('common.allStatus' as any) || 'All Status'}</SelectItem>
+                                                    <SelectItem value="completed">{t('common.completed' as any) || 'Completed'}</SelectItem>
+                                                    <SelectItem value="pending">{t('common.pending' as any) || 'Pending'}</SelectItem>
+                                                    <SelectItem value="failed">{t('common.failed' as any) || 'Failed'}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -889,13 +952,13 @@ export default function OwnerDashboardPage() {
                                         <table className="w-full">
                                             <thead>
                                                 <tr className="border-b border-border/50 bg-muted/20">
-                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Transaction ID</th>
-                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Details</th>
-                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Date</th>
-                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Amount</th>
-                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Status</th>
-                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">Action</th>
-                                                </tr>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('ownerDashboard.transactionId' as any) || 'Transaction ID'}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.details' as any) || 'Details'}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.date' as any) || 'Date'}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.amount' as any) || 'Amount'}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.status')}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.action' as any) || 'Action'}</th>
+                                               </tr>
                                             </thead>
                                             <tbody className="divide-y divide-border/50">
                                                 {(() => {
@@ -912,12 +975,11 @@ export default function OwnerDashboardPage() {
                                                         } else if (transactionDateFilter === 'this-year') {
                                                             matchesDate = isThisYear(tDate);
                                                         }
-
                                                         const matchesStatus = transactionStatus === 'all' || t.status === transactionStatus.toUpperCase();
                                                         return matchesDate && matchesStatus;
                                                     });
 
-                                                    if (isTransactionLoading) {
+                                                    if (isTransactionLoading && !hasCompletedInitialLoad) {
                                                         return Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} cols={6} />);
                                                     }
 
@@ -929,8 +991,8 @@ export default function OwnerDashboardPage() {
                                                                         <div className="p-4 bg-muted/50 rounded-full">
                                                                             <Search className="h-8 w-8 opacity-20 text-muted-foreground" />
                                                                         </div>
-                                                                        <p className="text-sm font-bold">No transactions found matching your criteria</p>
-                                                                        <Button variant="ghost" size="sm" onClick={() => { setTransactionDateFilter('all'); setTransactionStatus('all'); }} className="text-[#005a41] hover:bg-transparent hover:underline text-xs font-bold uppercase tracking-widest">Clear all filters</Button>
+                                                                        <p className="text-sm font-bold">{t('ownerDashboard.noTransactions')}</p>
+                                                                        <Button variant="ghost" size="sm" onClick={() => { setTransactionDateFilter('all'); setTransactionStatus('all'); }} className="text-[#005a41] hover:bg-transparent hover:underline text-xs font-bold uppercase tracking-widest">{t('ownerDashboard.clearFilters')}</Button>
                                                                     </div>
                                                                 </td>
                                                             </tr>
@@ -990,7 +1052,7 @@ export default function OwnerDashboardPage() {
                                                                             className="h-8 px-4 rounded-xl border-border hover:bg-[#005a41] hover:text-white font-black text-[10px] uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg active:scale-95"
                                                                         >
                                                                             <FileText className="h-3.5 w-3.5 mr-2 opacity-60" />
-                                                                            View Receipt
+                                                                            {t('ownerDashboard.viewReceipt')}
                                                                         </Button>
                                                                     </Link>
                                                                 )}
@@ -1014,15 +1076,15 @@ export default function OwnerDashboardPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent className="rounded-2xl border-border/50 shadow-xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold">Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold">{t('common.areYouSure' as any) || 'Are you absolutely sure?'}</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">
-                            This action cannot be undone. This will permanently delete
+                            {t('ownerDashboard.deleteWarning' as any) || 'This action cannot be undone. This will permanently delete'}
                             <span className="font-semibold text-foreground"> "{itemToDelete?.title}" </span>
-                            and remove it from our servers.
+                            {t('ownerDashboard.deleteWarningSuffix' as any) || 'and remove it from our servers.'}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="gap-2 sm:gap-0">
-                        <AlertDialogCancel className="rounded-xl border-border/60">Cancel</AlertDialogCancel>
+                        <AlertDialogCancel className="rounded-xl border-border/60">{t('common.cancel')}</AlertDialogCancel>
                         <AlertDialogAction
                             onClick={async () => {
                                 if (itemToDelete) {
@@ -1033,7 +1095,7 @@ export default function OwnerDashboardPage() {
                             }}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
                         >
-                            Delete Listing
+                            {t('ownerDashboard.deleteListing' as any) || 'Delete Listing'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

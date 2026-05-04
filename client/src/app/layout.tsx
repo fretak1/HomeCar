@@ -16,7 +16,23 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en">
+        <html lang="en" suppressHydrationWarning>
+            <head>
+                <script dangerouslySetInnerHTML={{
+                    __html: `
+                        (function() {
+                            try {
+                                var cookie = document.cookie;
+                                if (cookie && /user-role=(ADMIN|OWNER|AGENT)/i.test(cookie)) {
+                                    if (window.location.pathname === '/' || window.location.pathname === '') {
+                                        window.location.href = '/dashboard';
+                                    }
+                                }
+                            } catch (e) {}
+                        })();
+                    `
+                }} />
+            </head>
             <body className={inter.className}>
                 <ClientLayout>
                     {children}

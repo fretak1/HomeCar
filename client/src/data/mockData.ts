@@ -124,6 +124,17 @@ export interface User {
   verificationPhoto?: string;
   verified: boolean;
   documents?: Document[];
+  aboutMe?: string;
+  locationId?: string;
+  location?: {
+    id: string;
+    subcity?: string;
+    city?: string;
+    region?: string;
+    village?: string;
+    lat?: number;
+    lng?: number;
+  };
   createdAt: string;
 }
 

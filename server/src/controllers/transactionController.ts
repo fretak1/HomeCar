@@ -66,7 +66,7 @@ export const getTransactions = async (req: any, res: Response) => {
                         select: { id: true, name: true, email: true, phoneNumber: true, profileImage: true }
                     },
                     payee: {
-                        select: { id: true, name: true, profileImage: true }
+                        select: { id: true, name: true, email: true, phoneNumber: true, profileImage: true }
                     },
                     property: {
                         select: { 

@@ -222,7 +222,7 @@ function ListingContent() {
 
     return (
         <div className="min-h-screen bg-background">
-            <div className="bg-gradient-to-br from-primary via-primary to-secondary py-12 lg:py-16 shadow-inner text-center md:text-left">
+            <div className="bg-[#005a41] py-12 lg:py-16 shadow-inner text-center md:text-left">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4">
                         Browse <span className="text-white/80">Listings</span>

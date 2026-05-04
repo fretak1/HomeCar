@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import RootLoading from './loading';
 import Link from 'next/link';
 import { SearchBar } from '@/components/SearchBar';
 import { PropertyCard } from '@/components/PropertyCard';
@@ -15,9 +14,6 @@ import {
     Bot,
     Shield,
     TrendingUp,
-    Loader2,
-    ChevronLeft,
-    ChevronRight,
     ShieldCheck, 
     Zap, 
     Verified, 
@@ -25,30 +21,44 @@ import {
     CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import {
     Carousel,
     CarouselContent,
     CarouselItem,
-    CarouselNext,
-    CarouselPrevious,
     type CarouselApi
 } from "@/components/ui/carousel";
 import { PropertyGridSkeleton } from '@/components/ui/dashboard-skeletons';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 const partners = [
-    { name: "Verified agents", icon: ShieldCheck },
-    { name: "Fast Processing", icon: Zap },
-    { name: "Secure Transactions", icon: Verified },
-    { name: "Trusted Owners", icon: Handshake },
-    { name: "Easy to use", icon: CheckCircle2 },
+    { key: "home.partners.verifiedAgents", icon: ShieldCheck },
+    { key: "home.partners.fastProcessing", icon: Zap },
+    { key: "home.partners.secureTransactions", icon: Verified },
+    { key: "home.partners.trustedOwners", icon: Handshake },
+    { key: "home.partners.easyToUse", icon: CheckCircle2 },
 ];
 
 export default function Home() {
+    const { t } = useTranslation();
     const { properties, fetchProperties, isLoading } = usePropertyStore();
     const [homesApi, setHomesApi] = useState<CarouselApi>();
     const [carsApi, setCarsApi] = useState<CarouselApi>();
+
+    // Immediate redirection for management roles to avoid flash
+    if (typeof window !== 'undefined') {
+        const getCookie = (name: string) => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop()?.split(';').shift();
+            return null;
+        };
+        const userRole = getCookie('user-role')?.toUpperCase();
+        if (userRole && ['ADMIN', 'OWNER', 'AGENT'].includes(userRole)) {
+            window.location.href = '/dashboard';
+            return <div className="min-h-screen bg-background" />;
+        }
+    }
 
     useEffect(() => {
         fetchProperties({ limit: 200 });
@@ -109,10 +119,10 @@ export default function Home() {
                         transition={{ duration: 1, ease: "easeOut" }}
                     >
                         <h1 className="text-5xl md:text-7xl mb-6 text-white font-extrabold tracking-tight leading-tight">
-                            Find Your Perfect Home or Car
+                            {t('home.heroTitle')}
                         </h1>
                         <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto font-medium lead-relaxed">
-                            The AI-powered platform for renting and purchasing <br className="hidden md:block" /> properties and vehicles with absolute confidence.
+                            {t('home.heroSubtitle')}
                         </p>
                     </motion.div>
 
@@ -124,9 +134,9 @@ export default function Home() {
                             <div className="bg-primary p-4 rounded-2xl w-fit mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform">
                                 <Bot className="h-8 w-8 text-white" />
                             </div>
-                            <h3 className="mb-3 text-xl font-bold text-white tracking-tight">AI-Powered Matching</h3>
+                            <h3 className="mb-3 text-xl font-bold text-white tracking-tight">{t('home.aiMatchingTitle')}</h3>
                             <p className="text-white/70 text-sm leading-relaxed font-medium">
-                                Smart recommendations based on your preferences and behavior
+                                {t('home.aiMatchingSubtitle')}
                             </p>
                         </div>
 
@@ -134,9 +144,9 @@ export default function Home() {
                             <div className="bg-secondary p-4 rounded-2xl w-fit mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform">
                                 <TrendingUp className="h-8 w-8 text-white" />
                             </div>
-                            <h3 className="mb-3 text-xl font-bold text-white tracking-tight">Price Predictions</h3>
+                            <h3 className="mb-3 text-xl font-bold text-white tracking-tight">{t('home.pricePredictionsTitle')}</h3>
                             <p className="text-white/70 text-sm leading-relaxed font-medium">
-                                AI-powered price predictions to help you make informed decisions
+                                {t('home.pricePredictionsSubtitle')}
                             </p>
                         </div>
 
@@ -144,9 +154,9 @@ export default function Home() {
                             <div className="bg-accent p-4 rounded-2xl w-fit mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform">
                                 <Shield className="h-8 w-8 text-white" />
                             </div>
-                            <h3 className="mb-3 text-xl font-bold text-white tracking-tight">Verified Listings</h3>
+                            <h3 className="mb-3 text-xl font-bold text-white tracking-tight">{t('home.verifiedListingsTitle')}</h3>
                             <p className="text-white/70 text-sm leading-relaxed font-medium">
-                                Safe and verified listings with trusted owners and agents
+                                {t('home.verifiedListingsSubtitle')}
                             </p>
                         </div>
                     </div>
@@ -155,7 +165,7 @@ export default function Home() {
 
             {/* AI Recommendations */}
             <section className="border-b border-border">
-                <AIRecommendations title="Recommended for You" />
+                <AIRecommendations title={t('home.recommendedForYou')} />
             </section>
 
             {/* Featured Properties */}
@@ -163,12 +173,12 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-end mb-12">
                         <div>
-                            <h2 className="text-4xl font-black text-foreground tracking-tight">Featured <span className="text-primary italic">Homes</span></h2>
-                            <p className="text-muted-foreground text-lg mt-2">Discover our most exceptional residential listings</p>
+                            <h2 className="text-4xl font-black text-foreground tracking-tight">{t('home.featuredHomes')}</h2>
+                            <p className="text-muted-foreground text-lg mt-2">{t('home.featuredHomesSubtitle')}</p>
                         </div>
                         <Link href="/listings">
                             <Button variant="ghost" className="group font-bold hover:bg-primary/5 hover:text-primary rounded-xl px-6">
-                                View All Homes
+                                {t('home.viewAllHomes')}
                                 <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
                             </Button>
                         </Link>
@@ -208,10 +218,10 @@ export default function Home() {
                                 <div className="h-20 w-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
                                     <HomeIcon className="h-10 w-10 text-muted-foreground/40" />
                                 </div>
-                                <h3 className="text-xl font-bold mb-2">No New Properties Yet</h3>
-                                <p className="text-muted-foreground max-w-sm mx-auto">We're constantly adding new verified homes. Check back soon or explore our existing listings.</p>
+                                <h3 className="text-xl font-bold mb-2">{t('home.noHomesTitle')}</h3>
+                                <p className="text-muted-foreground max-w-sm mx-auto">{t('home.noHomesSubtitle')}</p>
                                 <Link href="/listings" className="mt-8 inline-block">
-                                    <Button className="rounded-2xl px-10 font-black tracking-tight h-12">Browse All Properties</Button>
+                                    <Button className="rounded-2xl px-10 font-black tracking-tight h-12">{t('home.browseAllProperties')}</Button>
                                 </Link>
                             </div>
                         </div>
@@ -224,12 +234,12 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-end mb-12">
                         <div>
-                            <h2 className="text-4xl font-black text-foreground tracking-tight">Featured <span className="text-primary italic">Cars</span></h2>
-                            <p className="text-muted-foreground text-lg mt-2">Premium curated vehicles for performance and style</p>
+                            <h2 className="text-4xl font-black text-foreground tracking-tight">{t('home.featuredCars')}</h2>
+                            <p className="text-muted-foreground text-lg mt-2">{t('home.featuredCarsSubtitle')}</p>
                         </div>
                         <Link href="/listings">
                             <Button variant="ghost" className="group font-bold hover:bg-primary/5 hover:text-primary rounded-xl px-6">
-                                View All Cars
+                                {t('home.viewAllCars')}
                                 <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
                             </Button>
                         </Link>
@@ -269,10 +279,10 @@ export default function Home() {
                                 <div className="h-20 w-20 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-6">
                                     <CarIcon className="h-10 w-10 text-muted-foreground/40" />
                                 </div>
-                                <h3 className="text-xl font-bold mb-2">Exclusive Arrivals Pending</h3>
-                                <p className="text-muted-foreground max-w-sm mx-auto">New premium vehicles are arriving shortly. Stay tuned for the latest additions to our fleet.</p>
+                                <h3 className="text-xl font-bold mb-2">{t('home.noCarsTitle')}</h3>
+                                <p className="text-muted-foreground max-w-sm mx-auto">{t('home.noCarsSubtitle')}</p>
                                 <Link href="/listings" className="mt-8 inline-block">
-                                    <Button variant="outline" className="rounded-2xl px-10 font-black tracking-tight h-12 border-secondary/20 hover:bg-secondary hover:text-white">Explore Available Cars</Button>
+                                    <Button variant="outline" className="rounded-2xl px-10 font-black tracking-tight h-12 border-secondary/20 hover:bg-secondary hover:text-white">{t('home.exploreAvailableCars')}</Button>
                                 </Link>
                             </div>
                         </div>
@@ -288,19 +298,19 @@ export default function Home() {
                         whileInView={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.6 }}
                     >
-                        <h2 className="text-4xl mb-4 text-white font-bold">Ready to Get Started?</h2>
+                        <h2 className="text-4xl mb-4 text-white font-bold">{t('home.ctaTitle')}</h2>
                         <p className="text-xl text-white/90 mb-8">
-                            Join thousands of satisfied customers who found their perfect property or vehicle
+                            {t('home.ctaSubtitle')}
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Link href="/dashboard/add-property">
                                 <Button size="lg" variant="secondary" className="bg-white hover:bg-white/90 text-primary">
-                                    List Your Property
+                                    {t('home.listYourProperty')}
                                 </Button>
                             </Link>
                             <Link href="/listings">
                                 <Button size="lg" variant="outline" className="border-white text-primary hover:bg-white/10">
-                                    Browse Listings
+                                    {t('home.browseListings')}
                                 </Button>
                             </Link>
                         </div>
@@ -330,7 +340,7 @@ export default function Home() {
                                 >
                                     <partner.icon className="h-6 w-6 text-secondary" />
                                     <span className="text-lg font-black tracking-tight uppercase text-white">
-                                        {partner.name}
+                                        {t(partner.key)}
                                     </span>
                                 </div>
                             ))}

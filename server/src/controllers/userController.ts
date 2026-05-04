@@ -128,7 +128,8 @@ export const getUserById = async (req: Request, res: Response) => {
         const user = await prisma.user.findUnique({
             where: { id },
             include: {
-                documents: true
+                documents: true,
+                location: true
             }
         });
 
@@ -157,7 +158,8 @@ export const getCurrentUser = async (req: any, res: Response) => {
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: {
-                documents: true
+                documents: true,
+                location: true
             }
         });
 
@@ -178,7 +180,8 @@ export const updateCurrentUser = async (req: any, res: Response) => {
         const {
             name, profileImage, email, phoneNumber,
             marriageStatus, kids, gender, employmentStatus,
-            currentPassword, newPassword
+            currentPassword, newPassword, aboutMe,
+            city, subcity, region, village, lat, lng
         } = req.body;
 
         if (!userId) {
@@ -200,6 +203,7 @@ export const updateCurrentUser = async (req: any, res: Response) => {
         if (kids) updateData.kids = kids;
         if (gender) updateData.gender = gender;
         if (employmentStatus) updateData.employmentStatus = employmentStatus;
+        if (aboutMe !== undefined) updateData.aboutMe = aboutMe;
 
         // Handle Password Update
         if (newPassword) {
@@ -207,12 +211,12 @@ export const updateCurrentUser = async (req: any, res: Response) => {
                 return res.status(400).json({ error: 'Current password is required to set a new password' });
             }
 
-            const user = await prisma.user.findUnique({ where: { id: userId } });
-            if (!user || !user.passwordHash) {
+            const userRecord = await prisma.user.findUnique({ where: { id: userId } });
+            if (!userRecord || !userRecord.passwordHash) {
                 return res.status(404).json({ error: 'User not found' });
             }
 
-            const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+            const isPasswordValid = await bcrypt.compare(currentPassword, userRecord.passwordHash);
             if (!isPasswordValid) {
                 return res.status(401).json({ error: 'Current password is incorrect' });
             }
@@ -220,9 +224,44 @@ export const updateCurrentUser = async (req: any, res: Response) => {
             updateData.passwordHash = await bcrypt.hash(newPassword, 10);
         }
 
+        // Handle Location Update
+        if (city || subcity || region || village || lat || lng) {
+            const userWithLocation = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { locationId: true }
+            });
+
+            if (userWithLocation?.locationId) {
+                await prisma.location.update({
+                    where: { id: userWithLocation.locationId },
+                    data: {
+                        city: city !== undefined ? city : undefined,
+                        subcity: subcity !== undefined ? subcity : undefined,
+                        region: region !== undefined ? region : undefined,
+                        village: village !== undefined ? village : undefined,
+                        lat: lat !== undefined ? parseFloat(lat) : undefined,
+                        lng: lng !== undefined ? parseFloat(lng) : undefined
+                    }
+                });
+            } else {
+                const newLocation = await prisma.location.create({
+                    data: {
+                        city: city || undefined,
+                        subcity: subcity || undefined,
+                        region: region || undefined,
+                        village: village || undefined,
+                        lat: lat ? parseFloat(lat) : undefined,
+                        lng: lng ? parseFloat(lng) : undefined
+                    }
+                });
+                updateData.locationId = newLocation.id;
+            }
+        }
+
         const user = await prisma.user.update({
             where: { id: userId },
-            data: updateData
+            data: updateData,
+            include: { location: true }
         });
 
         const { passwordHash: _, ...userWithoutPassword } = user;
@@ -255,46 +294,47 @@ export const submitAgentVerification = async (req: any, res: Response) => {
             return res.status(400).json({ error: 'License document and selfie are required for agent verification' });
         }
 
+        let newDocId = existingLicense?.id;
+        
         if (licenseFile) {
             const publicId = (licenseFile as any).filename;
             const resourceType = (licenseFile as any).resource_type || 'raw';
 
-            if (existingLicense) {
-                await prisma.document.update({
-                    where: { id: existingLicense.id },
-                    data: {
-                        url: licenseFile.path,
-                        publicId: publicId,
-                        resourceType: resourceType,
-                        verified: false
-                    }
-                });
-            } else {
-                await prisma.document.create({
-                    data: {
-                        type: 'AGENT_LICENSE',
-                        url: licenseFile.path,
-                        publicId: publicId,
-                        resourceType: resourceType,
-                        userId: userId,
-                        verified: false
-                    }
-                });
-            }
-        } else if (existingLicense) {
-            await prisma.document.update({
-                where: { id: existingLicense.id },
-                data: { verified: false }
+            // ALWAYS create a NEW document record for the history to be immutable
+            const newDoc = await prisma.document.create({
+                data: {
+                    type: 'AGENT_LICENSE',
+                    url: licenseFile.path,
+                    publicId: publicId,
+                    resourceType: resourceType,
+                    userId: userId,
+                    verified: false
+                }
             });
+            newDocId = newDoc.id;
         }
 
-        // Store selfie in User model and update verification status
-        // Clear rejectionReason upon resubmission
+        // Update User selfie and clear rejection
         const user = await prisma.user.update({
             where: { id: userId },
             data: {
-                ...(selfieFile && { verificationPhoto: selfieFile.path }),
+                verificationPhoto: selfieFile?.path || undefined,
                 rejectionReason: null
+            }
+        });
+
+        // Create Admin Verification Record for the submission (Pending)
+        await (prisma as any).adminVerification.create({
+            data: {
+                entityId: userId,
+                entityType: 'Agent',
+                entityName: user.name,
+                entityEmail: user.email,
+                status: 'Pending',
+                adminId: null,
+                reason: 'Documents submitted for review',
+                verificationPhoto: user.verificationPhoto,
+                documentId: newDocId
             }
         });
 
@@ -309,10 +349,23 @@ export const submitAgentVerification = async (req: any, res: Response) => {
     }
 };
 
-export const verifyUser = async (req: Request, res: Response) => {
+export const verifyUser = async (req: any, res: Response) => {
     try {
         const { id } = req.params;
         const { verified, rejectionReason } = req.body;
+        const adminId = req.user?.id;
+
+        // Fetch user and current license
+        const currentUser = await prisma.user.findUnique({
+            where: { id },
+            include: {
+                documents: {
+                    where: { type: 'AGENT_LICENSE' },
+                    orderBy: { uploadedAt: 'desc' },
+                    take: 1
+                }
+            }
+        });
 
         const user = await prisma.user.update({
             where: { id },
@@ -321,6 +374,24 @@ export const verifyUser = async (req: Request, res: Response) => {
                 rejectionReason: verified ? null : rejectionReason
             }
         });
+
+        // Create Admin Verification Record
+        if (adminId && currentUser) {
+            const licenseDoc = currentUser.documents[0];
+            await (prisma as any).adminVerification.create({
+                data: {
+                    entityId: id,
+                    entityType: 'Agent',
+                    entityName: currentUser.name,
+                    entityEmail: currentUser.email,
+                    status: verified ? 'Verified' : 'Rejected',
+                    adminId: adminId,
+                    reason: verified ? null : rejectionReason,
+                    verificationPhoto: currentUser.verificationPhoto,
+                    documentId: licenseDoc?.id
+                }
+            });
+        }
 
         // Also update agent licenses to verified if user is verified
         if (verified) {

@@ -16,27 +16,57 @@ export default function UserDashboardPage() {
         }
 
         if (currentUser) {
-            const role = currentUser.role.toLowerCase();
-            router.replace(`/dashboard/${role}`);
+            if (currentUser.role === 'CUSTOMER') {
+                router.replace('/');
+            } else {
+                const role = currentUser.role.toLowerCase();
+                router.replace(`/dashboard/${role}`);
+            }
         }
     }, [currentUser, isLoading, router]);
 
-    // Silent full-page skeleton — no spinner text, no "Redirecting" message
+    // Fast synchronous check to prevent flashing dashboard UI for customers
+    const getCookie = (name: string) => {
+        if (typeof document === 'undefined') return null;
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift();
+        return null;
+    };
+    const userRoleCookie = getCookie('user-role')?.toUpperCase();
+    const activeRole = currentUser?.role?.toUpperCase() || userRoleCookie;
+
+    if (activeRole === 'CUSTOMER') {
+        // Return blank to let the redirect take over seamlessly
+        return <div className="min-h-screen bg-background" />; 
+    }
+
+    if (!activeRole) {
+        // If we just came from Google OAuth and don't know the role yet, show a generic loader, NOT the dashboard
+        return (
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+                <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-muted-foreground font-medium animate-pulse">Completing sign in...</p>
+            </div>
+        );
+    }
+
+    // Match the global dashboard/loading.tsx exactly
     return (
         <div className="min-h-screen bg-background">
-
-            {/* Green header skeleton */}
+            {/* Header Skeleton */}
             <div className="bg-[#005a41] py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <Skeleton className="h-10 w-64 bg-white/20 rounded-lg mb-3" />
-                    <Skeleton className="h-5 w-48 bg-white/10 rounded-md" />
+                    <Skeleton className="h-10 w-64 bg-white/20 rounded-lg mb-2" />
+                    <Skeleton className="h-6 w-48 bg-white/10 rounded-md" />
                 </div>
             </div>
-            {/* Stats skeleton */}
+
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Stats Grid Skeleton */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    {[1,2,3,4].map(i => (
-                        <div key={i} className="border border-border/50 rounded-xl p-6 shadow-sm">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="bg-card border border-border/50 rounded-xl p-6 shadow-sm">
                             <div className="flex justify-between items-start mb-4">
                                 <Skeleton className="h-3 w-24 rounded" />
                                 <Skeleton className="h-9 w-9 rounded-lg" />
@@ -46,17 +76,30 @@ export default function UserDashboardPage() {
                         </div>
                     ))}
                 </div>
-                {/* Tabs skeleton */}
-                <div className="flex gap-2 mb-8 border-b border-border/50">
-                    {[120, 100, 120, 90, 120].map((w, i) => (
-                        <Skeleton key={i} className="h-10 rounded-t-lg" style={{ width: w }} />
+
+                {/* Tabs Skeleton */}
+                <div className="flex gap-4 mb-8 border-b border-border/50 pb-px">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                        <Skeleton key={i} className="h-10 w-24 rounded-t-lg" />
                     ))}
                 </div>
-                {/* Charts skeleton */}
+
+                {/* Content Skeleton */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {[290, 250, 250, 290].map((h, i) => (
-                        <Skeleton key={i} className="w-full rounded-xl" style={{ height: h }} />
-                    ))}
+                    <div className="bg-card border border-border/50 rounded-xl shadow-md h-[400px] p-6">
+                        <div className="pb-2 mb-4">
+                            <Skeleton className="h-5 w-40 rounded mb-1" />
+                            <Skeleton className="h-3 w-28 rounded" />
+                        </div>
+                        <Skeleton className="h-64 w-full rounded" />
+                    </div>
+                    <div className="bg-card border border-border/50 rounded-xl shadow-md h-[400px] p-6">
+                        <div className="pb-2 mb-4">
+                            <Skeleton className="h-5 w-40 rounded mb-1" />
+                            <Skeleton className="h-3 w-28 rounded" />
+                        </div>
+                        <Skeleton className="h-64 w-full rounded" />
+                    </div>
                 </div>
             </div>
         </div>

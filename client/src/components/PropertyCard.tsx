@@ -77,21 +77,30 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
 
           <div className="absolute top-4 right-4 z-10 flex flex-col items-end gap-1.5 pt-0.5 pr-0.5">
             {/* Display status */}
-            <Badge className={cn(
-              "border-none shadow-md text-[10px] font-black uppercase tracking-widest px-2 py-0.5",
-              property.status === 'AVAILABLE' ? "bg-emerald-500 text-white" :
-              (property.status === 'RENTED' || property.status === 'BOOKED' ? "bg-amber-500 text-white" : "bg-rose-500 text-white")
-            )}>
-              {property.status}
-            </Badge>
+            {property.isVerified && (
+              <Badge className={cn(
+                "border-none shadow-md text-[10px] font-black uppercase tracking-widest px-2 py-0.5",
+                property.status === 'AVAILABLE' ? "bg-emerald-500 text-white" :
+                (property.status === 'RENTED' || property.status === 'BOOKED' ? "bg-amber-500 text-white" : "bg-rose-500 text-white")
+              )}>
+                {property.status}
+              </Badge>
+            )}
 
             {/* Verification status */}
             {!property.isVerified && (
-              <Badge
-                className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] font-bold uppercase tracking-wider px-2"
-              >
-                Pending Verification
-              </Badge>
+              <div className="flex flex-col items-end gap-1">
+                <Badge
+                  className={cn(
+                      "border shadow-none text-[10px] font-black uppercase tracking-widest px-2 py-0.5",
+                      property.rejectionReason 
+                          ? "bg-rose-50 text-rose-700 border-rose-100" 
+                          : "bg-amber-50 text-amber-700 border-amber-100"
+                  )}
+                >
+                  {property.rejectionReason ? 'Rejected' : 'Pending Verification'}
+                </Badge>
+              </div>
             )}
 
             {/* Heart icon */}

@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useUserStore } from '@/store/useUserStore';
+import { useTranslation } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, Mail, Save, Loader2, Lock, ShieldCheck } from 'lucide-react';
+import { User, Mail, Save, Loader2, Lock, ShieldCheck, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import {
     Select,
@@ -19,6 +21,7 @@ import {
 
 export default function ProfilePage() {
     const { currentUser, updateUser, getMe, isLoading } = useUserStore();
+    const { t } = useTranslation();
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string>('');
     const [formData, setFormData] = useState({
@@ -31,6 +34,11 @@ export default function ProfilePage() {
         kids: '',
         gender: '',
         employmentStatus: '',
+        aboutMe: '',
+        city: '',
+        subcity: '',
+        region: '',
+        village: '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
@@ -51,6 +59,11 @@ export default function ProfilePage() {
                 kids: currentUser.kids || '',
                 gender: currentUser.gender || '',
                 employmentStatus: currentUser.employmentStatus || '',
+                aboutMe: currentUser.aboutMe || '',
+                city: currentUser.location?.city || '',
+                subcity: currentUser.location?.subcity || '',
+                region: currentUser.location?.region || '',
+                village: currentUser.location?.village || '',
                 currentPassword: '',
                 newPassword: '',
                 confirmPassword: ''
@@ -59,7 +72,7 @@ export default function ProfilePage() {
         }
     }, [currentUser]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -68,7 +81,7 @@ export default function ProfilePage() {
         e.preventDefault();
         try {
             if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
-                toast.error('New passwords do not match');
+                toast.error(t('profile.passwordMismatch'));
                 return;
             }
 
@@ -89,7 +102,7 @@ export default function ProfilePage() {
             }
 
             await updateUser(submissionData);
-            toast.success('Profile updated successfully');
+            toast.success(t('profile.profileUpdated'));
             setSelectedFile(null);
             setFormData(prev => ({
                 ...prev,
@@ -98,7 +111,7 @@ export default function ProfilePage() {
                 confirmPassword: ''
             }));
         } catch (error: any) {
-            toast.error(error.message || 'Failed to update profile');
+            toast.error(error.message || t('profile.updateFailed'));
         }
     };
 
@@ -125,8 +138,8 @@ export default function ProfilePage() {
     return (
         <div className="max-w-4xl mx-auto px-4 py-12">
             <div className="mb-8">
-                <h1 className="text-3xl font-bold text-foreground">My Profile</h1>
-                <p className="text-muted-foreground mt-2">Manage your account settings and personal information.</p>
+                <h1 className="text-3xl font-bold text-foreground">{t('profile.title')}</h1>
+                <p className="text-muted-foreground mt-2">{t('profile.subtitle')}</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -145,7 +158,7 @@ export default function ProfilePage() {
                             </Avatar>
                             <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 bg-black/40 backdrop-blur-[2px] rounded-full">
                                 <span className="text-[10px] font-bold text-white uppercase tracking-wider text-center px-4 leading-tight">
-                                    upload profile
+                                    {t('profile.uploadProfile')}
                                 </span>
                             </div>
                             <input
@@ -159,7 +172,7 @@ export default function ProfilePage() {
                         <div className="mt-6">
                             <h2 className="text-xl font-bold text-foreground">{currentUser.name}</h2>
                             <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest mt-1">
-                                {currentUser.role}
+                                {t(`common.${currentUser.role.toLowerCase()}` as any)}
                             </p>
                         </div>
                     </CardContent>
@@ -168,13 +181,12 @@ export default function ProfilePage() {
                 {/* Edit Profile Form */}
                 <Card className="md:col-span-2 border-border shadow-md overflow-hidden">
                     <CardHeader className="bg-primary/[0.03] border-b border-primary/5">
-                        <CardTitle className="text-primary tracking-tight">Personal Information</CardTitle>
-                        <CardDescription>Update your public profile and login email.</CardDescription>
+                        <CardTitle className="text-primary tracking-tight">{t('profile.personalInfo')}</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-2">
-                                <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider text-primary">Full Name</Label>
+                                <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.fullName')}</Label>
                                 <div className="relative">
                                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
                                     <Input
@@ -190,7 +202,7 @@ export default function ProfilePage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-primary">Email Address</Label>
+                                <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.email')}</Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
                                     <Input
@@ -204,13 +216,24 @@ export default function ProfilePage() {
                                         required
                                     />
                                 </div>
-                                <p className="text-[10px] text-amber-600 font-medium">Note: Changing your email will update your login credentials.</p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="aboutMe" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.aboutMe')}</Label>
+                                <Textarea
+                                    id="aboutMe"
+                                    name="aboutMe"
+                                    value={formData.aboutMe}
+                                    onChange={handleChange}
+                                    className="min-h-[120px] rounded-xl border-border bg-muted/20 resize-none focus:ring-primary/20"
+                                    placeholder={t('profile.aboutMePlaceholder')}
+                                />
                             </div>
 
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="phoneNumber" className="text-xs font-bold uppercase tracking-wider text-primary">Phone Number</Label>
+                                    <Label htmlFor="phoneNumber" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.phone')}</Label>
                                     <Input
                                         id="phoneNumber"
                                         name="phoneNumber"
@@ -222,17 +245,17 @@ export default function ProfilePage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="gender" className="text-xs font-bold uppercase tracking-wider text-primary">Gender</Label>
+                                    <Label htmlFor="gender" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.gender')}</Label>
                                     <Select
                                         value={formData.gender}
                                         onValueChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
                                     >
                                         <SelectTrigger className="h-11 rounded-xl border-border bg-muted/20">
-                                            <SelectValue placeholder="Select Gender" />
+                                            <SelectValue placeholder={t('profile.gender')} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Male">Male</SelectItem>
-                                            <SelectItem value="Female">Female</SelectItem>
+                                            <SelectItem value="Male">{t('auth.signup.male' as any) || 'Male'}</SelectItem>
+                                            <SelectItem value="Female">{t('auth.signup.female' as any) || 'Female'}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -240,23 +263,23 @@ export default function ProfilePage() {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="marriageStatus" className="text-xs font-bold uppercase tracking-wider text-primary">Marriage Status</Label>
+                                    <Label htmlFor="marriageStatus" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.marriageStatus')}</Label>
                                     <Select
                                         value={formData.marriageStatus}
                                         onValueChange={(value) => setFormData(prev => ({ ...prev, marriageStatus: value }))}
                                     >
                                         <SelectTrigger className="h-11 rounded-xl border-border bg-muted/20">
-                                            <SelectValue placeholder="Select Status" />
+                                            <SelectValue placeholder={t('profile.marriageStatus')} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Unmarried">Unmarried</SelectItem>
-                                            <SelectItem value="Married">Married</SelectItem>
+                                            <SelectItem value="Unmarried">{t('profile.statuses.unmarried')}</SelectItem>
+                                            <SelectItem value="Married">{t('profile.statuses.married')}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="kids" className="text-xs font-bold uppercase tracking-wider text-primary">Kids</Label>
+                                    <Label htmlFor="kids" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.kids')}</Label>
                                     <Input
                                         id="kids"
                                         name="kids"
@@ -269,28 +292,82 @@ export default function ProfilePage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="employmentStatus" className="text-xs font-bold uppercase tracking-wider text-primary">Employment Status</Label>
+                                <Label htmlFor="employmentStatus" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.employmentStatus')}</Label>
                                 <Select
                                     value={formData.employmentStatus}
                                     onValueChange={(value) => setFormData(prev => ({ ...prev, employmentStatus: value }))}
                                 >
                                     <SelectTrigger className="h-11 rounded-xl border-border bg-muted/20">
-                                        <SelectValue placeholder="Select Employment" />
+                                        <SelectValue placeholder={t('profile.employmentStatus')} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Student">Student</SelectItem>
-                                        <SelectItem value="Employee">Employee</SelectItem>
-                                        <SelectItem value="Self-employed">Self-employed</SelectItem>
-                                        <SelectItem value="Unemployed">Unemployed</SelectItem>
+                                        <SelectItem value="Student">{t('profile.statuses.student')}</SelectItem>
+                                        <SelectItem value="Employee">{t('profile.statuses.employee')}</SelectItem>
+                                        <SelectItem value="Self-employed">{t('profile.statuses.selfEmployed')}</SelectItem>
+                                        <SelectItem value="Unemployed">{t('profile.statuses.unemployed')}</SelectItem>
                                     </SelectContent>
                                 </Select>
+                            </div>
+
+                            <div className="pt-6 border-t border-border">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2 mb-6">
+                                    <MapPin className="h-4 w-4" />
+                                    {t('profile.addressDetails')}
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="region" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.region')}</Label>
+                                        <Input
+                                            id="region"
+                                            name="region"
+                                            value={formData.region}
+                                            onChange={handleChange}
+                                            className="h-11 rounded-xl border-border bg-muted/20"
+                                            placeholder="e.g. Addis Ababa"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="city" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.city')}</Label>
+                                        <Input
+                                            id="city"
+                                            name="city"
+                                            value={formData.city}
+                                            onChange={handleChange}
+                                            className="h-11 rounded-xl border-border bg-muted/20"
+                                            placeholder="e.g. Addis Ababa"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="subcity" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.subcity')}</Label>
+                                        <Input
+                                            id="subcity"
+                                            name="subcity"
+                                            value={formData.subcity}
+                                            onChange={handleChange}
+                                            className="h-11 rounded-xl border-border bg-muted/20"
+                                            placeholder="e.g. Bole"
+                                        />
+                                    </div>
+                                    
+                                    <div className="space-y-2">
+                                        <Label htmlFor="village" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.village')}</Label>
+                                        <Input
+                                            id="village"
+                                            name="village"
+                                            value={formData.village}
+                                            onChange={handleChange}
+                                            className="h-11 rounded-xl border-border bg-muted/20"
+                                            placeholder="e.g. Gerji"
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="pt-6 border-t border-border">
 
                                 <div className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="currentPassword" dangerouslySetInnerHTML={{ __html: 'Current Password <span class="text-[10px] lowercase font-normal text-muted-foreground"></span>' }} className="text-xs font-bold uppercase tracking-wider text-primary" />
+                                        <Label htmlFor="currentPassword" dangerouslySetInnerHTML={{ __html: t('profile.currentPassword') }} className="text-xs font-bold uppercase tracking-wider text-primary" />
                                         <div className="relative">
                                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
                                             <Input
@@ -307,7 +384,7 @@ export default function ProfilePage() {
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div className="space-y-2">
-                                            <Label htmlFor="newPassword" className="text-xs font-bold uppercase tracking-wider text-primary">New Password</Label>
+                                            <Label htmlFor="newPassword" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.newPassword')}</Label>
                                             <div className="relative">
                                                 <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
                                                 <Input
@@ -323,7 +400,7 @@ export default function ProfilePage() {
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label htmlFor="confirmPassword" className="text-xs font-bold uppercase tracking-wider text-primary">Confirm New Password</Label>
+                                            <Label htmlFor="confirmPassword" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.confirmPassword')}</Label>
                                             <div className="relative">
                                                 <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
                                                 <Input
@@ -352,7 +429,7 @@ export default function ProfilePage() {
                                     ) : (
                                         <Save className="h-4 w-4" />
                                     )}
-                                    Save Changes
+                                    {t('profile.saveChanges')}
                                 </Button>
                             </div>
                         </form>

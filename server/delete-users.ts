@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 const EMAILS_TO_DELETE = [
   'none68700@gmail.com', // Potential typo
   'ntwo6312@gmail.com',
-  'lnnn372@gmail.com',
+  'frezer363@gmail.com',
   'metakele7@gmail.com',
 ];
 

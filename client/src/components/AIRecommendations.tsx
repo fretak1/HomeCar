@@ -1,4 +1,6 @@
 
+"use client";
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PropertyCard } from '@/components/PropertyCard';
@@ -13,6 +15,7 @@ import {
   CarouselItem,
   type CarouselApi
 } from "@/components/ui/carousel";
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface AIRecommendationsProps {
   title?: string;
@@ -22,6 +25,7 @@ import { PropertyGridSkeleton } from './ui/dashboard-skeletons';
 import { Skeleton } from './ui/skeleton';
 
 export function AIRecommendations({ title }: AIRecommendationsProps) {
+  const { t } = useTranslation();
   const { currentUser } = useUserStore();
   const { recommendations, fetchRecommendations, isRecommendationLoading } = useAIStore();
   const [api, setApi] = useState<CarouselApi>();
@@ -69,19 +73,19 @@ export function AIRecommendations({ title }: AIRecommendationsProps) {
             <h2 className="text-4xl font-black text-foreground tracking-tight">
               {title || (
                 <>
-                  Recommended <span className="text-primary italic">Just For You</span>
+                  {t('recommendations.justForYou')}
                 </>
               )}
             </h2>
             <p className="text-muted-foreground mt-2 font-medium">
               {currentUser
-                ? "Based on your activity and local neighborhood trends."
-                : "Discover our top-rated properties and vehicles near you."}
+                ? t('recommendations.personalizedSubtitle')
+                : t('recommendations.generalSubtitle')}
             </p>
           </div>
           <Link href="/recommendations">
             <Button variant="ghost" className="group font-bold hover:bg-primary/5 hover:text-primary rounded-xl px-6">
-              View All
+              {t('recommendations.viewAll')}
               <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
           </Link>

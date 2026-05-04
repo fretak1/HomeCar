@@ -19,12 +19,14 @@ import { CameraCapture } from '@/components/CameraCapture';
 import { useUserStore } from '@/store/useUserStore';
 import { createApi, API_ROUTES } from '@/lib/api';
 import { toast } from 'sonner';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 
 const api = createApi();
 
 export default function AgentVerificationPage() {
     const router = useRouter();
+    const { t } = useTranslation();
     const { currentUser, getMe } = useUserStore();
 
     const [licenseFile, setLicenseFile] = useState<File | null>(null);
@@ -62,7 +64,10 @@ export default function AgentVerificationPage() {
                     : `http://localhost:5000/${currentUser.verificationPhoto}`);
             }
             if (currentUser.documents) {
-                const agentDoc = currentUser.documents.find((d: any) => d.type === 'AGENT_LICENSE');
+                const agentDoc = [...currentUser.documents]
+                    .filter((d: any) => d.type === 'AGENT_LICENSE')
+                    .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())[0];
+                
                 if (agentDoc && !licensePreview) {
                     setLicensePreview(agentDoc.url || "existing_license_document");
                 }
@@ -90,7 +95,7 @@ export default function AgentVerificationPage() {
 
     const handleSubmit = async () => {
         if (!licensePreview || !selfieData) {
-            toast.error('Please provide both your license document and a selfie');
+            toast.error(t('agentDashboard.verification.clickToUpload') + " & selfie");
             return;
         }
 
@@ -115,8 +120,7 @@ export default function AgentVerificationPage() {
 
             // Immediately update global state to reflect success and fetch documents securely
             await useUserStore.getState().getMe();
-
-            toast.success('Verification documents submitted successfully!');
+            toast.success(t('agentDashboard.verification.capturedSuccessfully'));
             setIsEditing(false);
             router.push('/dashboard/agent');
         } catch (error: any) {
@@ -132,18 +136,11 @@ export default function AgentVerificationPage() {
             {/* Header */}
             <div className="bg-primary py-12">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <Button
-                        variant="ghost"
-                        onClick={() => router.push('/dashboard/agent')}
-                        className="text-white hover:bg-white/10 mb-6 -ml-4"
-                    >
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-                    </Button>
-                    <h1 className="text-4xl font-bold text-white mb-2">Agent Verification</h1>
+                    <h1 className="text-4xl font-bold text-white mb-2">{t('agentDashboard.verification.title')}</h1>
                     <p className="text-white/80 text-lg">
-                        {isPending ? "Your application is being reviewed by our team." :
-                         isRejected ? "Your previous application was not approved." :
-                         "Help us maintain a secure community by verifying your professional identity."}
+                        {isPending ? t('agentDashboard.verification.inProgressDesc') :
+                         isRejected ? t('agentDashboard.verification.rejectedDesc').replace('{reason}', currentUser?.rejectionReason || '') :
+                         t('agentDashboard.verification.secureCommunity')}
                     </p>
                 </div>
             </div>
@@ -158,7 +155,7 @@ export default function AgentVerificationPage() {
                                         <div className="flex items-center gap-3 p-4 bg-rose-50 rounded-2xl text-rose-700 border border-rose-100 shadow-sm">
                                             <AlertCircle className="h-6 w-6 shrink-0" />
                                             <div>
-                                                <h3 className="font-bold text-sm tracking-tight">Application Rejected</h3>
+                                                <h3 className="font-bold text-sm tracking-tight">{t('agentDashboard.verification.rejected')}</h3>
                                                 <p className="text-xs text-rose-900/80 font-medium italic mt-1">"{currentUser?.rejectionReason}"</p>
                                             </div>
                                         </div>
@@ -170,8 +167,7 @@ export default function AgentVerificationPage() {
                                         <div className="flex items-center gap-2">
                                             <FileText className="h-5 w-5 text-primary" />
                                             <div>
-                                                <CardTitle className="text-lg">Professional License</CardTitle>
-                                                <CardDescription>Upload your official agent or business license.</CardDescription>
+                                                <CardTitle className="text-lg">{t('agentDashboard.verification.professionalLicense')}</CardTitle>
                                             </div>
                                         </div>
                                     </CardHeader>
@@ -196,7 +192,7 @@ export default function AgentVerificationPage() {
                                                                     : licensePreview}
                                                             </h4>
                                                             <p className="text-xs text-muted-foreground">
-                                                                {licensePreview.includes('/') || licensePreview.startsWith('http') ? 'Previously uploaded document' : 'Document ready for submission'}
+                                                                {licensePreview.includes('/') || licensePreview.startsWith('http') ? t('agentDashboard.verification.previouslyUploaded') : t('agentDashboard.verification.readyForSubmission')}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -208,7 +204,9 @@ export default function AgentVerificationPage() {
                                                                 size="sm"
                                                                 onClick={async () => {
                                                                     try {
-                                                                        const docId = currentUser?.documents?.find((d: any) => d.type === 'AGENT_LICENSE')?.id;
+                                                                        const docId = currentUser?.documents
+                                                                            ?.filter((d: any) => d.type === 'AGENT_LICENSE')
+                                                                            ?.sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())[0]?.id;
                                                                         if (docId) {
                                                                             const token = localStorage.getItem('auth_token');
                                                                             // Fetch the secure inline base64 representation
@@ -237,7 +235,7 @@ export default function AgentVerificationPage() {
                                                                 }}
                                                                 className="font-bold border-green-200 text-green-700 hover:bg-green-50 rounded-xl"
                                                             >
-                                                                Download
+                                                                {t('common.viewDocument' as any) || 'View Document'}
                                                             </Button>
                                                         )}
                                                         <Button
@@ -246,7 +244,7 @@ export default function AgentVerificationPage() {
                                                             onClick={() => { setLicenseFile(null); setLicensePreview(null); }}
                                                             className="text-destructive hover:bg-rose-50 rounded-xl"
                                                         >
-                                                            <X className="h-4 w-4 mr-2" /> Remove
+                                                            <X className="h-4 w-4 mr-2" /> {t('common.cancel')}
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -258,8 +256,8 @@ export default function AgentVerificationPage() {
                                                     <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-all">
                                                         <UploadCloud className="h-8 w-8 text-primary" />
                                                     </div>
-                                                    <p className="font-bold text-foreground">Click to upload license</p>
-                                                    <p className="text-xs text-muted-foreground mt-1">PDF, JPG or PNG (max. 10MB)</p>
+                                                    <p className="font-bold text-foreground">{t('agentDashboard.verification.clickToUpload')}</p>
+                                                    <p className="text-xs text-muted-foreground mt-1">{t('agentDashboard.verification.uploadLimits')}</p>
                                                     <input
                                                         type="file"
                                                         ref={docInputRef}
@@ -279,8 +277,7 @@ export default function AgentVerificationPage() {
                                         <div className="flex items-center gap-2">
                                             <Camera className="h-5 w-5 text-primary" />
                                             <div>
-                                                <CardTitle className="text-lg">Identity Verification</CardTitle>
-                                                <CardDescription>Take a clear selfie of yourself for identification.</CardDescription>
+                                                <CardTitle className="text-lg">{t('agentDashboard.verification.identityVerification')}</CardTitle>
                                             </div>
                                         </div>
                                     </CardHeader>
@@ -292,8 +289,8 @@ export default function AgentVerificationPage() {
                                                         <img src={selfieData} alt="Selfie" className="w-full h-full object-cover" />
                                                     </div>
                                                     <div>
-                                                        <h4 className="font-bold text-foreground text-sm">Identity Selfie</h4>
-                                                        <p className="text-xs text-muted-foreground">Captured successfully</p>
+                                                        <h4 className="font-bold text-foreground text-sm">{t('agentDashboard.verification.identitySelfie')}</h4>
+                                                        <p className="text-xs text-muted-foreground">{t('agentDashboard.verification.capturedSuccessfully')}</p>
                                                     </div>
                                                 </div>
                                                 <Button
@@ -302,7 +299,7 @@ export default function AgentVerificationPage() {
                                                     onClick={() => setIsCameraOpen(true)}
                                                     className="border-primary/20 text-primary hover:bg-primary/5 rounded-xl font-bold"
                                                 >
-                                                    Retake Photo
+                                                    {t('agentDashboard.verification.retakePhoto')}
                                                 </Button>
                                             </div>
                                         ) : (
@@ -313,9 +310,9 @@ export default function AgentVerificationPage() {
                                                 <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-all">
                                                     <Camera className="h-8 w-8 text-primary" />
                                                 </div>
-                                                <p className="font-bold text-foreground">Open Camera to capture selfie</p>
+                                                <p className="font-bold text-foreground">{t('agentDashboard.verification.openCamera')}</p>
                                                 <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
-                                                    Ensure your face is clearly visible and centered in the frame.
+                                                    {t('agentDashboard.verification.faceVisible')}
                                                 </p>
                                             </div>
                                         )}
@@ -329,7 +326,7 @@ export default function AgentVerificationPage() {
                                         onClick={() => isEditing ? setIsEditing(false) : router.push('/dashboard/agent')}
                                         className="px-8 rounded-xl font-bold h-12"
                                     >
-                                        {isEditing ? "Cancel Edit" : "Skip for Now"}
+                                        {isEditing ? t('agentDashboard.verification.cancelEdit') : t('common.cancel')}
                                     </Button>
                                     <Button
                                         onClick={handleSubmit}
@@ -339,12 +336,12 @@ export default function AgentVerificationPage() {
                                         {isSubmitting ? (
                                             <>
                                                 <Loader2 className="h-5 w-5 animate-spin" />
-                                                Submitting...
+                                                {t('agentDashboard.verification.submitting')}
                                             </>
                                         ) : (
                                             <>
                                                 <Shield className="h-5 w-5" />
-                                                {isEditing ? "Update Submission" : "Submit for Verification"}
+                                                {isEditing ? t('agentDashboard.verification.updateSubmission') : t('agentDashboard.verification.submitForVerification')}
                                             </>
                                         )}
                                     </Button>

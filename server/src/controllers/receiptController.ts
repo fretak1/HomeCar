@@ -21,7 +21,7 @@ export const downloadReceipt = async (req: any, res: Response) => {
                     select: { id: true, name: true, email: true, phoneNumber: true }
                 },
                 payee: {
-                    select: { id: true, name: true, email: true }
+                    select: { id: true, name: true, email: true, phoneNumber: true }
                 },
                 property: {
                     select: {
@@ -71,7 +71,7 @@ export const downloadReceipt = async (req: any, res: Response) => {
         // Header Section
         // Draw Logo from public directory
         try {
-            const logoPath = path.resolve(__dirname, '../../../client/public/homecar.png');
+            const logoPath = path.resolve(__dirname, '../../../client/public/e.png');
             if (fs.existsSync(logoPath)) {
                 const logoBytes = fs.readFileSync(logoPath);
                 const logoImage = await pdfDoc.embedPng(logoBytes);
@@ -79,8 +79,8 @@ export const downloadReceipt = async (req: any, res: Response) => {
                 page.drawImage(logoImage, {
                     x: 50,
                     y: height - 110,
-                    width: 60,
-                    height: 60,
+                    width: 70,
+                    height: 70,
                 });
             } else {
                 // Fallback to rectangle if logo not found
@@ -103,14 +103,6 @@ export const downloadReceipt = async (req: any, res: Response) => {
             });
         }
 
-        page.drawText('HomeCar', {
-            x: 105,
-            y: height - 85,
-            size: 32, // Increased slightly to match 3xl
-            font: italicBoldFont,
-            color: primaryColor,
-        });
-
         // Big "RECEIPT" Background Text - SHIFTED LEFT to avoid clipping
         const receiptText = 'RECEIPT';
         const receiptFontSize = 60;
@@ -125,10 +117,9 @@ export const downloadReceipt = async (req: any, res: Response) => {
 
         // Company Details
         const companyY = height - 130;
-        page.drawText('HomeCar Property Management Ltd.', { x: 50, y: companyY, size: 10, font: boldFont, color: foregroundColor });
-        page.drawText('123 Business Avenue, Bole', { x: 50, y: companyY - 15, size: 10, font: regularFont, color: mutedForeground });
-        page.drawText('Addis Ababa, Ethiopia', { x: 50, y: companyY - 30, size: 10, font: regularFont, color: mutedForeground });
-        page.drawText('support@homecar.com', { x: 50, y: companyY - 45, size: 10, font: regularFont, color: mutedForeground });
+        page.drawText('HomeCar Property Solutions Ltd.', { x: 50, y: companyY, size: 10, font: boldFont, color: foregroundColor });
+        page.drawText('Addis Ababa, Ethiopia', { x: 50, y: companyY - 15, size: 10, font: regularFont, color: mutedForeground });
+        page.drawText('homecarsupport@gmail.com', { x: 50, y: companyY - 30, size: 10, font: regularFont, color: mutedForeground });
 
         // Transaction Info (Top Right)
         const txInfoY = height - 140;
@@ -166,17 +157,21 @@ export const downloadReceipt = async (req: any, res: Response) => {
         });
 
         // Bill To section
+        const isOwner = transaction.payeeId === userId;
+        const partyLabel = isOwner ? 'PAYMENT FROM' : 'PAID TO';
+        const party = isOwner ? transaction.payer : transaction.payee;
+
         const billToY = height - 260;
-        page.drawText('BILLED TO', { x: 50, y: billToY, size: 8, font: boldFont, color: mutedForeground });
-        page.drawText(transaction.payer?.name || 'Customer', { x: 50, y: billToY - 25, size: 20, font: boldFont, color: primaryColor });
+        page.drawText(partyLabel, { x: 50, y: billToY, size: 8, font: boldFont, color: mutedForeground });
+        page.drawText(party?.name || 'User', { x: 50, y: billToY - 25, size: 20, font: boldFont, color: primaryColor });
 
         const contactY = billToY - 45;
-        page.drawText(transaction.payer?.email || 'N/A', { x: 50, y: contactY, size: 10, font: regularFont, color: mutedForeground });
-        if (transaction.payer?.phoneNumber) {
-            page.drawText(transaction.payer.phoneNumber, { x: 50, y: contactY - 15, size: 10, font: regularFont, color: mutedForeground });
+        page.drawText(`Email: ${party?.email || 'N/A'}`, { x: 50, y: contactY, size: 10, font: regularFont, color: mutedForeground });
+        if (party?.phoneNumber) {
+            page.drawText(`Phone: ${party.phoneNumber}`, { x: 50, y: contactY - 15, size: 10, font: regularFont, color: mutedForeground });
         }
         const locationText = `Location: ${transaction.property?.location?.city || transaction.property?.title || 'Unknown'}`;
-        page.drawText(locationText, { x: 50, y: contactY - (transaction.payer?.phoneNumber ? 33 : 18), size: 10, font: boldFont, color: foregroundColor });
+        page.drawText(locationText, { x: 50, y: contactY - (party?.phoneNumber ? 33 : 18), size: 10, font: boldFont, color: foregroundColor });
 
         // Payment Info section
         page.drawText('PAYMENT INFO', { x: rightLabelX, y: billToY, size: 8, font: boldFont, color: mutedForeground });
@@ -196,17 +191,15 @@ export const downloadReceipt = async (req: any, res: Response) => {
             color: foregroundColor,
         });
         page.drawText('DESCRIPTION', { x: 50, y: tableY + 5, size: 9, font: boldFont, color: foregroundColor });
-        page.drawText('QTY', { x: width - 220, y: tableY + 5, size: 9, font: boldFont, color: foregroundColor });
-        page.drawText('UNIT PRICE', { x: width - 160, y: tableY + 5, size: 9, font: boldFont, color: foregroundColor });
-        page.drawText('AMOUNT', { x: width - 90, y: tableY + 5, size: 9, font: boldFont, color: foregroundColor });
+        page.drawText('UNIT PRICE', { x: width - 180, y: tableY + 5, size: 9, font: boldFont, color: foregroundColor });
+        page.drawText('TOTAL', { x: width - 90, y: tableY + 5, size: 9, font: boldFont, color: foregroundColor });
 
         // Table Row Item
         const rowY = tableY - 40;
         page.drawText(transaction.property?.title || 'Property Payment', { x: 50, y: rowY, size: 12, font: boldFont, color: foregroundColor });
         page.drawText(transaction.type === 'RENT' ? 'Monthly rent collection' : 'Property payment', { x: 50, y: rowY - 18, size: 10, font: regularFont, color: mutedForeground });
 
-        page.drawText('1', { x: width - 210, y: rowY, size: 10, font: boldFont, color: foregroundColor });
-        page.drawText(`ETB ${transaction.amount.toLocaleString()}`, { x: width - 160, y: rowY, size: 10, font: regularFont, color: mutedForeground });
+        page.drawText(`ETB ${transaction.amount.toLocaleString()}`, { x: width - 180, y: rowY, size: 10, font: regularFont, color: mutedForeground });
         page.drawText(`ETB ${transaction.amount.toLocaleString()}`, { x: width - 95, y: rowY, size: 12, font: boldFont, color: foregroundColor });
 
         // Divider after items
@@ -255,22 +248,17 @@ export const downloadReceipt = async (req: any, res: Response) => {
             color: borderColor,
         });
 
-        // Shield-like icon (Circle with S)
-        page.drawCircle({ x: 65, y: footerY, size: 15, color: rgb(0.95, 0.98, 0.96) });
-        page.drawText('S', { x: 61, y: footerY - 5, size: 12, font: boldFont, color: primaryColor });
-
-        page.drawText('Secure Payment Gateway', { x: 90, y: footerY + 5, size: 9, font: boldFont, color: foregroundColor });
-        page.drawText('Verified by HomeCar Security Cluster', { x: 90, y: footerY - 8, size: 8, font: regularFont, color: mutedForeground });
-
-        const noticeText = 'This is a computer-generated receipt and does not require a physical signature. For support, please contact help@homecar.com.';
-        page.drawText(noticeText, {
-            x: width - 350,
-            y: footerY - 10,
-            size: 8,
-            font: regularFont,
+        // Copyright notice
+        const copyrightText = `© ${new Date().getFullYear()} HomeCar Property Solutions`;
+        const copyrightWidth = boldFont.widthOfTextAtSize(copyrightText, 9);
+        page.drawText(copyrightText, {
+            x: (width - copyrightWidth) / 2,
+            y: footerY,
+            size: 9,
+            font: boldFont,
             color: mutedForeground,
-            maxWidth: 300,
         });
+
 
         const pdfBytes = await pdfDoc.save();
         const base64 = Buffer.from(pdfBytes).toString('base64');
@@ -473,7 +461,7 @@ export const downloadLeaseContract = async (req: any, res: Response) => {
         });
 
         page.drawText(
-            lease.terms.trim().isEmpty
+            lease.terms.trim().length === 0
                 ? 'No custom lease terms were provided for this agreement.'
                 : lease.terms,
             {

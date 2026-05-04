@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from '@/contexts/LanguageContext';
 import { cn } from "@/lib/utils";
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useApplicationStore } from '@/store/useApplicationStore';
@@ -8,6 +9,7 @@ import { useMaintenanceStore } from '@/store/useMaintenanceStore';
 import { useLeaseStore } from '@/store/useLeaseStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
+import { useAdminStore } from '@/store/useAdminStore';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
     Users,
@@ -30,6 +32,13 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import DashboardTabs from '@/components/DashboardTabs';
 import {
@@ -179,23 +188,26 @@ function AdminDashboardSkeleton() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AdminDashboardPage() {
+    const { t } = useTranslation();
     const { total: totalProps, properties: allAssets, fetchProperties, isLoading: propsLoading } = usePropertyStore();
     const { fetchApplications } = useApplicationStore();
     const { fetchRequests: fetchMaintenanceRequests } = useMaintenanceStore();
     const { leases, fetchLeases, isLoading: leasesLoading } = useLeaseStore();
     const { users, fetchUsers, isLoading: usersLoading } = useUserStore();
     const { transactions, fetchTransactions, isLoading: txLoading } = useTransactionStore();
+    const { verificationHistory: loggedHistory, fetchVerificationHistory, isLoading: adminLoading } = useAdminStore();
 
-    const isLoading = propsLoading || usersLoading || leasesLoading || txLoading;
+    const isLoading = propsLoading || usersLoading || leasesLoading || txLoading || adminLoading;
 
     useEffect(() => {
-        fetchProperties({ limit: 100 }); // Get more for dashboard stats
+        fetchProperties({ limit: 10000 });
         fetchApplications({ managerId: undefined, customerId: undefined });
         fetchMaintenanceRequests();
         fetchLeases();
         fetchUsers();
         fetchTransactions();
-    }, [fetchProperties, fetchApplications, fetchMaintenanceRequests, fetchLeases, fetchUsers, fetchTransactions]);
+        fetchVerificationHistory();
+    }, []); // Run only once on mount to avoid double loading issues
 
     const [activeTab, setActiveTab] = useState('overview');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -222,7 +234,7 @@ export default function AdminDashboardPage() {
 
         let matchesDate = true;
         if (dateFilter !== 'all') {
-            const txDate = new Date(t.date);
+            const txDate = new Date(t.date || t.createdAt);
             const today = new Date();
             const currentYear = today.getFullYear();
             const txYear = txDate.getFullYear();
@@ -259,11 +271,11 @@ export default function AdminDashboardPage() {
     });
 
     const adminTabs = [
-        { value: 'overview', label: 'Overview' },
-        { value: 'properties', label: 'Properties' },
-        { value: 'transactions', label: 'Transactions' },
-        { value: 'leases', label: 'Leases' },
-        { value: 'verifications', label: 'Verifications' },
+        { value: 'overview', label: t('adminDashboard.tabs.overview') },
+        { value: 'properties', label: t('adminDashboard.tabs.properties') },
+        { value: 'transactions', label: t('adminDashboard.tabs.transactions') },
+        { value: 'leases', label: t('adminDashboard.tabs.leases') },
+        { value: 'verifications', label: t('adminDashboard.tabs.verifications') },
     ];
 
     const properties = allAssets.filter(p => p.assetType === 'HOME');
@@ -315,19 +327,19 @@ export default function AdminDashboardPage() {
     const userTrend = calculateTrend(users, 'createdAt');
     const propertyTrend = calculateTrend(properties, 'createdAt');
     const vehicleTrend = calculateTrend(vehicles, 'createdAt');
-    const transactionTrend = calculateTrend(transactions, 'date', 'amount');
+    const transactionTrend = calculateTrend(transactions, 'createdAt', 'amount');
 
     const stats = [
-        { label: 'Total Users', value: users.length.toString(), trend: userTrend.trend, isUp: userTrend.isUp, icon: Users, color: 'bg-blue-50 text-blue-600' },
-        { label: 'Total Assets', value: totalProps.toString(), trend: propertyTrend.trend, isUp: propertyTrend.isUp, icon: Building2, color: 'bg-indigo-50 text-indigo-600' },
-        { label: 'Total Transactions', value: transactions.length.toString(), trend: vehicleTrend.trend, isUp: vehicleTrend.isUp, icon: Car, color: 'bg-teal-50 text-teal-600' },
-        { label: 'Monthly Revenue', value: `ETB ${(transactions.reduce((sum, t) => sum + t.amount, 0) / 1000).toFixed(1)}K`, trend: transactionTrend.trend, isUp: transactionTrend.isUp, icon: CreditCard, color: 'bg-green-50 text-green-600' },
+        { label: t('adminDashboard.stats.totalUsers'), value: users.length.toString(), trend: userTrend.trend, isUp: userTrend.isUp, icon: Users, color: 'bg-blue-50 text-blue-600' },
+        { label: t('adminDashboard.stats.totalAssets'), value: totalProps.toString(), trend: propertyTrend.trend, isUp: propertyTrend.isUp, icon: Building2, color: 'bg-indigo-50 text-indigo-600' },
+        { label: t('adminDashboard.stats.totalTransactions'), value: transactions.length.toString(), trend: vehicleTrend.trend, isUp: vehicleTrend.isUp, icon: Car, color: 'bg-teal-50 text-teal-600' },
+        { label: t('adminDashboard.stats.monthlyRevenue'), value: `ETB ${(transactions.reduce((sum, t) => sum + t.amount, 0) / 1000).toFixed(1)}K`, trend: transactionTrend.trend, isUp: transactionTrend.isUp, icon: CreditCard, color: 'bg-green-50 text-green-600' },
     ];
 
 
     // Real Data for Charts
     const transactionData = transactions.slice(-6).map(t => ({
-        name: new Date(t.date).toLocaleDateString(undefined, { month: 'short' }),
+        name: new Date(t.date || t.createdAt).toLocaleDateString(undefined, { month: 'short' }),
         Amount: t.amount
     }));
 
@@ -371,7 +383,7 @@ export default function AdminDashboardPage() {
             avatar: u.profileImage || ''
         }));
 
-    const pendingProperties = allAssets.filter(p => !p.isVerified).map(p => ({
+    const pendingProperties = allAssets.filter(p => !p.isVerified && !p.rejectionReason).map(p => ({
         id: p.id,
         title: p.title,
         owner: (p as any).owner?.name || p.ownerName || 'Unknown Owner',
@@ -382,7 +394,7 @@ export default function AdminDashboardPage() {
         documentUrl: '#'
     }));
 
-    const pendingAgents = users.filter(u => u.role === 'AGENT' && !u.verified).map(u => ({
+    const pendingAgents = users.filter(u => u.role === 'AGENT' && !u.verified && !u.rejectionReason).map(u => ({
         id: u.id,
         name: u.name,
         email: u.email,
@@ -420,8 +432,8 @@ export default function AdminDashboardPage() {
                 return createdAt >= dayStart && createdAt <= dayEnd;
             }).length,
             buy: transactions.filter(t => {
-                const createdAt = new Date(t.date);
-                return t.status === 'completed' && createdAt >= dayStart && createdAt <= dayEnd;
+                const createdAt = new Date(t.date || t.createdAt);
+                return t.status.toLowerCase() === 'completed' && createdAt >= dayStart && createdAt <= dayEnd;
             }).length
         };
     });
@@ -443,58 +455,81 @@ export default function AdminDashboardPage() {
         };
     });
 
-    // Calculate Verification History
+    // Calculate Verification History (Merge accurate logs with inferred fallback)
     const verificationHistory = [
-        ...allAssets.filter(p => p.isVerified).map(p => ({
+        ...loggedHistory
+            .filter(log => log.status === 'Verified' || log.status === 'Rejected')
+            .map(log => ({
+                id: log.entityId,
+                uniqueKey: log.id,
+            title: log.entityName,
+            type: log.entityType,
+            owner: log.entityName,
+            email: '',
+            date: new Date(log.createdAt).toLocaleDateString(),
+            rawDate: log.createdAt,
+            status: log.status,
+            admin: log.admin ? log.admin.name : 'User Submission'
+        })),
+        // Fallback inferred data for records before the logging system was implemented
+        ...allAssets.filter(p => p.isVerified && !loggedHistory.find(l => l.entityId === p.id)).map(p => ({
             id: p.id,
+            uniqueKey: p.id,
             title: p.title,
             type: p.assetType === 'HOME' ? 'Home' : 'Car',
             owner: (p as any).owner?.name || p.ownerName || 'Unknown',
             date: new Date(p.updatedAt).toLocaleDateString(),
             rawDate: p.updatedAt,
-            status: 'Verified'
+            status: 'Verified',
+            admin: 'System'
         })),
-        ...allAssets.filter(p => !p.isVerified && p.updatedAt > p.createdAt).map(p => ({
+        ...allAssets.filter(p => !p.isVerified && p.rejectionReason && !loggedHistory.find(l => l.entityId === p.id)).map(p => ({
             id: p.id,
+            uniqueKey: `rejected-${p.id}`,
             title: p.title,
             type: p.assetType === 'HOME' ? 'Home' : 'Car',
             owner: (p as any).owner?.name || p.ownerName || 'Unknown',
             date: new Date(p.updatedAt).toLocaleDateString(),
             rawDate: p.updatedAt,
-            status: 'Rejected'
+            status: 'Rejected',
+            admin: 'System'
         })),
-        ...users.filter(u => u.verified).map(u => ({
+        ...users.filter(u => u.verified && !loggedHistory.find(l => l.entityId === u.id)).map(u => ({
             id: u.id,
+            uniqueKey: `verified-user-${u.id}`,
             name: u.name,
             type: 'Agent',
             email: u.email,
             owner: u.name,
             date: new Date(u.updatedAt).toLocaleDateString(),
             rawDate: u.updatedAt,
-            status: 'Verified'
+            status: 'Verified',
+            admin: 'System'
         })),
-        ...users.filter(u => u.role === 'AGENT' && !u.verified && u.updatedAt > u.createdAt).map(u => ({
+        ...users.filter(u => u.role === 'AGENT' && !u.verified && u.rejectionReason && !loggedHistory.find(l => l.entityId === u.id)).map(u => ({
             id: u.id,
+            uniqueKey: `rejected-user-${u.id}`,
             name: u.name,
             type: 'Agent',
             email: u.email,
             owner: u.name,
             date: new Date(u.updatedAt).toLocaleDateString(),
             rawDate: u.updatedAt,
-            status: 'Rejected'
+            status: 'Rejected',
+            admin: 'System'
         }))
     ].sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
 
     if (isLoading) return <AdminDashboardSkeleton />;
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC]">
+        <div className="min-h-screen bg-white">
             <div className="bg-[#005a41] py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-4xl mb-2 text-white font-bold tracking-tight">Admin Dashboard</h1>
-                            <p className="text-lg text-white/80 font-medium">Platform analytics and management</p>
+                            <h1 className="text-4xl mb-2 text-white font-bold tracking-tight">{t('adminDashboard.title')}</h1>
+                            <p className="text-lg text-white/80 font-medium">{t('adminDashboard.subtitle')}</p>
                         </div>
                     </div>
                 </div>
@@ -510,7 +545,7 @@ export default function AdminDashboardPage() {
                                 <CardContent className="p-6">
                                     <div className="flex justify-between items-start mb-4">
                                         <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">{stat.label}</p>
-                                        <div className={`p-2 rounded-lg ${stat.color}`}>
+                                        <div className="p-2 rounded-lg">
                                             <stat.icon className="h-5 w-5" />
                                         </div>
                                     </div>
@@ -519,7 +554,7 @@ export default function AdminDashboardPage() {
                                         <div className={`flex items-center text-xs font-bold ${stat.isUp ? 'text-green-500' : 'text-red-500'}`}>
                                             {stat.isUp ? <TrendingUp className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
                                             <span className="mr-1">{stat.trend}</span>
-                                            <span className="text-muted-foreground font-medium">vs last month</span>
+                                            <span className="text-muted-foreground font-medium">{t('adminDashboard.stats.vsLastMonth')}</span>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -530,7 +565,9 @@ export default function AdminDashboardPage() {
 
                 <DashboardTabs
                     activeTab={activeTab}
-                    onTabChange={setActiveTab}
+                    onTabChange={(tab) => {
+                        setActiveTab(tab);
+                    }}
                     tabs={adminTabs}
                 >
                     {/* Overview Tab */}
@@ -540,8 +577,8 @@ export default function AdminDashboardPage() {
                             {isLoading ? <ChartCardSkeleton height={350} /> : (
                             <Card className="border-border/50 shadow-md overflow-hidden bg-white">
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-lg font-bold">Transaction History</CardTitle>
-                                    <p className="text-xs text-muted-foreground">Monthly financial performance</p>
+                                    <CardTitle className="text-lg font-bold">{t('adminDashboard.charts.transactionHistory')}</CardTitle>
+                                    <p className="text-xs text-muted-foreground">{t('adminDashboard.charts.monthlyFinancial')}</p>
                                 </CardHeader>
                                 <CardContent className="h-[350px] pt-4">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -581,8 +618,8 @@ export default function AdminDashboardPage() {
                             {isLoading ? <PieCardSkeleton /> : (
                             <Card className="border-border/50 shadow-md bg-white">
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-lg font-bold">House Distribution</CardTitle>
-                                    <p className="text-xs text-muted-foreground">Listings by category</p>
+                                    <CardTitle className="text-lg font-bold">{t('adminDashboard.charts.houseDistribution')}</CardTitle>
+                                    <p className="text-xs text-muted-foreground">{t('adminDashboard.charts.listingsByCategory')}</p>
                                 </CardHeader>
                                 <CardContent className="h-[300px] relative">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -612,8 +649,8 @@ export default function AdminDashboardPage() {
                             {isLoading ? <PieCardSkeleton /> : (
                             <Card className="border-border/50 shadow-md bg-white">
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-lg font-bold">Car Distribution</CardTitle>
-                                    <p className="text-xs text-muted-foreground">Vehicles by brand</p>
+                                    <CardTitle className="text-lg font-bold">{t('adminDashboard.charts.carDistribution')}</CardTitle>
+                                    <p className="text-xs text-muted-foreground">{t('adminDashboard.charts.vehiclesByBrand')}</p>
                                 </CardHeader>
                                 <CardContent className="h-[300px] relative">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -643,8 +680,8 @@ export default function AdminDashboardPage() {
                             {isLoading ? <ChartCardSkeleton height={350} /> : (
                             <Card className="border-border/50 shadow-md bg-white">
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-lg font-bold">Weekly Activity</CardTitle>
-                                    <p className="text-xs text-muted-foreground">Listings and bookings trend</p>
+                                    <CardTitle className="text-lg font-bold">{t('adminDashboard.charts.weeklyActivity')}</CardTitle>
+                                    <p className="text-xs text-muted-foreground">{t('adminDashboard.charts.listingsTrend')}</p>
                                 </CardHeader>
                                 <CardContent className="h-[350px] pt-4">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -681,8 +718,8 @@ export default function AdminDashboardPage() {
                             {isLoading ? <ChartCardSkeleton height={350} /> : (
                             <Card className="border-border/50 shadow-md bg-white">
                                 <CardHeader className="pb-2">
-                                    <CardTitle className="text-lg font-bold">User Growth</CardTitle>
-                                    <p className="text-xs text-muted-foreground">New registrations by role</p>
+                                    <CardTitle className="text-lg font-bold">{t('adminDashboard.charts.userGrowth')}</CardTitle>
+                                    <p className="text-xs text-muted-foreground">{t('adminDashboard.charts.registrationsByRole')}</p>
                                 </CardHeader>
                                 <CardContent className="h-[350px] pt-4">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -729,8 +766,8 @@ export default function AdminDashboardPage() {
                             {/* Recent Users List */}
                             <Card className="border-border/50 shadow-md bg-white">
                                 <CardHeader className="border-b border-border/50">
-                                    <CardTitle className="text-lg font-bold">Recent Users</CardTitle>
-                                    <p className="text-xs text-muted-foreground">Latest registrations</p>
+                                    <CardTitle className="text-lg font-bold">{t('adminDashboard.recentUsers.title')}</CardTitle>
+                                    <p className="text-xs text-muted-foreground">{t('adminDashboard.recentUsers.subtitle')}</p>
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="divide-y divide-border/50">
@@ -765,7 +802,7 @@ export default function AdminDashboardPage() {
                                     <div className="p-4 border-t border-border/50">
                                         <Link href="/dashboard/admin/users">
                                             <Button variant="ghost" className="w-full text-xs font-bold text-[#005a41] uppercase tracking-wider">
-                                                View All Users
+                                                {t('adminDashboard.recentUsers.viewAll')}
                                             </Button>
                                         </Link>
                                     </div>
@@ -778,15 +815,15 @@ export default function AdminDashboardPage() {
                     <TabsContent value="properties">
                         <Card className="border-border">
                             <CardHeader className="flex flex-row items-center justify-between">
-                                <CardTitle>Property Management</CardTitle>
-                                <Badge className="bg-[#005a41]">{filteredAllAssets.length} Properties</Badge>
+                                <CardTitle>{t('adminDashboard.propertyManagement.title')}</CardTitle>
+                                <Badge className="bg-[#005a41]">{filteredAllAssets.length} {t('nav.properties')}</Badge>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <div className="p-4 border-b bg-muted/5 flex flex-wrap gap-4">
                                     <div className="relative flex-1 min-w-[200px]">
                                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <input
-                                            placeholder="Search by city, subcity, or village"
+                                            placeholder={t('adminDashboard.propertyManagement.searchPlaceholder')}
                                             value={propSearch}
                                             onChange={(e) => setPropSearch(e.target.value)}
                                             className="w-full pl-10 pr-4 py-2 bg-white border border-border rounded-lg text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
@@ -797,20 +834,19 @@ export default function AdminDashboardPage() {
                                         onChange={(e) => setPropTypeFilter(e.target.value)}
                                         className="px-3 py-2 bg-white border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20"
                                     >
-                                        <option value="all">All Types</option>
-                                        <option value="HOME">House</option>
-                                        <option value="CAR">Car</option>
+                                        <option value="all">{t('adminDashboard.propertyManagement.allTypes')}</option>
+                                        <option value="HOME">{t('adminDashboard.propertyManagement.house')}</option>
+                                        <option value="CAR">{t('adminDashboard.propertyManagement.car')}</option>
                                     </select>
                                     <select
                                         value={propStatusFilter}
                                         onChange={(e) => setPropStatusFilter(e.target.value)}
                                         className="px-3 py-2 bg-white border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary/20"
                                     >
-                                        <option value="all">All Status</option>
-                                        <option value="AVAILABLE">Available</option>
-                                        <option value="RENTED">Rented</option>
-                                        <option value="SOLD">Sold</option>
-                                        <option value="UNAVAILABLE">Unavailable</option>
+                                        <option value="all">{t('adminDashboard.propertyManagement.allStatus')}</option>
+                                        <option value="AVAILABLE">{t('adminDashboard.propertyManagement.available')}</option>
+                                        <option value="RENTED">{t('adminDashboard.propertyManagement.rented')}</option>
+                                        <option value="UNAVAILABLE">{t('adminDashboard.propertyManagement.unavailable')}</option>
                                     </select>
                                     {(propSearch || propTypeFilter !== 'all' || propStatusFilter !== 'all') && (
                                         <Button
@@ -823,7 +859,7 @@ export default function AdminDashboardPage() {
                                             }}
                                             className="text-red-500 hover:text-red-600 hover:bg-red-50"
                                         >
-                                            Reset
+                                            {t('adminDashboard.propertyManagement.reset')}
                                         </Button>
                                     )}
                                 </div>
@@ -831,10 +867,10 @@ export default function AdminDashboardPage() {
                                     <table className="w-full text-left text-sm">
                                         <thead>
                                             <tr className="border-b bg-muted/30">
-                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">Property</th>
-                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">Owner/Agent</th>
-                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">Status</th>
-                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">See Detail</th>
+                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">{t('adminDashboard.propertyManagement.property')}</th>
+                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">{t('adminDashboard.propertyManagement.ownerAgent')}</th>
+                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">{t('adminDashboard.propertyManagement.status')}</th>
+                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">{t('adminDashboard.propertyManagement.seeDetail')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -860,12 +896,12 @@ export default function AdminDashboardPage() {
                                                                 "border-none",
                                                                 property.status === 'AVAILABLE' ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"
                                                             )}>
-                                                                {property.status}
+                                                                {t(`adminDashboard.propertyManagement.${property.status.toLowerCase()}` as any) || property.status}
                                                             </Badge>
                                                         </td>
                                                         <td className="p-4">
                                                             <Link href={`/property/${property.id}`}>
-                                                                <Button variant="ghost" size="sm" className="text-primary hover:text-white">See Detail</Button>
+                                                                <Button variant="ghost" size="sm" className="text-primary hover:text-white">{t('adminDashboard.propertyManagement.seeDetail')}</Button>
                                                             </Link>
                                                         </td>
                                                     </tr>
@@ -873,7 +909,7 @@ export default function AdminDashboardPage() {
                                             ) : (
                                                 <tr>
                                                     <td colSpan={4} className="p-8 text-center text-muted-foreground">
-                                                        No properties found matching the selected filters.
+                                                        {t('adminDashboard.propertyManagement.noProperties')}
                                                     </td>
                                                 </tr>
                                             )}
@@ -887,116 +923,145 @@ export default function AdminDashboardPage() {
                     {/* Transactions Tab */}
                     <TabsContent value="transactions">
                         <div className="space-y-6">
-                            {/* Filter Bar */}
-                            <div className="flex flex-col md:flex-row gap-4 justify-end">
-                                <select
-                                    value={dateFilter}
-                                    onChange={(e) => setDateFilter(e.target.value)}
-                                    className="px-3 py-2 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005a41]"
-                                >
-                                    <option value="all">All Time</option>
-                                    <option value="today">Today</option>
-                                    <option value="week">This Week</option>
-                                    <option value="month">This Month</option>
-                                    <option value="thisYear">This Year</option>
-                                    <option value="last2Years">Last 2 Years</option>
-                                </select>
-                                <select
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="px-3 py-2 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005a41]"
-                                >
-                                    <option value="all">All Status</option>
-                                    <option value="success">Success</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="failed">Failed</option>
-                                </select>
-                                {(statusFilter !== 'all' || dateFilter !== 'all') && (
-                                    <Button
-                                        variant="ghost"
-                                        onClick={() => {
-                                            setStatusFilter('all');
-                                            setDateFilter('all');
-                                        }}
-                                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    >
-                                        Reset
-                                    </Button>
-                                )}
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-foreground font-black tracking-tighter">{t('ownerDashboard.myTransactions')}</h2>
+                                </div>
+                                <Card className="py-2.5 px-5 border-border bg-[#005a41]/5 rounded-2xl border-dashed">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-[#005a41]/10 rounded-xl text-[#005a41]">
+                                            <DollarSign className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] text-[#005a41] font-black uppercase tracking-widest leading-none">{t('ownerDashboard.totalRevenue')}</p>
+                                            <p className="text-xl font-black text-foreground">ETB {transactions.reduce((acc, t) => t.status === 'COMPLETED' ? acc + t.amount : acc, 0).toLocaleString()}</p>
+                                        </div>
+                                    </div>
+                                </Card>
                             </div>
 
-                            {/* Transactions List */}
-                            <Card className="border-border">
+                            <Card className="border-border overflow-hidden rounded-2xl shadow-sm">
+                                <CardHeader className="border-b border-border/50 bg-muted/5 py-5">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                            <FileText className="h-5 w-5 text-[#005a41]" />
+                                            {t('ownerDashboard.transactionHistory')}
+                                        </CardTitle>
+                                        <div className="flex items-center gap-2">
+                                            <Select value={dateFilter} onValueChange={setDateFilter}>
+                                                <SelectTrigger className="h-9 w-[130px] text-xs font-bold rounded-xl border-border bg-white shadow-sm hover:shadow-md transition-all">
+                                                    <SelectValue placeholder={t('common.dateRange' as any) || 'Date Range'} />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-border">
+                                                    <SelectItem value="all">{t('adminDashboard.transactions.allTime')}</SelectItem>
+                                                    <SelectItem value="today">{t('adminDashboard.transactions.today')}</SelectItem>
+                                                    <SelectItem value="week">{t('adminDashboard.transactions.week')}</SelectItem>
+                                                    <SelectItem value="month">{t('adminDashboard.transactions.month')}</SelectItem>
+                                                    <SelectItem value="thisYear">{t('adminDashboard.transactions.thisYear')}</SelectItem>
+                                                    <SelectItem value="last2Years">{t('adminDashboard.transactions.last2Years')}</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                                <SelectTrigger className="h-9 w-[130px] text-xs font-bold rounded-xl border-border bg-white shadow-sm hover:shadow-md transition-all">
+                                                    <SelectValue placeholder={t('common.status')} />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-border">
+                                                    <SelectItem value="all">{t('adminDashboard.transactions.allStatus')}</SelectItem>
+                                                    <SelectItem value="completed">{t('common.completed' as any) || 'Completed'}</SelectItem>
+                                                    <SelectItem value="pending">{t('adminDashboard.transactions.pending')}</SelectItem>
+                                                    <SelectItem value="failed">{t('adminDashboard.transactions.failed')}</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </CardHeader>
                                 <CardContent className="p-0">
-                                    <div className="divide-y divide-border/50">
-                                        {filteredTransactions.length > 0 ? (
-                                            filteredTransactions.map((t) => (
-                                                <div key={t.id} className="p-4 hover:bg-muted/30 transition-colors group">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center space-x-4">
-                                                            <div className={cn(
-                                                                "p-3 rounded-2xl transition-all duration-300",
-                                                                t.status === 'Success' ? 'bg-green-50 text-green-600 group-hover:bg-green-100' :
-                                                                    t.status === 'Pending' ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-100' :
-                                                                        'bg-red-50 text-red-600 group-hover:bg-red-100'
-                                                            )}>
-                                                                {t.status === 'Success' ? <CreditCard className="h-5 w-5" /> :
-                                                                    t.status === 'Pending' ? <CreditCard className="h-5 w-5" /> :
-                                                                        <CreditCard className="h-5 w-5" />}
-                                                            </div>
-                                                            <div>
-                                                                <h4 className="font-bold text-foreground group-hover:text-[#005a41] transition-colors">{t.itemType} for {t.itemTitle}</h4>
-                                                                <div className="flex items-center gap-3">
-                                                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
-                                                                        ID: {t.id}
-                                                                    </p>
-                                                                    <span className="w-1 h-1 bg-muted-foreground/30 rounded-full" />
-                                                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
-                                                                        {t.method}
-                                                                    </p>
-                                                                    <span className="w-1 h-1 bg-muted-foreground/30 rounded-full" />
-                                                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">
-                                                                        {t.date}
-                                                                    </p>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead>
+                                                <tr className="border-b border-border/50 bg-muted/20">
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('ownerDashboard.transactionId' as any) || 'Transaction ID'}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.details' as any) || 'Details'}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.date' as any) || 'Date'}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.amount' as any) || 'Amount'}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.status')}</th>
+                                               </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/50">
+                                                {(() => {
+                                                    if (isLoading) {
+                                                        return Array.from({ length: 5 }).map((_, i) => (
+                                                            <tr key={i}>
+                                                                <td colSpan={5} className="px-6 py-4"><Skeleton className="h-10 w-full" /></td>
+                                                            </tr>
+                                                        ));
+                                                    }
+
+                                                    if (filteredTransactions.length === 0) {
+                                                        return (
+                                                            <tr>
+                                                                <td colSpan={5} className="px-6 py-20 text-center text-muted-foreground">
+                                                                    <div className="flex flex-col items-center justify-center space-y-3">
+                                                                        <div className="p-4 bg-muted/50 rounded-full">
+                                                                            <Search className="h-8 w-8 opacity-20 text-muted-foreground" />
+                                                                        </div>
+                                                                        <p className="text-sm font-bold">{t('adminDashboard.transactions.noTransactions')}</p>
+                                                                        <Button variant="ghost" size="sm" onClick={() => { setDateFilter('all'); setStatusFilter('all'); }} className="text-[#005a41] hover:bg-transparent hover:underline text-xs font-bold uppercase tracking-widest">{t('adminDashboard.transactions.reset')}</Button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }
+
+                                                    return filteredTransactions.map((transaction) => (
+                                                        <tr key={transaction.id} className="hover:bg-muted/5 transition-colors group">
+                                                            <td className="px-6 py-5 whitespace-nowrap">
+                                                                <span className="text-xs font-mono font-bold text-muted-foreground group-hover:text-foreground transition-colors">
+                                                                    TX-{transaction.id.substring(0, 8).toUpperCase()}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-5 whitespace-nowrap">
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className={cn(
+                                                                        "p-3 rounded-2xl transition-all duration-300",
+                                                                        transaction.status === 'COMPLETED' ? 'bg-green-50 text-green-600' :
+                                                                            transaction.status === 'PENDING' ? 'bg-yellow-50 text-yellow-600' : 'bg-red-50 text-red-600'
+                                                                    )}>
+                                                                        {transaction.type === 'RENT' ? <CreditCard className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-sm font-black text-foreground group-hover:text-[#005a41] transition-colors">
+                                                                            {t(`common.${transaction.type.toLowerCase()}` as any) || transaction.type}
+                                                                        </p>
+                                                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-tighter">
+                                                                            {transaction.property?.title || 'System'}
+                                                                        </p>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-6">
-                                                            <div className="text-right">
-                                                                <p className="text-lg font-black text-foreground">
-                                                                    ETB {t.amount.toLocaleString()}
-                                                                </p>
-                                                                <Badge
-                                                                    variant="outline"
-                                                                    className={cn(
-                                                                        "px-2 py-0 border-none text-[8px] font-black uppercase",
-                                                                        t.status === 'Success' ? 'bg-green-100 text-green-700' :
-                                                                            t.status === 'Pending' ? 'bg-amber-100 text-amber-700' :
-                                                                                'bg-red-100 text-red-700'
-                                                                    )}
-                                                                >
-                                                                    {t.status}
+                                                            </td>
+                                                            <td className="px-6 py-5 whitespace-nowrap text-sm font-bold text-muted-foreground">
+                                                                {transaction.date || new Date(transaction.createdAt).toLocaleDateString()}
+                                                            </td>
+                                                            <td className="px-6 py-5 whitespace-nowrap">
+                                                                <span className="text-sm font-black text-foreground">
+                                                                    ETB {transaction.amount.toLocaleString()}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-6 py-5 whitespace-nowrap">
+                                                                <Badge className={cn(
+                                                                    "px-2 py-0.5 border-none text-[8px] font-black uppercase tracking-widest shadow-sm",
+                                                                    transaction.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                                                        transaction.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                                                                            'bg-amber-100 text-amber-700'
+                                                                )}>
+                                                                    {t(`common.${transaction.status.toLowerCase()}` as any) || transaction.status}
                                                                 </Badge>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="text-center py-12 bg-muted/5">
-                                                <p className="text-muted-foreground font-medium">No transactions found matching your filters</p>
-                                                <Button
-                                                    variant="link"
-                                                    onClick={() => {
-                                                        setStatusFilter('all');
-                                                        setDateFilter('all');
-                                                    }}
-                                                    className="text-[#005a41]"
-                                                >
-                                                    Clear all filters
-                                                </Button>
-                                            </div>
-                                        )}
+                                                            </td>
+                                                        </tr>
+                                                    ));
+                                                })()}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -1006,26 +1071,27 @@ export default function AdminDashboardPage() {
                     <TabsContent value="leases">
                         {/* Lease Filters */}
                         <div className="flex flex-col md:flex-row gap-4 justify-end mb-6">
-                            <select
-                                value={leaseTermFilter}
-                                onChange={(e) => setLeaseTermFilter(e.target.value)}
-                                className="px-3 py-2 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005a41]"
-                            >
-                                <option value="all">All Terms</option>
-                                <option value="less1">Less than 1 Month</option>
-                                <option value="1to3">1 - 3 Months</option>
-                                <option value="3to6">3 - 6 Months</option>
-                                <option value="more6">More than 6 Months</option>
-                            </select>
+                                <select
+                                    value={leaseTermFilter}
+                                    onChange={(e) => setLeaseTermFilter(e.target.value)}
+                                    className="px-3 py-2 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005a41]"
+                                >
+                                    <option value="all">{t('adminDashboard.leases.allTerms')}</option>
+                                    <option value="less1">{t('adminDashboard.leases.less1Month')}</option>
+                                    <option value="1to3">{t('adminDashboard.leases.oneTo3Months')}</option>
+                                    <option value="3to6">{t('adminDashboard.leases.threeTo6Months')}</option>
+                                    <option value="more6">{t('adminDashboard.leases.more6Months')}</option>
+                                </select>
                             <select
                                 value={leaseStatusFilter}
                                 onChange={(e) => setLeaseStatusFilter(e.target.value)}
                                 className="px-3 py-2 bg-white border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#005a41]"
                             >
-                                <option value="all">All Status</option>
-                                <option value="Active">Active</option>
-                                <option value="Completed">Completed</option>
-                                <option value="Terminated">Terminated</option>
+                                <option value="all">{t('adminDashboard.leases.allStatus')}</option>
+                                <option value="Active">{t('adminDashboard.leases.active')}</option>
+                                <option value="Completed">{t('adminDashboard.leases.completed')}</option>
+                                <option value="Terminated">{t('adminDashboard.leases.terminated')}</option>
+                                <option value="Cancelled">{t('common.cancelled' as any) || 'Cancelled'}</option>
                             </select>
                             {(leaseStatusFilter !== 'all' || leaseTermFilter !== 'all') && (
                                 <Button
@@ -1036,7 +1102,7 @@ export default function AdminDashboardPage() {
                                     }}
                                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                 >
-                                    Reset
+                                    {t('adminDashboard.leases.reset')}
                                 </Button>
                             )}
                         </div>
@@ -1058,25 +1124,25 @@ export default function AdminDashboardPage() {
                                             <CardContent className="pt-4">
                                                 <div className="space-y-2 mb-4">
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-muted-foreground">Tenant:</span>
+                                                        <span className="text-muted-foreground">{t('adminDashboard.leases.tenant')}:</span>
                                                         <span className="font-medium">{tenantName}</span>
                                                     </div>
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-muted-foreground">Owner:</span>
+                                                        <span className="text-muted-foreground">{t('adminDashboard.leases.owner')}:</span>
                                                         <span className="font-medium">{ownerName}</span>
                                                     </div>
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-muted-foreground">Dates:</span>
+                                                        <span className="text-muted-foreground">{t('adminDashboard.leases.dates')}:</span>
                                                         <span className="font-medium text-xs">{new Date(l.startDate).toLocaleDateString()} - {new Date(l.endDate).toLocaleDateString()}</span>
                                                     </div>
                                                     <div className="flex justify-between text-sm">
-                                                        <span className="text-muted-foreground">Status:</span>
-                                                        <span className={cn("font-medium", l.status === 'ACTIVE' ? "text-green-600" : l.status === 'PENDING' ? "text-amber-600" : "text-gray-600")}>{l.status}</span>
+                                                        <span className="text-muted-foreground">{t('adminDashboard.leases.status')}:</span>
+                                                        <span className={cn("font-medium", l.status === 'ACTIVE' ? "text-green-600" : l.status === 'PENDING' ? "text-amber-600" : "text-gray-600")}>{t(`adminDashboard.leases.${l.status.toLowerCase()}` as any) || l.status}</span>
                                                     </div>
                                                     {/* Debug Info for Term Remaining can be added here if needed */}
                                                 </div>
-                                                <Link href={`/dashboard/owner/lease/${l.id}?source=admin`}>
-                                                    <Button className="w-full text-xs" variant="outline">View Lease Detail</Button>
+                                                <Link href={`/dashboard/admin/lease/${l.id}`}>
+                                                    <Button className="w-full text-xs" variant="outline">{t('adminDashboard.leases.viewLeaseDetail')}</Button>
                                                 </Link>
                                             </CardContent>
                                         </Card>
@@ -1084,7 +1150,7 @@ export default function AdminDashboardPage() {
                                 })
                             ) : (
                                 <div className="col-span-full text-center py-12 bg-muted/5 rounded-lg border border-dashed border-border">
-                                    <p className="text-muted-foreground font-medium">No leases found matching your filters</p>
+                                    <p className="text-muted-foreground font-medium">{t('adminDashboard.leases.noLeases')}</p>
                                     <Button
                                         variant="link"
                                         onClick={() => {
@@ -1104,7 +1170,7 @@ export default function AdminDashboardPage() {
                         <div className="bg-white rounded-xl border border-border shadow-sm p-6 overflow-hidden">
                             <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
                                 <ShieldCheck className="h-5 w-5 text-[#005a41]" />
-                                Verification Center
+                                {t('adminDashboard.verifications.title')}
                             </h3>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -1113,7 +1179,7 @@ export default function AdminDashboardPage() {
                                     <div className="flex items-center justify-between pb-2 border-b border-border">
                                         <h4 className="font-bold flex items-center gap-2">
                                             <Building2 className="h-4 w-4 text-muted-foreground" />
-                                            Property Approvals
+                                            {t('adminDashboard.verifications.propertyApprovals')}
                                             <Badge className="bg-[#005a41] text-white ml-2">{pendingProperties.length}</Badge>
                                         </h4>
                                     </div>
@@ -1139,7 +1205,7 @@ export default function AdminDashboardPage() {
                                                             <Link href={`/dashboard/admin/verifications/property/${p.id}`} className="w-full">
                                                                 <Button size="sm" variant="outline" className="h-8 text-xs w-full flex  items-center gap-1">
                                                                     <FileText className="h-3 w-3" />
-                                                                    View Document & Verify
+                                                                    {t('adminDashboard.verifications.viewDocumentVerify')}
                                                                 </Button>
                                                             </Link>
                                                         </div>
@@ -1150,7 +1216,7 @@ export default function AdminDashboardPage() {
                                     ) : (
                                         <div className="text-center py-10 border border-dashed border-border rounded-lg bg-muted/5">
                                             <Check className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-                                            <p className="text-sm text-muted-foreground">No pending properties</p>
+                                            <p className="text-sm text-muted-foreground">{t('adminDashboard.verifications.noPendingProperties')}</p>
                                         </div>
                                     )}
                                 </div>
@@ -1160,7 +1226,7 @@ export default function AdminDashboardPage() {
                                     <div className="flex items-center justify-between pb-2 border-b border-border">
                                         <h4 className="font-bold flex items-center gap-2">
                                             <BadgeCheck className="h-4 w-4 text-muted-foreground" />
-                                            Agent Licenses
+                                            {t('adminDashboard.verifications.agentLicenses')}
                                             <Badge className="bg-[#005a41] text-white ml-2">{pendingAgents.length}</Badge>
                                         </h4>
                                     </div>
@@ -1183,7 +1249,7 @@ export default function AdminDashboardPage() {
                                                             <Link href={`/dashboard/admin/verifications/agent/${a.id}`} className="w-full">
                                                                 <Button size="sm" variant="outline" className="h-8 text-xs w-full flex items-center gap-1">
                                                                     <FileText className="h-3 w-3" />
-                                                                    View License & Verify
+                                                                    {t('adminDashboard.verifications.viewLicenseVerify')}
                                                                 </Button>
                                                             </Link>
                                                         </div>
@@ -1194,7 +1260,7 @@ export default function AdminDashboardPage() {
                                     ) : (
                                         <div className="text-center py-10 border border-dashed border-border rounded-lg bg-muted/5">
                                             <Check className="h-8 w-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-                                            <p className="text-sm text-muted-foreground">No pending agent licenses</p>
+                                            <p className="text-sm text-muted-foreground">{t('adminDashboard.verifications.noPendingAgents')}</p>
                                         </div>
                                     )}
                                 </div>
@@ -1205,7 +1271,7 @@ export default function AdminDashboardPage() {
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                                     <h3 className="text-lg font-bold flex items-center gap-2">
                                         <TrendingUp className="h-5 w-5 text-muted-foreground" />
-                                        Verification History
+                                        {t('adminDashboard.verifications.history')}
                                     </h3>
                                     <div className="flex flex-wrap items-center gap-3">
                                         <select
@@ -1213,31 +1279,31 @@ export default function AdminDashboardPage() {
                                             onChange={(e) => setVerificationDateFilter(e.target.value)}
                                             className="px-3 py-2 bg-white border border-border rounded-lg text-[10px] uppercase font-bold focus:outline-none focus:ring-2 focus:ring-[#005a41]"
                                         >
-                                            <option value="all">All Dates</option>
-                                            <option value="today">Today</option>
-                                            <option value="yesterday">Yesterday</option>
-                                            <option value="week">This Week</option>
-                                            <option value="month">This Month</option>
-                                            <option value="year">This Year</option>
+                                            <option value="all">{t('adminDashboard.verifications.allDates')}</option>
+                                            <option value="today">{t('adminDashboard.transactions.today')}</option>
+                                            <option value="yesterday">{t('adminDashboard.verifications.yesterday')}</option>
+                                            <option value="week">{t('adminDashboard.transactions.week')}</option>
+                                            <option value="month">{t('adminDashboard.transactions.month')}</option>
+                                            <option value="year">{t('adminDashboard.transactions.thisYear')}</option>
                                         </select>
                                         <select
                                             value={verificationCategoryFilter}
                                             onChange={(e) => setVerificationCategoryFilter(e.target.value)}
                                             className="px-3 py-2 bg-white border border-border rounded-lg text-[10px] uppercase font-bold focus:outline-none focus:ring-2 focus:ring-[#005a41]"
                                         >
-                                            <option value="all">All Types</option>
-                                            <option value="Home">Home</option>
-                                            <option value="Car">Car</option>
-                                            <option value="Agent">Agent</option>
+                                            <option value="all">{t('adminDashboard.verifications.allTypes')}</option>
+                                            <option value="Home">{t('adminDashboard.propertyManagement.Home')}</option>
+                                            <option value="Car">{t('adminDashboard.propertyManagement.Car')}</option>
+                                            <option value="Agent">{t('common.agent')}</option>
                                         </select>
                                         <select
                                             value={verificationHistoryFilter}
                                             onChange={(e) => setVerificationHistoryFilter(e.target.value)}
                                             className="px-3 py-2 bg-white border border-border rounded-lg text-[10px] uppercase font-bold focus:outline-none focus:ring-2 focus:ring-[#005a41]"
                                         >
-                                            <option value="all">Statuses</option>
-                                            <option value="Verified">Verified Only</option>
-                                            <option value="Rejected">Rejected Only</option>
+                                            <option value="all">{t('adminDashboard.verifications.')}</option>
+                                            <option value="Verified">{t('adminDashboard.verifications.verifiedOnly')}</option>
+                                            <option value="Rejected">{t('adminDashboard.verifications.rejectedOnly')}</option>
                                         </select>
                                         {(verificationHistoryFilter !== 'all' || verificationCategoryFilter !== 'all' || verificationDateFilter !== 'all') && (
                                             <Button 
@@ -1250,7 +1316,7 @@ export default function AdminDashboardPage() {
                                                 }}
                                                 className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 px-2 text-[10px] uppercase font-bold"
                                             >
-                                                Reset
+                                                {t('adminDashboard.verifications.reset')}
                                             </Button>
                                         )}
                                     </div>
@@ -1260,12 +1326,12 @@ export default function AdminDashboardPage() {
                                     <table className="w-full text-left text-sm">
                                         <thead>
                                             <tr className="border-b bg-muted/30">
-                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">Entity</th>
-                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">Type</th>
-                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">User</th>
-                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">Date</th>
-                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">Status</th>
-                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">Actions</th>
+                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">{t('adminDashboard.verifications.entity')}</th>
+                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">{t('adminDashboard.verifications.type')}</th>
+                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">{t('adminDashboard.verifications.user')}</th>
+                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">{t('adminDashboard.verifications.date')}</th>
+                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">{t('adminDashboard.verifications.status')}</th>
+                                                <th className="p-4 font-bold uppercase text-[10px] tracking-wider text-muted-foreground">{t('adminDashboard.verifications.actions')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1299,7 +1365,7 @@ export default function AdminDashboardPage() {
                                                     return matchesStatus && matchesCategory && matchesDate;
                                                 })
                                                 .map((item) => (
-                                                    <tr key={item.id} className="border-b last:border-0 hover:bg-muted/5 transition-colors">
+                                                    <tr key={item.uniqueKey} className="border-b last:border-0 hover:bg-muted/5 transition-colors">
                                                         <td className="p-4">
                                                             <div className="font-bold">{item.title || item.name}</div>
                                                         </td>
@@ -1317,15 +1383,17 @@ export default function AdminDashboardPage() {
                                                         <td className="p-4">
                                                             <Badge className={cn(
                                                                 "border-none text-[10px] font-black uppercase px-2 py-0.5",
-                                                                item.status === 'Verified' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                                                item.status === 'Verified' ? 'bg-green-100 text-green-700' : 
+                                                                item.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
                                                             )}>
-                                                                {item.status}
+                                                                {t(`adminDashboard.verifications.${item.status.toLowerCase()}` as any) || item.status}
                                                             </Badge>
                                                         </td>
+
                                                         <td className="p-4">
-                                                            <Link href={`/dashboard/admin/verifications/${item.type.toLowerCase()}/${item.id}`}>
+                                                            <Link href={`/dashboard/admin/verifications/${(item.type === 'Home' || item.type === 'Car') ? 'property' : item.type.toLowerCase()}/${item.id}?logId=${item.uniqueKey}`}>
                                                                 <Button size="sm" variant="ghost" className="h-7 text-[10px] font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
-                                                                    View Detail
+                                                                    {t('adminDashboard.verifications.viewDetail')}
                                                                 </Button>
                                                             </Link>
                                                         </td>

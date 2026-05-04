@@ -79,39 +79,7 @@ export default function AgentLeaseDetailsPage({ params }: { params: Promise<{ id
 
     return (
         <div className="min-h-screen bg-muted/30 pb-20">
-            {/* Header Section */}
-            <div className="bg-white border-b border-border sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <Link href="/dashboard/agent?tab=leases">
-                                <Button variant="ghost" size="icon" className="rounded-full hover:bg-[#005a41]/5">
-                                    <ChevronLeft className="h-5 w-5 text-[#005a41]" />
-                                </Button>
-                            </Link>
-                            <div>
-                                <h1 className="text-xl font-bold text-foreground">Manage Lease</h1>
 
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Badge className={cn(
-                                "border-none px-3 py-1 text-[10px] font-bold uppercase tracking-widest hover:bg-transparent",
-                                lease.status === 'ACTIVE' ? "bg-green-100 text-green-700" :
-                                    lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" :
-                                        lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700 font-black ring-1 ring-orange-200" :
-                                        lease.status === 'COMPLETED' ? "bg-blue-100 text-blue-700" : 
-                                        "bg-red-100 text-red-700"
-                            )}>
-                                {lease.status === 'ACTIVE' ? 'Active Lease' : 
-                                 lease.status === 'PENDING' ? 'Waiting for Approval' : 
-                                 lease.status === 'CANCELLATION_PENDING' ? 'Cancellation Pending' :
-                                 lease.status}
-                            </Badge>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -152,7 +120,29 @@ export default function AgentLeaseDetailsPage({ params }: { params: Promise<{ id
                                             {property.propertyType || (property.assetType === 'HOME' ? 'Home' : 'Vehicle')}
                                         </p>
                                     </div>
-                                   
+                                    {property.assetType === 'CAR' ? (
+                                        <>
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Transmission</p>
+                                                <p className="font-bold text-foreground capitalize">{property.transmission || 'N/A'}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Mileage</p>
+                                                <p className="font-bold text-foreground">{property.mileage ? `${property.mileage.toLocaleString()} km` : 'N/A'}</p>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Bedrooms</p>
+                                                <p className="font-bold text-foreground">{property.bedrooms || 'N/A'}</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Bathrooms</p>
+                                                <p className="font-bold text-foreground">{property.bathrooms || 'N/A'}</p>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </CardContent>
                         </Card>
@@ -289,7 +279,7 @@ export default function AgentLeaseDetailsPage({ params }: { params: Promise<{ id
                                     </div>
                                     <div className="min-w-0">
                                         <h4 className="font-bold text-foreground truncate">{tenantName}</h4>
-                                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-0.5">Verified Lessee</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-0.5">Property Tenant</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4 mb-6">

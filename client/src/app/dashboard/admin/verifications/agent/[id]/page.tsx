@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
     ChevronLeft,
     Check,
@@ -23,10 +23,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
 import { useEffect, useState } from 'react';
+import { cn } from '@/lib/utils';
 import { Document, Page, pdfjs } from 'react-pdf';
 
 import { useUserStore } from '@/store/useUserStore';
-import { API_BASE_URL } from '@/lib/api';
+import { API_BASE_URL, createApi } from '@/lib/api';
+
+const api = createApi();
 
 // Configure PDF.js worker using a reliable CDN
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
@@ -38,23 +41,75 @@ import 'react-pdf/dist/Page/TextLayer.css';
 export default function AgentVerificationPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
-    const { users, verifyUser, fetchUserById, isLoading } = useUserStore();
+    const { verifyUser } = useUserStore();
+    const searchParams = useSearchParams();
+    const logId = searchParams.get('logId');
     
+    const [agent, setAgent] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [pdfFile, setPdfFile] = useState<any>(null);
     const [isDocLoading, setIsDocLoading] = useState(false);
     const [numPages, setNumPages] = useState<number | null>(null);
     const [rejectionReason, setRejectionReason] = useState("");
     const [showRejectionInput, setShowRejectionInput] = useState(false);
+    const [isHistoryMode, setIsHistoryMode] = useState(false);
 
     useEffect(() => {
-        if (id) {
-            fetchUserById(id);
-        }
-    }, [id, fetchUserById]);
+        const fetchAgentOrHistory = async () => {
+            setIsLoading(true);
+            try {
+                if (logId) {
+                    // Fetch directly from AdminVerification for history
+                    setIsHistoryMode(true);
+                    const logRes = await api.get(`/api/admin/verification-log/${logId}`);
+                    const logData = logRes.data;
+                    
+                    // If email is missing (old record), fetch current agent email as fallback
+                    let fallbackEmail = logData.entityEmail;
+                    if (!fallbackEmail && logData.entityId) {
+                        try {
+                            const agentRes = await api.get(`/api/user/${logData.entityId}`);
+                            fallbackEmail = agentRes.data.email;
+                        } catch (e) {}
+                    }
 
-    const agent = users.find(u => u.id === id);
+                    setAgent({
+                        id: logData.entityId,
+                        name: logData.entityName,
+                        email: fallbackEmail,
+                        verified: logData.status === 'Verified',
+                        rejectionReason: logData.status === 'Rejected' ? logData.reason : null,
+                        verificationPhoto: logData.verificationPhoto,
+                        profileImage: logData.verificationPhoto,
+                        createdAt: logData.createdAt,
+                        adminName: logData.admin?.name,
+                        documents: logData.document ? [{
+                            ...logData.document,
+                            type: 'AGENT_LICENSE'
+                        }] : []
+                    });
+                } else {
+                    // Fetch live agent data
+                    const agentRes = await api.get(`/api/user/${id}`);
+                    setAgent(agentRes.data);
+                }
+            } catch (error: any) {
+                console.error('Error fetching data:', error);
+                if (error.response?.status === 401) {
+                    toast.error("Session expired. Please login again.");
+                    router.push('/login');
+                }
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-    const licenseDoc = agent?.documents?.find(d => d.type === 'AGENT_LICENSE');
+        if (id || logId) fetchAgentOrHistory();
+    }, [id, logId, router]);
+
+    const licenseDoc = agent?.documents
+        ?.filter(d => d.type === 'AGENT_LICENSE')
+        ?.sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())[0];
 
     useEffect(() => {
         // Clear stale document state when ID changes
@@ -63,14 +118,21 @@ export default function AgentVerificationPage({ params }: { params: Promise<{ id
 
         const fetchSecurePdf = async () => {
             const docId = licenseDoc?.id;
-            if (!docId) return;
+            const docUrl = licenseDoc?.url;
+            if (!docId && !docUrl) return;
             
             setIsDocLoading(true);
             try {
                 const token = localStorage.getItem('auth_token');
                 
-                // Fetch the Base64 Data Bundle via our Secure Proxy
-                const response = await fetch(`${API_BASE_URL}/api/properties/document/${docId}/view`, {
+                // If it's a historical doc, we fetch through the admin proxy to ensure fresh signed URLs
+                const fetchUrl = logId
+                    ? `${API_BASE_URL}/api/admin/verification-log/${logId}/view`
+                    : (docId ? `${API_BASE_URL}/api/properties/document/${docId}/view` : null);
+                
+                if (!fetchUrl) return;
+
+                const response = await fetch(fetchUrl!, {
                     headers: { 'Authorization': `Bearer ${token}` },
                     credentials: 'include'
                 });
@@ -89,10 +151,10 @@ export default function AgentVerificationPage({ params }: { params: Promise<{ id
             }
         };
 
-        if (licenseDoc) {
+        if (licenseDoc || logId) {
             fetchSecurePdf();
         }
-    }, [agent?.id, licenseDoc?.id, API_BASE_URL]);
+    }, [agent?.id, licenseDoc?.id, logId, API_BASE_URL]);
 
     const handleApprove = async () => {
         if (!agent) return;
@@ -127,36 +189,40 @@ export default function AgentVerificationPage({ params }: { params: Promise<{ id
         }
     };
 
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50/50">
+                <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-8 w-8 text-[#005a41] animate-spin" />
+                    <p className="text-sm font-medium text-muted-foreground animate-pulse">
+                        {isHistoryMode ? 'Retrieving historical record...' : 'Loading agent details...'}
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     if (!agent) {
-        return <div className="p-8 text-center">Agent not found</div>;
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50/50">
+                <div className="text-center space-y-4">
+                    <div className="bg-red-50 h-16 w-16 rounded-full flex items-center justify-center mx-auto">
+                        <X className="h-8 w-8 text-red-500" />
+                    </div>
+                    <h2 className="text-xl font-bold">Agent Not Found</h2>
+                    <p className="text-muted-foreground text-sm max-w-xs">We couldn't find the verification record you're looking for.</p>
+                    <Link href="/dashboard/admin">
+                        <Button variant="outline" className="mt-2">Back to Dashboard</Button>
+                    </Link>
+                </div>
+            </div>
+        );
     }
 
 
 
     return (
         <div className="min-h-screen bg-gray-50/50 pb-8">
-            {/* Header */}
-            <div className="bg-white border-b sticky top-0 z-10">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link href="/dashboard/admin">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <ChevronLeft className="h-5 w-5" />
-                            </Button>
-                        </Link>
-                        <div>
-                            <h1 className="text-lg font-bold flex items-center gap-2">
-                                Verify Agent License
-                                <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 hover:bg-amber-100">
-                                    {agent.verified ? 'Verified' : 'Pending'}
-                                </Badge>
-                            </h1>
-                            <p className="text-xs text-muted-foreground">ID: {id?.toUpperCase()}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column: Agent Details */}
@@ -170,7 +236,7 @@ export default function AgentVerificationPage({ params }: { params: Promise<{ id
                                     <Avatar className="h-20 w-20 border-2 border-border mb-3">
                                         <AvatarImage src={agent.profileImage || ""} />
                                         <AvatarFallback className="bg-[#005a41]/10 text-[#005a41] text-2xl font-bold">
-                                            {agent.name.split(' ').map(n => n[0]).join('')}
+                                            {agent.name?.split(' ').map((n: string) => n[0]).join('') || '?'}
                                         </AvatarFallback>
                                     </Avatar>
                                     <h3 className="font-bold text-lg">{agent.name}</h3>
@@ -184,8 +250,16 @@ export default function AgentVerificationPage({ params }: { params: Promise<{ id
                                     </div>
                                     <div className="flex items-center gap-3 text-sm">
                                         <BadgeCheck className="h-4 w-4 text-muted-foreground" />
-                                        <span>Status: <span className="font-bold">{agent.verified ? 'Verified' : 'Unverified'}</span></span>
+                                        <span>Status: <span className={cn("font-bold", agent.verified ? "text-green-600" : agent.rejectionReason ? "text-red-600" : "text-amber-600")}>
+                                            {agent.verified ? 'Verified' : agent.rejectionReason ? 'Rejected' : 'Pending'}
+                                        </span></span>
                                     </div>
+                                    {agent.rejectionReason && (
+                                        <div className="p-3 bg-red-50 border border-red-100 rounded-lg space-y-1 animate-in fade-in slide-in-from-top-1">
+                                            <p className="text-[10px] font-black uppercase text-red-600 tracking-wider">Rejection Cause</p>
+                                            <p className="text-xs text-red-700 leading-relaxed font-medium">{agent.rejectionReason}</p>
+                                        </div>
+                                    )}
                                     <div className="flex items-center gap-3 text-sm">
                                         <Calendar className="h-4 w-4 text-muted-foreground" />
                                         <span>Joined: {new Date(agent.createdAt).toLocaleDateString()}</span>
@@ -200,53 +274,67 @@ export default function AgentVerificationPage({ params }: { params: Promise<{ id
                                 <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Verification Decision</CardTitle>
                             </CardHeader>
                             <CardContent className="pt-6 space-y-4">
-                                {showRejectionInput && (
-                                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
-                                        <label className="text-xs font-bold uppercase text-red-600">Rejection Cause</label>
-                                        <Textarea 
-                                            placeholder="Specify why this license is being rejected..."
-                                            className="min-h-[100px] text-sm border-red-100 focus-visible:ring-red-200"
-                                            value={rejectionReason}
-                                            onChange={(e) => setRejectionReason(e.target.value)}
-                                        />
+                                {isHistoryMode ? (
+                                    <div className="space-y-4">
+                                        <div className="flex items-center gap-2 text-indigo-700">
+                                            <Shield className="h-5 w-5" />
+                                            <span className="font-bold text-sm">Archived Verification</span>
+                                        </div>
+                                        <p className="text-xs text-indigo-600 leading-relaxed">
+                                            This is a historical record of a decision made on <b>{new Date(agent.createdAt).toLocaleDateString()}</b>. 
+                                        </p>
                                     </div>
-                                )}
+                                ) : (
+                                    <>
+                                        {showRejectionInput && (
+                                            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                                                <label className="text-xs font-bold uppercase text-red-600">Rejection Cause</label>
+                                                <Textarea 
+                                                    placeholder="Specify why this license is being rejected..."
+                                                    className="min-h-[100px] text-sm border-red-100 focus-visible:ring-red-200"
+                                                    value={rejectionReason}
+                                                    onChange={(e) => setRejectionReason(e.target.value)}
+                                                />
+                                            </div>
+                                        )}
 
-                                <div className="space-y-3">
-                                    <Button
-                                        className="w-full bg-[#005a41] hover:bg-[#004a35] h-12 text-base font-bold"
-                                        onClick={handleApprove}
-                                        disabled={isLoading || agent.verified || showRejectionInput}
-                                    >
-                                        <Check className="mr-2 h-5 w-5" />
-                                        {agent.verified ? 'Verified' : 'Approve License'}
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        className={`w-full h-12 font-medium transition-all ${
-                                            showRejectionInput 
-                                            ? 'bg-red-600 text-white hover:bg-red-700 border-red-600' 
-                                            : 'border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700'
-                                        }`}
-                                        onClick={handleReject}
-                                        disabled={isLoading || agent.verified}
-                                    >
-                                        <X className="mr-2 h-5 w-5" />
-                                        {showRejectionInput ? 'Confirm Rejection' : 'Reject License'}
-                                    </Button>
-                                    {showRejectionInput && (
-                                        <Button 
-                                            variant="ghost" 
-                                            className="w-full text-xs text-muted-foreground hover:text-slate-900"
-                                            onClick={() => setShowRejectionInput(false)}
-                                        >
-                                            Cancel
-                                        </Button>
-                                    )}
-                                </div>
-                                <p className="text-xs text-center text-muted-foreground pt-2">
-                                    This action will notify the agent immediately.
-                                </p>
+                                        <div className="space-y-3">
+                                            <Button
+                                                className="w-full bg-[#005a41] hover:bg-[#004a35] h-12 text-base font-bold"
+                                                onClick={handleApprove}
+                                                disabled={isLoading || agent.verified || !!agent.rejectionReason || showRejectionInput}
+                                            >
+                                                <Check className="mr-2 h-5 w-5" />
+                                                {agent.verified ? 'Verified' : 'Approve License'}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className={`w-full h-12 font-medium transition-all ${
+                                                    showRejectionInput 
+                                                    ? 'bg-red-600 text-white hover:bg-red-700 border-red-600' 
+                                                    : 'border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700'
+                                                }`}
+                                                onClick={handleReject}
+                                                disabled={isLoading || agent.verified || (!!agent.rejectionReason && !showRejectionInput)}
+                                            >
+                                                <X className="mr-2 h-5 w-5" />
+                                                {showRejectionInput ? 'Confirm Rejection' : 'Reject License'}
+                                            </Button>
+                                            {showRejectionInput && (
+                                                <Button 
+                                                    variant="ghost" 
+                                                    className="w-full text-xs text-muted-foreground hover:text-slate-900"
+                                                    onClick={() => setShowRejectionInput(false)}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-center text-muted-foreground pt-2">
+                                            This action will notify the agent immediately.
+                                        </p>
+                                    </>
+                                )}
                             </CardContent>
                         </Card>
                     </div>

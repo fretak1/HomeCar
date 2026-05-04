@@ -35,6 +35,7 @@ import { useUserStore } from '@/store/useUserStore';
 import { useApplicationStore } from '@/store/useApplicationStore';
 import { getListingMainImage, cn } from '@/lib/utils';
 import { differenceInDays } from 'date-fns';
+import { useTranslation } from '@/contexts/LanguageContext';
 import {
     Popover,
     PopoverContent,
@@ -56,6 +57,7 @@ interface CreateLeaseFormProps {
 }
 
 export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateLeaseFormProps) {
+    const { t } = useTranslation();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [ownerSearchOpen, setOwnerSearchOpen] = useState(false);
     const [ownerSearchQuery, setOwnerSearchQuery] = useState('');
@@ -187,11 +189,11 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                 customerId: data.tenantId,
                 ownerId: role === 'agent' ? data.ownerId : (currentUser?.id || 'o1')
             } as any);
-            toast.success("Lease agreement created successfully!");
+            toast.success(t('lease.success'));
             onSuccess();
         } catch (error: any) {
             console.error('Lease creation failed:', error);
-            const errorMessage = error.response?.data?.error || "Failed to create lease.";
+            const errorMessage = error.response?.data?.error || t('lease.failed');
             toast.error(errorMessage);
         } finally {
             setIsSubmitting(false);
@@ -217,7 +219,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                         <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">
                             <div className="flex items-center space-x-2 mb-6 text-primary">
                                 <Users className="h-5 w-5" />
-                                <h3 className="text-lg font-bold">Select Owner</h3>
+                                <h3 className="text-lg font-bold">{t('lease.selectOwner')}</h3>
                             </div>
                             <FormField
                                 control={form.control}
@@ -231,7 +233,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                                     <div className="relative group">
                                                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                                         <Input
-                                                            placeholder="Type owner name to search..."
+                                                            placeholder={t('lease.searchOwner')}
                                                             className="h-14 pl-11 bg-muted/5 border-border/60 rounded-xl font-normal focus:bg-white transition-all"
                                                             value={field.value && !ownerSearchQuery ? (ownerList.find(o => o.id === field.value)?.name || '') : ownerSearchQuery}
                                                             onChange={(e) => {
@@ -253,9 +255,9 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                                 <Command className="rounded-xl overflow-hidden">
                                                     <CommandList className="max-h-[300px]">
                                                         {filteredOwnerList.length === 0 ? (
-                                                            <CommandEmpty className="py-6 text-sm">No owner found.</CommandEmpty>
+                                                            <CommandEmpty className="py-6 text-sm">{t('lease.noOwnerFound')}</CommandEmpty>
                                                         ) : (
-                                                            <CommandGroup heading="Results">
+                                                            <CommandGroup heading={t('lease.results')}>
                                                                 {filteredOwnerList.map((o) => (
                                                                     <CommandItem
                                                                         value={`${o.name} ${o.id}`}
@@ -295,7 +297,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                     <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">
                         <div className="flex items-center space-x-2 mb-6 text-primary">
                             <Users className="h-5 w-5" />
-                            <h3 className="text-lg font-bold">Select Customer</h3>
+                            <h3 className="text-lg font-bold">{t('lease.selectCustomer')}</h3>
                         </div>
                         <FormField
                             control={form.control}
@@ -306,7 +308,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                     <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
                                             <SelectTrigger className="h-14 bg-muted/5 border-border/60 rounded-xl">
-                                                <SelectValue placeholder="Identify the tenant" />
+                                                <SelectValue placeholder={t('lease.identifyTenant')} />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent position="popper" side="bottom" sideOffset={4} className="rounded-xl max-h-56 z-[100]">
@@ -316,7 +318,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                                 ))
                                             ) : (
                                                 <SelectItem value="no-tenants" disabled>
-                                                    <span className="text-xs text-muted-foreground italic px-2">No accepted applicants found</span>
+                                                    <span className="text-xs text-muted-foreground italic px-2">{t('lease.noApplicantsFound')}</span>
                                                 </SelectItem>
                                             )}
                                         </SelectContent>
@@ -331,7 +333,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                 {/* 1. Property Selection */}
                 <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">
                     <div className="flex items-center space-x-2 mb-6 text-primary">
-                        <h3 className="text-lg font-bold">Select Property</h3>
+                        <h3 className="text-lg font-bold">{t('lease.selectProperty')}</h3>
                     </div>
 
                     <FormField
@@ -346,7 +348,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                 >
                                     <FormControl>
                                         <SelectTrigger className="h-14 bg-muted/5 border-border/60 rounded-xl">
-                                            <SelectValue placeholder="Choose a property for this lease" />
+                                            <SelectValue placeholder={t('lease.chooseProperty')} />
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent position="popper" side="bottom" sideOffset={4} className="rounded-xl max-h-56 z-[110]">
@@ -370,7 +372,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                             ))
                                         ) : (
                                             <SelectItem value="no-properties" disabled>
-                                                <span className="text-xs text-muted-foreground italic px-2">No properties available</span>
+                                                <span className="text-xs text-muted-foreground italic px-2">{t('lease.noPropertiesAvailable')}</span>
                                             </SelectItem>
                                         )}
                                     </SelectContent>
@@ -384,7 +386,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                 {/* 2. Lease Details */}
                 <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm hover:shadow-md transition-all">
                     <div className="flex items-center space-x-2 mb-6 text-primary">
-                        <h3 className="text-lg font-bold">Lease Configuration</h3>
+                        <h3 className="text-lg font-bold">{t('lease.configuration')}</h3>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -394,7 +396,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                             rules={{ required: 'Start date is required' }}
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Start Date</FormLabel>
+                                    <FormLabel>{t('lease.startDate')}</FormLabel>
                                     <FormControl>
                                         <div className="relative">
                                             <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -412,7 +414,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                             rules={{ required: 'End date is required' }}
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>End Date</FormLabel>
+                                    <FormLabel>{t('lease.endDate')}</FormLabel>
                                     <FormControl>
                                         <div className="relative">
                                             <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -429,7 +431,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                             name="paymentModel"
                             render={({ field }) => (
                                 <FormItem className="md:col-span-2">
-                                    <FormLabel>Payment Model</FormLabel>
+                                    <FormLabel>{t('lease.paymentModel')}</FormLabel>
                                     <Select 
                                         onValueChange={field.onChange} 
                                         value={field.value}
@@ -437,12 +439,12 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                     >
                                         <FormControl>
                                             <SelectTrigger className="h-11 bg-muted/5 border-border/60 rounded-xl">
-                                                <SelectValue placeholder={(!startDate || !endDate) ? "Select dates first..." : "Select frequency"} />
+                                                <SelectValue placeholder={(!startDate || !endDate) ? t('lease.selectDatesFirst') : t('lease.selectFrequency')} />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent className="rounded-xl">
-                                            <SelectItem value="OneTime">One-Time Payment</SelectItem>
-                                            <SelectItem value="Recurring">Recurring (Monthly)</SelectItem>
+                                            <SelectItem value="OneTime">{t('lease.oneTime')}</SelectItem>
+                                            <SelectItem value="Recurring">{t('lease.recurring')}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </FormItem>
@@ -457,7 +459,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
 
                     <div className="relative z-10 space-y-6">
                         <div className="flex items-center space-x-2 text-primary mb-2">
-                            <h3 className="text-xl font-black">Financial Terms</h3>
+                            <h3 className="text-xl font-black">{t('lease.financialTerms')}</h3>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -467,12 +469,12 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                 rules={{ required: 'Total price is required' }}
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Total Contract Value (ETB)</FormLabel>
+                                        <FormLabel>{t('lease.totalValue')}</FormLabel>
                                         <FormControl>
                                             <Input
                                                 type="number"
                                                 className="h-14 text-lg font-bold bg-primary/5 border-2 border-primary/10 focus:border-primary transition-all rounded-xl"
-                                                placeholder="Total amount"
+                                                placeholder={t('customerDashboard.totalSpent' as any) || 'Total amount'}
                                                 {...field}
                                             />
                                         </FormControl>
@@ -488,12 +490,12 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                     rules={{ required: 'Monthly amount is required' }}
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Monthly Amount (ETB)</FormLabel>
+                                            <FormLabel>{t('lease.monthlyAmount')}</FormLabel>
                                             <FormControl>
                                                 <Input
                                                     type="number"
                                                     className="h-14 text-lg font-bold bg-primary/5 border-2 border-primary/10 focus:border-primary transition-all rounded-xl"
-                                                    placeholder="Monthly rent"
+                                                    placeholder={t('lease.monthlyRent')}
                                                     {...field}
                                                 />
                                             </FormControl>
@@ -509,7 +511,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                 {/* 4. Terms & Conditions */}
                 <div className="bg-white rounded-2xl border border-border/50 p-6 shadow-sm">
                     <div className="flex items-center space-x-2 mb-4 text-primary">
-                        <h3 className="text-lg font-bold">Agreement Terms</h3>
+                        <h3 className="text-lg font-bold">{t('lease.agreementTerms')}</h3>
                     </div>
                     <FormField
                         control={form.control}
@@ -518,7 +520,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                             <FormItem>
                                 <FormControl>
                                     <Textarea
-                                        placeholder="Detailed terms, conditions, and special agreements..."
+                                        placeholder={t('lease.termsPlaceholder')}
                                         className="min-h-[150px] bg-muted/5 border-border/60 focus:bg-white rounded-xl p-4 text-base resize-none"
                                         {...field}
                                     />
@@ -537,7 +539,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                         disabled={isSubmitting}
                         className="px-8 h-12 rounded-xl hover:bg-destructive/5 font-bold"
                     >
-                        Cancel
+                        {t('common.cancel')}
                     </Button>
                     <Button
                         type="submit"
@@ -549,7 +551,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                         ) : (
                             <>
                                 <Check className="mr-2 h-5 w-5" />
-                                Create Lease
+                                {t('lease.createLease')}
                             </>
                         )}
                     </Button>

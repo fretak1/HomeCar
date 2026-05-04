@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+export const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:5000';
 
 export const API_ROUTES = {
     AUTH: `${API_BASE_URL}/api/auth`,

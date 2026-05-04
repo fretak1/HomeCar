@@ -15,9 +15,11 @@ import { SocialButtons } from '@/components/auth/SocialButtons';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/useUserStore';
 import { toast } from 'sonner';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function LoginPage() {
     const router = useRouter();
+    const { t } = useTranslation();
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -27,14 +29,21 @@ export default function LoginPage() {
         e.preventDefault();
         try {
             await login(email, password);
-            toast.success('Login successful!');
-            router.push('/');
+            const user = useUserStore.getState().currentUser;
+            toast.success(t('auth.login.success'));
+            
+            // Redirect based on role
+            if (user?.role === 'ADMIN' || user?.role === 'AGENT' || user?.role === 'OWNER') {
+                router.replace('/dashboard');
+            } else {
+                router.replace('/');
+            }
         } catch (error: any) {
             console.error('Login error:', error);
             if (error.message.includes('not verified')) {
-                toast.error('Email not verified. Please check your email inbox for the verification link');
+                toast.error(t('auth.login.notVerified'));
             } else {
-                toast.error(error.message || 'Login failed. Please check your credentials.');
+                toast.error(error.message || t('auth.login.failed'));
             }
         }
     };
@@ -63,11 +72,11 @@ export default function LoginPage() {
                             <div className="flex items-center space-x-2">
                                 <Sparkles className="w-6 h-6 text-accent" />
                                 <span className="text-[10px] font-bold bg-accent/90 text-accent-foreground px-3 py-1 rounded-full uppercase tracking-wider">
-                                    AI-Powered Experience
+                                    {t('auth.login.badge')}
                                 </span>
                             </div>
-                            <h2 className="text-3xl font-bold leading-tight">Find Your Perfect <br />Home or Car</h2>
-                            <p className="text-sm text-white/90 max-w-xs">Intelligent recommendations tailored just for your lifestyle and preferences.</p>
+                            <h2 className="text-3xl font-bold leading-tight">{t('auth.login.heroTitle')}</h2>
+                            <p className="text-sm text-white/90 max-w-xs">{t('auth.login.heroSubtitle')}</p>
                         </div>
                     </div>
                 </div>
@@ -84,10 +93,10 @@ export default function LoginPage() {
                         </div>
                         <div className="space-y-1">
                             <h1 className="text-3xl font-bold text-foreground tracking-tight">
-                                Welcome Back
+                                {t('auth.login.welcomeBack')}
                             </h1>
                             <p className="text-muted-foreground text-sm font-medium">
-                                Sign in to your HomeCar account
+                                {t('auth.login.subtitle')}
                             </p>
                         </div>
                     </div>
@@ -97,11 +106,11 @@ export default function LoginPage() {
                     {/* Login Form */}
                     <form className="space-y-4" onSubmit={handleSubmit}>
                         <div className="space-y-1.5">
-                            <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Email Address</Label>
+                            <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('auth.login.emailAddress')}</Label>
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="Enter You Email"
+                                placeholder={t('auth.login.emailPlaceholder')}
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="h-11 rounded-xl border-border bg-muted/20 focus:bg-background transition-all"
@@ -111,12 +120,12 @@ export default function LoginPage() {
 
                         <div className="space-y-1.5">
                             <div className="flex items-center justify-between ml-1">
-                                <Label htmlFor="password" className="text-xs font-bold tracking-wider text-muted-foreground">Password</Label>
+                                <Label htmlFor="password" className="text-xs font-bold tracking-wider text-muted-foreground">{t('auth.login.password')}</Label>
                                 <Link
                                     href="/forgot-password"
                                     className="text-xs font-bold text-primary hover:text-primary/80 transition-colors"
                                 >
-                                    Forgot?
+                                    {t('auth.login.forgot')}
                                 </Link>
                             </div>
                             <div className="relative">
@@ -148,7 +157,7 @@ export default function LoginPage() {
                             disabled={isLoading}
                             className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-base shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99]"
                         >
-                            {isLoading ? 'Signing In...' : 'Sign In'}
+                            {isLoading ? t('auth.login.signingIn') : t('auth.login.signIn')}
                         </Button>
                     </form>
 
@@ -161,12 +170,12 @@ export default function LoginPage() {
                     {/* Sign Up Link */}
                     <div className="text-center">
                         <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider">
-                            New here?{' '}
+                            {t('auth.login.newHere')}{' '}
                             <Link
                                 href="/signup"
                                 className="text-primary hover:text-primary/80 transition-colors ml-1"
                             >
-                                Join Now
+                                {t('auth.login.joinNow')}
                             </Link>
                         </p>
                     </div>

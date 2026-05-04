@@ -140,6 +140,25 @@ export const createProperty = async (req: any, res: Response) => {
             }
         }
 
+        // ALWAYS create a NEW document record for the history to be immutable
+        if (!property.isVerified) {
+            const docId = (property as any).ownershipDocuments?.[0]?.id;
+            const owner = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true, verificationPhoto: true } });
+            await (prisma as any).adminVerification.create({
+                data: {
+                    entityId: property.id,
+                    entityType: property.assetType === 'HOME' ? 'Home' : 'Car',
+                    entityName: property.title,
+                    entityEmail: owner?.email,
+                    status: 'Pending',
+                    adminId: null,
+                    reason: 'Property listed and pending ownership verification',
+                    verificationPhoto: owner?.verificationPhoto,
+                    documentId: docId
+                }
+            });
+        }
+
         // --- AI Retrain Trigger ---
         try {
             const count = await prisma.property.count();
@@ -276,7 +295,7 @@ export const getProperties = async (req: any, res: Response) => {
         if (sort === 'price-high') orderBy = [{ price: 'desc' }, { id: 'asc' }];
 
         // Pagination Math
-        const pLimit = Math.min(parseInt(limit as string) || 20, 500);
+        const pLimit = Math.min(parseInt(limit as string) || 20, 10000);
         const pPage = Math.max(parseInt(page as string) || 1, 1);
         const skip = (pPage - 1) * pLimit;
 
@@ -334,7 +353,7 @@ export const getPropertyById = async (req: any, res: Response) => {
                         chapaSubaccountId: true
                     }
                 },
-                ownershipDocuments: true,
+                ownershipDocuments: { orderBy: { uploadedAt: 'desc' } },
                 reviews: { include: { reviewer: { select: { id: true, name: true, profileImage: true } } } }
             }
         });
@@ -374,22 +393,28 @@ export const getPropertiesByOwnerId = async (req: any, res: Response) => {
 export const updateProperty = async (req: any, res: Response) => {
     try {
         const { id } = req.params;
-        const userId = req.user?.id;
+        const userId = (req as any).user.id;
+        const userRole = (req as any).user.role;
+
         const existing = await prisma.property.findUnique({
             where: { id },
-            include: {
-                images: true,
-                ownershipDocuments: true,
-                owner: {
-                    select: {
-                        id: true,
-                        verificationPhoto: true
-                    }
-                }
+            include: { 
+                ownershipDocuments: { orderBy: { uploadedAt: 'desc' } },
+                owner: true,
+                images: true
             }
         });
-        
-        if (!existing || existing.ownerId !== userId) return res.status(403).json({ error: 'Forbidden' });
+
+        if (!existing) {
+            return res.status(404).json({ error: 'Property not found' });
+        }
+
+        // Only owner, listedBy (Agent), or admin can update
+        if (existing.ownerId !== userId && existing.listedById !== userId && userRole !== 'ADMIN') {
+            return res.status(403).json({ error: 'Unauthorized to update this property' });
+        }
+
+        const propertyOwnerId = existing.ownerId;
 
         const { 
             title, description, assetType, listingType, price,
@@ -516,25 +541,23 @@ export const updateProperty = async (req: any, res: Response) => {
             });
         }
 
+        let newDocId = existing.ownershipDocuments?.[0]?.id;
+        let photoUpdated = false;
+
         if (files?.ownershipDocument?.length) {
             const doc = files.ownershipDocument[0];
-            await prisma.document.deleteMany({
-                where: {
-                    propertyId: id,
-                    type: 'OWNERSHIP_PROOF'
-                }
-            });
-            await prisma.document.create({
+            const createdDoc = await prisma.document.create({
                 data: {
                     type: 'OWNERSHIP_PROOF',
                     url: doc.path,
                     publicId: doc.filename,
                     resourceType: doc.resource_type || 'raw',
-                    userId,
+                    userId: propertyOwnerId,
                     propertyId: id,
                     verified: false
                 }
             });
+            newDocId = createdDoc.id;
             updateData.isVerified = false;
             updateData.rejectionReason = null;
         }
@@ -542,7 +565,7 @@ export const updateProperty = async (req: any, res: Response) => {
         if (files?.ownerPhoto?.length) {
             const photo = files.ownerPhoto[0];
             await prisma.user.update({
-                where: { id: userId },
+                where: { id: propertyOwnerId },
                 data: {
                     verificationPhoto: photo.path,
                     verified: false,
@@ -551,6 +574,7 @@ export const updateProperty = async (req: any, res: Response) => {
             });
             updateData.isVerified = false;
             updateData.rejectionReason = null;
+            photoUpdated = true;
         }
 
         const updated = await prisma.property.update({
@@ -559,7 +583,10 @@ export const updateProperty = async (req: any, res: Response) => {
             include: {
                 location: true,
                 images: true,
-                ownershipDocuments: true,
+                ownershipDocuments: {
+                    orderBy: { uploadedAt: 'desc' },
+                    take: 1
+                },
                 owner: {
                     select: {
                         id: true,
@@ -572,6 +599,23 @@ export const updateProperty = async (req: any, res: Response) => {
                 }
             }
         });
+
+        // If something was updated that requires re-verification, create a Pending log
+        if (files?.ownershipDocument?.length || photoUpdated) {
+            await (prisma as any).adminVerification.create({
+                data: {
+                    entityId: id,
+                    entityType: updated.assetType === 'HOME' ? 'Home' : 'Car',
+                    entityName: updated.title,
+                    entityEmail: (updated.owner as any)?.email,
+                    status: 'Pending',
+                    adminId: null,
+                    reason: 'Ownership documents updated',
+                    verificationPhoto: updated.owner?.verificationPhoto,
+                    documentId: newDocId
+                }
+            });
+        }
 
         res.json(updated);
     } catch (error) {
@@ -589,10 +633,27 @@ export const deleteProperty = async (req: any, res: Response) => {
     }
 };
 
-export const verifyProperty = async (req: Request, res: Response) => {
+export const verifyProperty = async (req: any, res: Response) => {
     try {
         const { id } = req.params;
         const { isVerified, rejectionReason } = req.body;
+        const adminId = req.user?.id;
+
+        // Fetch current documents for snapshot
+        const currentProperty = await prisma.property.findUnique({
+            where: { id },
+            include: {
+                ownershipDocuments: { orderBy: { uploadedAt: 'desc' } },
+                owner: {
+                    select: {
+                        name: true,
+                        email: true,
+                        verificationPhoto: true
+                    }
+                }
+            }
+        });
+
         const property = await prisma.property.update({
             where: { id },
             data: { 
@@ -600,9 +661,28 @@ export const verifyProperty = async (req: Request, res: Response) => {
                 rejectionReason: isVerified ? null : rejectionReason
             }
         });
-        if (isVerified) {
+            if (isVerified) {
             await prisma.document.updateMany({ where: { propertyId: id }, data: { verified: true } });
         }
+
+        // Create Admin Verification Record
+        if (adminId && currentProperty) {
+            const doc = currentProperty.ownershipDocuments?.[0];
+            await (prisma as any).adminVerification.create({
+                data: {
+                    entityId: id,
+                    entityType: currentProperty.assetType === 'HOME' ? 'Home' : 'Car',
+                    entityName: currentProperty.title,
+                    entityEmail: (currentProperty.owner as any)?.email,
+                    status: isVerified ? 'Verified' : 'Rejected',
+                    adminId: adminId,
+                    reason: isVerified ? null : rejectionReason,
+                    verificationPhoto: currentProperty.owner?.verificationPhoto,
+                    documentId: doc?.id
+                }
+            });
+        }
+
         res.json(property);
     } catch (error) {
         res.status(500).json({ error: 'Internal server error' });
@@ -680,22 +760,45 @@ export const viewDocument = async (req: Request, res: Response) => {
         }
 
         // Generate the signature (internal use)
-        const signedUrl = cloudinary.url(publicId, {
+        // We try the stored resource type first, but fallback to raw if missing
+        const rType = doc.resourceType || 'raw';
+        
+        let signedUrl = cloudinary.url(publicId, {
             sign_url: true,
-            resource_type: doc.resourceType || 'raw',
+            resource_type: rType,
             type: 'authenticated',
             secure: true
         });
 
-        console.log(`[DocumentProxy] Signature resolved. Fetching bytes from Cloudinary...`);
+        console.log(`[DocumentProxy] Signature resolved (${rType}). Fetching bytes...`);
 
-        // 100% Reliable: Fetch as buffer and send as Base64 JSON
-        const response = await axios({ 
-            method: 'get', 
-            url: signedUrl, 
-            responseType: 'arraybuffer',
-            timeout: 10000 // 10 second timeout for large PDFs
-        });
+        let response;
+        try {
+            response = await axios({ 
+                method: 'get', 
+                url: signedUrl, 
+                responseType: 'arraybuffer',
+                timeout: 10000
+            });
+        } catch (fetchError: any) {
+            // If the first attempt fails (maybe it was actually an image but stored as raw), try the other type
+            const otherType = rType === 'raw' ? 'image' : 'raw';
+            console.warn(`[DocumentProxy] Fetch failed for ${rType}. Retrying as ${otherType}...`);
+            
+            signedUrl = cloudinary.url(publicId, {
+                sign_url: true,
+                resource_type: otherType,
+                type: 'authenticated',
+                secure: true
+            });
+
+            response = await axios({ 
+                method: 'get', 
+                url: signedUrl, 
+                responseType: 'arraybuffer',
+                timeout: 10000
+            });
+        }
 
         console.log(`[DocumentProxy] Bytes received (${response.data.byteLength} bytes). Packaging bundle...`);
 

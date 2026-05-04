@@ -1,9 +1,13 @@
-import React from 'react';
+"use client";
+
 import { authClient } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 import { FcGoogle } from 'react-icons/fc';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export const SocialButtons = () => {
+    const { t } = useTranslation();
+
     const handleGoogleSignIn = async () => {
         try {
             await authClient.signIn.social({
@@ -22,7 +26,7 @@ export const SocialButtons = () => {
                     <span className="w-full border-t border-gray-300" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                    <span className="bg-white px-2 text-gray-500">{t('auth.social.orContinueWith')}</span>
                 </div>
             </div>
             
@@ -34,7 +38,7 @@ export const SocialButtons = () => {
             >
                 <span className="w-full grid grid-cols-[20px_1fr_20px] items-center">
                     <FcGoogle className="w-5 h-5" />
-                    <span className="text-sm font-semibold text-center">Continue with Google</span>
+                    <span className="text-sm font-semibold text-center">{t('auth.social.continueWithGoogle')}</span>
                     <span aria-hidden />
                 </span>
             </Button>

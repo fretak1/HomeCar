@@ -73,9 +73,10 @@ import {
     MaintenanceCardSkeleton,
     ListItemSkeleton,
     TableRowSkeleton,
-    DashboardSkeleton,
+    DashboardRouteSkeleton,
 } from '@/components/ui/dashboard-skeletons';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth, addDays, isWithinInterval, isToday, isYesterday, isThisMonth, isThisYear } from 'date-fns';
 
@@ -83,7 +84,10 @@ import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, e
 export default function CustomerDashboardPage() {
     const searchParams = useSearchParams();
     const router = useRouter();
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('applications');
+    const [hasStartedInitialLoad, setHasStartedInitialLoad] = useState(false);
+    const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false);
     const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -109,7 +113,7 @@ export default function CustomerDashboardPage() {
     const { initiateChat } = useChatStore();
     const { applications: rawApplications, fetchApplications, isLoading: isAppLoading } = useApplicationStore();
     const applications = rawApplications || [];
-    const { favorites: rawFavorites } = useFavoriteStore();
+    const { favorites: rawFavorites, isLoading: isFavoriteLoading } = useFavoriteStore();
     const favorites = rawFavorites || [];
     const { leases: rawLeases, fetchLeases, acceptLease, requestLeaseCancellation, isLoading: isLeaseLoading } = useLeaseStore();
     const leases = rawLeases || [];
@@ -119,12 +123,14 @@ export default function CustomerDashboardPage() {
     const { connectSocket, socket } = useChatStore();
     const { notifications } = useNotificationStore();
 
-    const isLoading = isUserLoading || isAppLoading || isLeaseLoading || isMaintenanceLoading || isTransactionLoading;
+    const isLoading = isUserLoading || isAppLoading || isLeaseLoading || isMaintenanceLoading || isTransactionLoading || isFavoriteLoading;
+    const showInitialDashboardSkeleton = isLoading && !hasCompletedInitialLoad;
 
     const [expandedSchedules, setExpandedSchedules] = useState<string[]>([]);
 
     useEffect(() => {
         if (currentCustomer?.id) {
+            setHasStartedInitialLoad(true);
             fetchApplications({ customerId: currentCustomer.id });
             fetchProperties();
             fetchLeases(currentCustomer.id);
@@ -135,6 +141,28 @@ export default function CustomerDashboardPage() {
             connectSocket();
         }
     }, [currentCustomer, fetchApplications, fetchProperties, fetchLeases, fetchRequests, fetchTransactions, connectSocket]);
+
+    useEffect(() => {
+        if (
+            hasStartedInitialLoad &&
+            currentCustomer?.id &&
+            !isUserLoading &&
+            !isAppLoading &&
+            !isLeaseLoading &&
+            !isMaintenanceLoading &&
+            !isTransactionLoading
+        ) {
+            setHasCompletedInitialLoad(true);
+        }
+    }, [
+        hasStartedInitialLoad,
+        currentCustomer?.id,
+        isUserLoading,
+        isAppLoading,
+        isLeaseLoading,
+        isMaintenanceLoading,
+        isTransactionLoading,
+    ]);
 
 
 
@@ -158,9 +186,6 @@ export default function CustomerDashboardPage() {
         }
     }, [activeTab, currentCustomer?.id, fetchApplications, fetchRequests, fetchTransactions]);
 
-    if (isUserLoading && !currentCustomer) {
-        return <DashboardSkeleton />;
-    }
 
 
 
@@ -177,7 +202,7 @@ export default function CustomerDashboardPage() {
 
         // Check if we already have 2 images
         if (selectedFiles.length + files.length > 2) {
-            toast.error('Maximum 2 images allowed for maintenance requests.');
+            toast.error(t('customerDashboard.maxPhotosError'));
             return;
         }
 
@@ -189,7 +214,7 @@ export default function CustomerDashboardPage() {
 
     const handleCreateMaintenanceRequest = async () => {
         if (!newRequest.propertyId || !newRequest.category || !newRequest.description) {
-            alert('Please fill in all required fields.');
+            alert(t('customerDashboard.fillAllFields'));
             return;
         }
 
@@ -220,7 +245,7 @@ export default function CustomerDashboardPage() {
             });
 
             // 3. Success & Reset
-            toast.success("Maintenance request submitted successfully!");
+            toast.success(t('customerDashboard.maintenanceSuccess'));
             setIsNewRequestOpen(false);
             setNewRequest({
                 propertyId: '',
@@ -231,7 +256,7 @@ export default function CustomerDashboardPage() {
             setSelectedFiles([]);
         } catch (error) {
             console.error('Failed to create maintenance request:', error);
-            toast.error('Failed to submit maintenance request');
+            toast.error(t('customerDashboard.maintenanceFailed'));
         } finally {
             setIsUploading(false);
         }
@@ -239,7 +264,7 @@ export default function CustomerDashboardPage() {
 
     const handleRentPayment = async (lease: any, monthDate: Date) => {
         if (!currentCustomer) {
-            toast.error("Please log in to continue.");
+            toast.error(t('customerDashboard.pleaseLogin'));
             return;
         }
 
@@ -256,7 +281,7 @@ export default function CustomerDashboardPage() {
         const { lease, monthDate } = pendingPaymentInfo;
 
         if (!lease.owner?.chapaSubaccountId) {
-            toast.error("Payment setup incomplete. Please contact the owner.");
+            toast.error(t('customerDashboard.paymentSetupIncomplete'));
             return;
         }
 
@@ -286,24 +311,28 @@ export default function CustomerDashboardPage() {
             if (data?.checkout_url) {
                 window.location.href = data.checkout_url;
             } else {
-                toast.error("Failed to generate payment link.");
+                toast.error(t('customerDashboard.failedToGeneratePaymentLink'));
             }
         } catch (err) {
-            toast.error("Payment initialization failed.");
+            toast.error(t('customerDashboard.paymentInitializationFailed'));
         } finally {
             setIsEmailDialogOpen(false);
         }
     };
 
+    if (showInitialDashboardSkeleton) {
+        return <DashboardRouteSkeleton />;
+    }
+
     return (
         <>
-            <div className="min-h-screen bg-[#F8FAFC]">
+            <div className="min-h-screen bg-white">
                 <div className="bg-primary py-12">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex items-center justify-between">
                             <div>
-                                <h1 className="text-4xl mb-2 text-white font-bold">Customer Dashboard</h1>
-                                <p className="text-xl text-white/90">Manage your leases, applications, and transactions</p>
+                                <h1 className="text-4xl mb-2 text-white font-bold">{t('customerDashboard.title')}</h1>
+                                <p className="text-xl text-white/90">{t('customerDashboard.subtitle')}</p>
                             </div>
                         </div>
                     </div>
@@ -311,7 +340,7 @@ export default function CustomerDashboardPage() {
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                     {/* Stats Cards */}
-                    {isLoading ? (
+                    {isLoading && !hasCompletedInitialLoad ? (
                         <StatCardsSkeleton count={5} />
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -319,7 +348,7 @@ export default function CustomerDashboardPage() {
                                 <CardContent className="p-6">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm text-muted-foreground mb-1">Active Leases</p>
+                                            <p className="text-sm text-muted-foreground mb-1">{t('customerDashboard.activeLeases')}</p>
                                             <p className="text-3xl text-foreground font-bold">{leases.filter(l => l.status === 'Active' || l.status === 'ACTIVE').length}</p>
                                         </div>
                                         <div className="p-3 rounded-lg">
@@ -333,7 +362,7 @@ export default function CustomerDashboardPage() {
                                 <CardContent className="p-6">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm text-muted-foreground mb-1">Applications</p>
+                                            <p className="text-sm text-muted-foreground mb-1">{t('customerDashboard.applications')}</p>
                                             <p className="text-3xl text-foreground font-bold">{applications.length}</p>
                                         </div>
                                         <div className=" p-3 rounded-lg">
@@ -341,7 +370,7 @@ export default function CustomerDashboardPage() {
                                         </div>
                                     </div>
                                     <div className="mt-4 flex items-center text-sm">
-                                        <span className="text-green-500 font-medium">{applications.filter(a => a.status === 'accepted').length} accepted</span>
+                                        <span className="text-green-500 font-medium">{applications.filter(a => a.status === 'accepted').length} {t('customerDashboard.accepted')}</span>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -350,7 +379,7 @@ export default function CustomerDashboardPage() {
                                 <CardContent className="p-6">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm text-muted-foreground mb-1">Favorites</p>
+                                            <p className="text-sm text-muted-foreground mb-1">{t('customerDashboard.favorites')}</p>
                                             <p className="text-3xl text-foreground font-bold">{favorites.length}</p>
                                         </div>
                                         <div className=" p-3 rounded-lg">
@@ -358,7 +387,7 @@ export default function CustomerDashboardPage() {
                                         </div>
                                     </div>
                                     <div className="mt-4 flex items-center text-sm">
-                                        <span className="text-muted-foreground">Properties & Cars saved</span>
+                                        <span className="text-muted-foreground">{t('customerDashboard.savedItems')}</span>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -367,9 +396,9 @@ export default function CustomerDashboardPage() {
                                 <CardContent className="p-6">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm text-muted-foreground mb-1">Total Spent</p>
+                                            <p className="text-sm text-muted-foreground mb-1">{t('customerDashboard.totalSpent')}</p>
                                             <p className="text-3xl text-foreground font-bold">
-                                                ETB {transactions
+                                                {t('common.etb')} {transactions
                                                     .filter(t => t.status === 'COMPLETED')
                                                     .reduce((sum, t) => sum + t.amount, 0)
                                                     .toLocaleString()}
@@ -377,7 +406,7 @@ export default function CustomerDashboardPage() {
                                         </div>
                                     </div>
                                     <div className="mt-4 flex items-center text-sm">
-                                        <span className="text-muted-foreground">Lifetime transaction value</span>
+                                        <span className="text-muted-foreground">{t('customerDashboard.lifetimeValue')}</span>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -386,7 +415,7 @@ export default function CustomerDashboardPage() {
                                 <CardContent className="p-6">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm text-muted-foreground mb-1">Maintenance</p>
+                                            <p className="text-sm text-muted-foreground mb-1">{t('customerDashboard.maintenance')}</p>
                                             <p className="text-3xl text-foreground font-bold">{maintenanceRequests.length}</p>
                                         </div>
                                         <div className=" p-3 rounded-lg">
@@ -394,7 +423,7 @@ export default function CustomerDashboardPage() {
                                         </div>
                                     </div>
                                     <div className="mt-4 flex items-center text-sm">
-                                        <span className="text-yellow-600 font-medium">{maintenanceRequests.filter(r => r.status === 'pending').length} pending</span>
+                                        <span className="text-yellow-600 font-medium">{maintenanceRequests.filter(r => r.status === 'pending').length} {t('customerDashboard.pending')}</span>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -405,11 +434,11 @@ export default function CustomerDashboardPage() {
                         activeTab={activeTab}
                         onTabChange={setActiveTab}
                         tabs={[
-                            { value: 'applications', label: 'Applications' },
-                            { value: 'maintenance', label: 'Maintenance' },
-                            { value: 'leases', label: 'Leases' },
-                            { value: 'transactions', label: 'Transactions' },
-                            ...(currentCustomer?.role === 'CUSTOMER' ? [{ value: 'favorites', label: 'Favorites' }] : []),
+                            { value: 'applications', label: t('customerDashboard.tabs.applications') },
+                            { value: 'maintenance', label: t('customerDashboard.tabs.maintenance') },
+                            { value: 'leases', label: t('customerDashboard.tabs.leases') },
+                            { value: 'transactions', label: t('customerDashboard.tabs.transactions') },
+                            ...(currentCustomer?.role === 'CUSTOMER' ? [{ value: 'favorites', label: t('customerDashboard.tabs.favorites') }] : []),
                         ]}
                     >
 
@@ -418,24 +447,24 @@ export default function CustomerDashboardPage() {
                             <div className="space-y-6">
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-foreground">My Applications</h2>
-                                        <p className="text-muted-foreground">Monitor and manage your property applications in real-time</p>
+                                        <h2 className="text-2xl font-bold text-foreground">{t('customerDashboard.myApplications')}</h2>
+                                        <p className="text-muted-foreground">{t('customerDashboard.applicationsSubtitle')}</p>
                                     </div>
                                     <div className="flex gap-2">
                                         <Badge variant="outline" className="bg-white border-border py-1.5 px-3">
                                             <Clock className="h-3 w-3 mr-1.5 text-blue-500" />
-                                            <span className="text-xs font-semibold">{applications.filter(a => a.status === 'pending').length} Active</span>
+                                            <span className="text-xs font-semibold">{applications.filter(a => a.status === 'pending').length} {t('customerDashboard.active')}</span>
                                         </Badge>
                                         <Badge variant="outline" className="bg-white border-border py-1.5 px-3">
                                             <CheckCircle className="h-3 w-3 mr-1.5 text-green-500" />
-                                            <span className="text-xs font-semibold">{applications.filter(a => a.status === 'accepted').length} Accepted</span>
+                                            <span className="text-xs font-semibold">{applications.filter(a => a.status === 'accepted').length} {t('customerDashboard.acceptedTitle')}</span>
                                         </Badge>
                                     </div>
                                 </div>
 
 
                                 <div className="grid grid-cols-1 gap-6">
-                                    {isAppLoading ? (
+                                    {isAppLoading && !hasCompletedInitialLoad ? (
                                         <div className="space-y-4">
                                             {Array.from({ length: 4 }).map((_, i) => <ListItemSkeleton key={i} />)}
                                         </div>
@@ -476,14 +505,14 @@ export default function CustomerDashboardPage() {
                                                                             ? "bg-green-100 text-green-700"
                                                                             : "bg-blue-100 text-blue-700"
                                                                     )}>
-                                                                        {app.status}
+                                                                        {t(`common.${app.status.toLowerCase()}` as any) || app.status}
                                                                     </Badge>
                                                                 </div>
 
                                                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                                                                     <div className="bg-muted/30 p-2.5 rounded-lg border border-border/50">
-                                                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight mb-1">{app.listingType === 'rent' ? 'Rent' : 'Price'}</p>
-                                                                        <p className="text-sm font-bold text-foreground">ETB {app.price != null ? app.price.toLocaleString() : 'N/A'}{app.listingType === 'rent' ? '/mo' : ''}</p>
+                                                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight mb-1">{app.listingType === 'rent' ? t('common.rent') : t('common.price')}</p>
+                                                                        <p className="text-sm font-bold text-foreground">{t('common.etb')} {app.price != null ? app.price.toLocaleString() : t('common.na')}{app.listingType === 'rent' ? t('common.perMo') : ''}</p>
                                                                     </div>
                                                                 </div>
                                                                 {app.message && (
@@ -506,7 +535,7 @@ export default function CustomerDashboardPage() {
                                                                 }}
                                                             >
                                                                 <User className="h-3.5 w-3.5 mr-2" />
-                                                                See Profile
+                                                                {t('customerDashboard.seeProfile')}
                                                             </Button>
                                                             {app.status === 'accepted' && (
                                                                 <Button
@@ -519,7 +548,7 @@ export default function CustomerDashboardPage() {
                                                                     }}
                                                                 >
                                                                     <MessageSquare className="h-3.5 w-3.5 mr-2" />
-                                                                    Start Chat
+                                                                    {t('customerDashboard.startChat')}
                                                                 </Button>
                                                             )}
                                                         </div>
@@ -530,8 +559,8 @@ export default function CustomerDashboardPage() {
                                     ) : (
                                         <div className="text-center py-20 bg-muted/5 rounded-2xl border-2 border-dashed border-border">
                                             <ClipboardList className="h-12 w-12 mx-auto text-muted-foreground/20 mb-4" />
-                                            <h3 className="text-lg font-bold text-muted-foreground">No applications found</h3>
-                                            <p className="text-sm text-muted-foreground mt-2">You haven't submitted any applications yet.</p>
+                                            <h3 className="text-lg font-bold text-muted-foreground">{t('customerDashboard.noApplicationsFound')}</h3>
+                                            <p className="text-sm text-muted-foreground mt-2">{t('customerDashboard.noApplicationsDesc')}</p>
                                         </div>
                                     )}
                                 </div>
@@ -540,16 +569,18 @@ export default function CustomerDashboardPage() {
 
                         {/* My Leases */}
                         <TabsContent value="leases">
-                            <Card className="border-border">
-                                <CardHeader>
-                                    <CardTitle>Active Leases</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="space-y-4">
-                                        {isLeaseLoading ? (
+                            <div className="space-y-6">
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-foreground">{t('customerDashboard.myLeases')}</h2>
+                                        <p className="text-muted-foreground">{t('customerDashboard.leasesSubtitle')}</p>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                        {isLeaseLoading && !hasCompletedInitialLoad ? (
                                             <div className="text-center py-10 text-muted-foreground flex items-center justify-center gap-2">
                                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                                Loading leases...
+                                                {t('customerDashboard.loadingLeases')}
                                             </div>
                                         ) : leases.length > 0 ? (
                                             leases.map((lease: any) => {
@@ -585,7 +616,7 @@ export default function CustomerDashboardPage() {
                                                                         <div className="flex items-center space-x-4 text-sm">
                                                                             <div className="flex items-center text-muted-foreground">
                                                                                 <Calendar className="h-4 w-4 mr-1" />
-                                                                                <span>Started: {lease.startDate}</span>
+                                                                                <span>Started: {format(new Date(lease.startDate), 'MMM dd, yyyy')}</span>
                                                                             </div>
                                                                             <Badge className={cn(
                                                                                 "border-none",
@@ -594,7 +625,7 @@ export default function CustomerDashboardPage() {
                                                                                     lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700 font-bold" :
                                                                                     "bg-gray-100 text-gray-700"
                                                                             )}>
-                                                                                {lease.status === 'CANCELLATION_PENDING' ? 'CANCELLATION PENDING' : lease.status}
+                                                                                {lease.status === 'CANCELLATION_PENDING' ? t('common.cancellationPending' as any) || 'CANCELLATION PENDING' : t(`common.${lease.status.toLowerCase()}` as any) || lease.status}
                                                                             </Badge>
                                                                         </div>
                                                                     </div>
@@ -603,11 +634,11 @@ export default function CustomerDashboardPage() {
                                                                     <p className="text-2xl text-primary">
                                                                         ETB {(lease.recurringAmount || lease.totalPrice || property.price).toLocaleString()}
                                                                     </p>
-                                                                    <p className="text-sm text-muted-foreground">{lease.recurringAmount ? '/month' : 'total'}</p>
+                                                                    <p className="text-sm text-muted-foreground">{lease.recurringAmount ? t('common.perMo') : t('customerDashboard.total' as any) || 'total'}</p>
                                                                     <div className="flex flex-wrap md:justify-end gap-2 mt-2">
                                                                         <Link href={`/dashboard/customer/lease/${lease.id}`}>
                                                                             <Button variant="outline" size="sm" className="text-primary border-primary hover:bg-primary hover:text-white transition-all duration-300 shadow-sm hover:shadow-md active:scale-95">
-                                                                                View Details
+                                                                                {t('customerDashboard.viewDetails')}
                                                                             </Button>
                                                                         </Link>
                                                                         {(lease.status === 'ACTIVE' || (lease.status === 'CANCELLATION_PENDING' && !lease.customerCancelled)) && (
@@ -624,7 +655,7 @@ export default function CustomerDashboardPage() {
                                                                                 disabled={isLoading}
                                                                             >
                                                                                 <X className="h-3.5 w-3.5 mr-1" />
-                                                                                {lease.status === 'CANCELLATION_PENDING' ? 'Confirm Cancellation' : 'Cancel Lease'}
+                                                                                {lease.status === 'CANCELLATION_PENDING' ? t('customerDashboard.confirmCancellation') : t('customerDashboard.cancelLease')}
                                                                             </Button>
                                                                         )}
                                                                         {lease.status === 'CANCELLATION_PENDING' && lease.customerCancelled && (
@@ -635,13 +666,13 @@ export default function CustomerDashboardPage() {
                                                                                 className="text-amber-600 border-amber-200 bg-amber-50/50 rounded-xl font-bold"
                                                                             >
                                                                                 <Clock className="h-3.5 w-3.5 mr-1" />
-                                                                                Cancellation Requested
+                                                                                {t('customerDashboard.cancellationRequested')}
                                                                             </Button>
                                                                         )}
                                                                         {lease.status === 'PENDING' && !lease.customerAccepted && (
                                                                             <Button size="sm" onClick={() => acceptLease(lease.id, 'customer')} className="bg-[#005a41] hover:bg-[#004a35] text-white transition-all duration-300 shadow-sm hover:shadow-md active:scale-95">
                                                                                 <CheckCircle className="h-4 w-4 mr-2" />
-                                                                                Accept Lease
+                                                                                {t('customerDashboard.acceptLease')}
                                                                             </Button>
                                                                         )}
                                                                     </div>
@@ -654,10 +685,10 @@ export default function CustomerDashboardPage() {
                                                                 >
                                                                     <h4 className="text-sm font-semibold text-foreground flex items-center">
                                                                         <DollarSign className="h-4 w-4 mr-1 text-primary" />
-                                                                        {lease.recurringAmount ? 'Monthly Payment Schedule' : 'Lease Payment Settlement'}
+                                                                        {lease.recurringAmount ? t('customerDashboard.monthlyPaymentSchedule') : t('customerDashboard.leaseSettlement')}
                                                                     </h4>
                                                                     <div className="flex items-center space-x-2">
-                                                                        <Badge variant="outline" className="text-[10px] uppercase">{lease.recurringAmount ? 'MONTHLY' : 'ONE-TIME'}</Badge>
+                                                                        <Badge variant="outline" className="text-[10px] uppercase">{lease.recurringAmount ? t('customerDashboard.monthly') : t('customerDashboard.oneTime')}</Badge>
                                                                         {expandedSchedules.includes(lease.id) ? (
                                                                             <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                                                                         ) : (
@@ -720,7 +751,7 @@ export default function CustomerDashboardPage() {
 
                                                                                                     <div className="flex-1 space-y-2">
                                                                                                         <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
-                                                                                                            <span>{lease.recurringAmount ? 'Billing Progress (Fixed 30 Days)' : 'Lease Term Progress'}</span>
+                                                                                                            <span>{lease.recurringAmount ? t('customerDashboard.billingProgress') : t('customerDashboard.leaseTermProgress')}</span>
                                                                                                             <span className={isMonthPast ? 'text-green-600' : isCurrentMonth ? 'text-primary' : ''}>
                                                                                                                 {lease.recurringAmount ? `${daysFilled}/30 Days` : `${Math.round(progressPercentage)}%`}
                                                                                                             </span>
@@ -742,12 +773,12 @@ export default function CustomerDashboardPage() {
                                                                                                         {isPaid ? (
                                                                                                             <div className="flex items-center text-green-600 font-bold text-xs bg-green-50 py-2.5 rounded-xl border border-green-100 w-full md:w-auto justify-center px-4">
                                                                                                                 <CheckCircle className="h-4 w-4 mr-2" />
-                                                                                                                Collected
+                                                                                                                {t('customerDashboard.collected')}
                                                                                                             </div>
                                                                                                         ) : isPending ? (
                                                                                                             <div className="flex items-center text-amber-600 font-bold text-xs bg-amber-50 py-2.5 rounded-xl border border-amber-100 w-full md:w-auto justify-center px-4">
                                                                                                                 <Clock className="h-4 w-4 mr-2" />
-                                                                                                                Pending
+                                                                                                                {t('customerDashboard.pending')}
                                                                                                             </div>
                                                                                                         ) : (isCurrentMonth || isMonthPast) && (lease.status === 'ACTIVE' || lease.status === 'Active') ? (
                                                                                                             <div className="flex flex-col gap-2 w-full md:w-auto">
@@ -756,13 +787,13 @@ export default function CustomerDashboardPage() {
                                                                                                                     className="bg-primary hover:bg-primary/90 text-white font-bold w-full rounded-xl"
                                                                                                                     onClick={() => handleRentPayment(lease, periodStart)}
                                                                                                                 >
-                                                                                                                    Pay Rent
+                                                                                                                    {t('customerDashboard.payRent')}
                                                                                                                 </Button>
                                                                                                             </div>
                                                                                                         ) : (
                                                                                                             <div className="flex items-center text-muted-foreground font-bold text-xs bg-muted/30 py-2.5 rounded-xl border border-border/10 w-full md:w-auto justify-center px-4">
                                                                                                                 <Clock className="h-4 w-4 mr-2" />
-                                                                                                                Upcoming
+                                                                                                                {t('customerDashboard.upcoming')}
                                                                                                             </div>
                                                                                                         )}
                                                                                                     </div>
@@ -778,7 +809,7 @@ export default function CustomerDashboardPage() {
 
                                                                 <div className="mt-4 pt-4 border-t border-border">
                                                                     <div className="flex justify-between items-center mb-2">
-                                                                        <span className="text-sm text-muted-foreground">Lease Progress</span>
+                                                                        <span className="text-sm text-muted-foreground">{t('customerDashboard.leaseProgress')}</span>
                                                                         <span className="text-sm text-foreground">{Math.min(Math.floor(elapsedDays / 30) + 1, totalLeaseMonths)} of {totalLeaseMonths} months</span>
                                                                     </div>
                                                                     <Progress value={leaseProgressValue} className="h-2" />
@@ -791,14 +822,12 @@ export default function CustomerDashboardPage() {
                                         ) : (
                                             <div className="text-center py-20 bg-muted/5 rounded-2xl border-2 border-dashed border-border">
                                                 <FileText className="h-12 w-12 mx-auto text-muted-foreground/20 mb-4" />
-                                                <h3 className="text-lg font-bold text-muted-foreground">No active leases</h3>
-                                                <p className="text-sm text-muted-foreground mt-2">You don't have any active lease agreements at the moment.</p>
+                                                <h3 className="text-lg font-bold text-muted-foreground">{t('customerDashboard.noActiveLeases')}</h3>
+                                                <p className="text-sm text-muted-foreground mt-2">{t('customerDashboard.noActiveLeasesDesc')}</p>
                                             </div>
                                         )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-
+                                </div>
+                            </div>
                         </TabsContent>
 
                         {/* Maintenance Requests */}
@@ -806,37 +835,37 @@ export default function CustomerDashboardPage() {
                             <div className="space-y-6">
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-foreground">Maintenance Requests</h2>
-                                        <p className="text-muted-foreground">Track and manage your property maintenance needs</p>
+                                        <h2 className="text-2xl font-bold text-foreground">{t('customerDashboard.maintenanceRequests')}</h2>
+                                        <p className="text-muted-foreground">{t('customerDashboard.maintenanceSubtitle')}</p>
                                     </div>
                                     {/* New Maintenance Request Dialog */}
                                     <Dialog open={isNewRequestOpen} onOpenChange={setIsNewRequestOpen}>
                                         <DialogTrigger asChild>
                                             <Button className="bg-[#005a41] hover:bg-[#004a35] text-white shadow-lg shadow-[#005a41]/20 px-6">
                                                 <Plus className="h-4 w-4 mr-2" />
-                                                New Request
+                                                {t('customerDashboard.newRequest')}
                                             </Button>
                                         </DialogTrigger>
                                         <DialogContent className="sm:max-w-[700px] rounded-2xl border-border">
                                             <DialogHeader>
                                                 <DialogTitle className="text-xl font-bold flex items-center gap-2 text-[#005a41]">
                                                     <Plus className="h-5 w-5" />
-                                                    New Maintenance Request
+                                                    {t('customerDashboard.newRequestTitle')}
                                                 </DialogTitle>
                                                 <DialogDescription>
-                                                    Describe the issue
+                                                    {t('customerDashboard.describeIssue')}
                                                 </DialogDescription>
                                             </DialogHeader>
                                             <div className="space-y-4 pt-4">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="property" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Property / Item</Label>
+                                                        <Label htmlFor="property" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('customerDashboard.selectPropertyItem')}</Label>
                                                         <Select
                                                             onValueChange={(value) => setNewRequest(prev => ({ ...prev, propertyId: value }))}
                                                             value={newRequest.propertyId}
                                                         >
                                                             <SelectTrigger className="rounded-xl border-border bg-muted/30">
-                                                                <SelectValue placeholder="Which property or car has an issue?" />
+                                                                <SelectValue placeholder={t('customerDashboard.propertyIssuePlaceholder')} />
                                                             </SelectTrigger>
                                                             <SelectContent className="rounded-xl border-border">
                                                                 {leases
@@ -855,13 +884,13 @@ export default function CustomerDashboardPage() {
                                                     </div>
 
                                                     <div className="space-y-2">
-                                                        <Label htmlFor="category" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</Label>
+                                                        <Label htmlFor="category" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('customerDashboard.category')}</Label>
                                                         <Select
                                                             onValueChange={(value) => setNewRequest(prev => ({ ...prev, category: value as MaintenanceCategory }))}
                                                             value={newRequest.category}
                                                         >
                                                             <SelectTrigger className="rounded-xl border-border bg-muted/30">
-                                                                <SelectValue placeholder="Select maintenance category" />
+                                                                <SelectValue placeholder={t('customerDashboard.selectCategory')} />
                                                             </SelectTrigger>
                                                             <SelectContent className="rounded-xl border-border">
                                                                 {['PLUMBING', 'ELECTRICAL', 'INTERNET', 'DAMAGE', 'CLEANING', 'ENGINE', 'BATTERY', 'TIRE', 'OTHER'].map(cat => (
@@ -876,7 +905,7 @@ export default function CustomerDashboardPage() {
 
                                                 <div className="space-y-2">
                                                     <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                                        Add Photos (Max 2)
+                                                        {t('customerDashboard.addPhotos')}
                                                     </Label>
                                                     <div className="flex flex-wrap gap-4">
                                                         <input
@@ -918,12 +947,12 @@ export default function CustomerDashboardPage() {
                                                                 {isUploading ? (
                                                                     <div className="flex flex-col items-center">
                                                                         <div className="h-4 w-4 border-2 border-[#005a41] border-t-transparent rounded-full animate-spin mb-1" />
-                                                                        <span className="text-[10px] text-muted-foreground">Uploading...</span>
+                                                                        <span className="text-[10px] text-muted-foreground">{t('customerDashboard.uploading')}</span>
                                                                     </div>
                                                                 ) : (
                                                                     <>
                                                                         <Camera className="h-6 w-6 text-muted-foreground group-hover:text-[#005a41] mb-1" />
-                                                                        <span className="text-[10px] text-muted-foreground group-hover:text-[#005a41]">Add Photo</span>
+                                                                        <span className="text-[10px] text-muted-foreground group-hover:text-[#005a41]">{t('customerDashboard.addPhoto')}</span>
                                                                     </>
                                                                 )}
                                                             </div>
@@ -932,10 +961,10 @@ export default function CustomerDashboardPage() {
                                                 </div>
 
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="description" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Detailed Description</Label>
+                                                    <Label htmlFor="description" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('customerDashboard.detailedDescription')}</Label>
                                                     <Textarea
                                                         id="description"
-                                                        placeholder="Describe the issue in more detail..."
+                                                        placeholder={t('customerDashboard.descriptionPlaceholder')}
                                                         className="rounded-xl border-border bg-muted/30 min-h-[80px]"
                                                         value={newRequest.description}
                                                         onChange={(e) => setNewRequest(prev => ({ ...prev, description: e.target.value }))}
@@ -951,14 +980,14 @@ export default function CustomerDashboardPage() {
                                                             setSelectedFiles([]);
                                                         }}
                                                     >
-                                                        Cancel
+                                                        {t('customerDashboard.cancel')}
                                                     </Button>
                                                     <Button
                                                         className="flex-3 bg-[#005a41] hover:bg-[#004a35] text-white rounded-xl font-bold px-8"
                                                         disabled={!newRequest.propertyId || !newRequest.category || isUploading}
                                                         onClick={handleCreateMaintenanceRequest}
                                                     >
-                                                        {isUploading ? "Uploading..." : "Submit Request"}
+                                                        {isUploading ? t('customerDashboard.submitting' as any) || "Submitting..." : t('customerDashboard.submitRequest')}
                                                     </Button>
                                                 </div>
                                             </div>
@@ -967,8 +996,8 @@ export default function CustomerDashboardPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-4">
-                                    {isMaintenanceLoading ? (
-                                        <div className="text-center py-10 text-muted-foreground">Loading requests...</div>
+                                    {isMaintenanceLoading && !hasCompletedInitialLoad ? (
+                                        <div className="text-center py-10 text-muted-foreground">{t('customerDashboard.loadingRequests')}</div>
                                     ) : maintenanceRequests.length > 0 ? (
                                         maintenanceRequests.map((request) => {
                                             const handleSetComplete = (id: string) => {
@@ -1035,25 +1064,23 @@ export default function CustomerDashboardPage() {
                                                                                     className="bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-sm"
                                                                                 >
                                                                                     <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
-                                                                                    Mark as Fixed
+                                                                                    {t('customerDashboard.markAsFixed')}
                                                                                 </Button>
                                                                             )}
                                                                             <Dialog>
                                                                                 <DialogTrigger asChild>
                                                                                     <Button variant="outline" size="sm" className="rounded-lg text-xs font-bold border-border">
                                                                                         <Eye className="h-3.5 w-3.5 mr-1.5" />
-                                                                                        See Detail
+                                                                                        {t('customerDashboard.seeDetail')}
                                                                                     </Button>
                                                                                 </DialogTrigger>
                                                                                 <DialogContent className="sm:max-w-[500px] rounded-2xl border-border">
                                                                                     <DialogHeader>
                                                                                         <DialogTitle className="text-xl font-bold flex items-center gap-2">
                                                                                             <Wrench className="h-5 w-5 text-[#005a41]" />
-                                                                                            Request Details
+                                                                                            {t('customerDashboard.requestDetails')}
                                                                                         </DialogTitle>
-                                                                                        <DialogDescription>
-                                                                                            Reference ID: {request.id}
-                                                                                        </DialogDescription>
+                                                                                        
                                                                                     </DialogHeader>
                                                                                     <div className="space-y-4 pt-2">
                                                                                         {request.images && request.images.length > 0 && (
@@ -1067,7 +1094,7 @@ export default function CustomerDashboardPage() {
                                                                                         )}
                                                                                         <div className="grid grid-cols-2 gap-4">
                                                                                             <div>
-                                                                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Status</p>
+                                                                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">{t('customerDashboard.status')}</p>
                                                                                                 <Badge className={cn(
                                                                                                     "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 border-none",
                                                                                                     request.status === 'completed' ? "bg-green-100 text-green-700" :
@@ -1077,22 +1104,22 @@ export default function CustomerDashboardPage() {
                                                                                                 </Badge>
                                                                                             </div>
                                                                                             <div>
-                                                                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Date Reported</p>
+                                                                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">{t('customerDashboard.dateReported')}</p>
                                                                                                 <p className="text-xs font-semibold">{request.date}</p>
                                                                                             </div>
                                                                                         </div>
                                                                                         <div className="grid grid-cols-2 gap-4">
                                                                                             <div>
-                                                                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Property</p>
+                                                                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">{t('customerDashboard.property' as any) || 'Property'}</p>
                                                                                                 <p className="text-xs font-semibold truncate">{request.propertyTitle}</p>
                                                                                             </div>
                                                                                             <div>
-                                                                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Category</p>
+                                                                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">{t('customerDashboard.category')}</p>
                                                                                                 <p className="text-xs font-bold text-[#005a41]">{request.category}</p>
                                                                                             </div>
                                                                                         </div>
                                                                                         <div>
-                                                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Description</p>
+                                                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">{t('customerDashboard.description' as any) || 'Description'}</p>
                                                                                             <p className="text-xs text-foreground/80 leading-relaxed bg-muted/30 p-3 rounded-lg border border-border/50">
                                                                                                 {request.description}
                                                                                             </p>
@@ -1113,9 +1140,9 @@ export default function CustomerDashboardPage() {
                                     ) : (
                                         <div className="py-20 text-center border-2 border-dashed border-border rounded-2xl">
                                             <Wrench className="h-12 w-12 mx-auto text-muted-foreground/30 mb-4" />
-                                            <h3 className="text-lg font-bold text-muted-foreground">No maintenance requests found</h3>
+                                            <h3 className="text-lg font-bold text-muted-foreground">{t('customerDashboard.noMaintenanceRequests')}</h3>
                                             <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-2">
-                                                Everything looks good! If you have an issue, click the New Request button.
+                                                {t('customerDashboard.noMaintenanceRequestsDesc')}
                                             </p>
                                         </div>
                                     )}
@@ -1128,8 +1155,8 @@ export default function CustomerDashboardPage() {
                             <div className="space-y-6">
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-foreground">My Transactions</h2>
-                                        <p className="text-muted-foreground">A record of your payments and purchases</p>
+                                        <h2 className="text-2xl font-bold text-foreground">{t('customerDashboard.myTransactions')}</h2>
+                                        <p className="text-muted-foreground">{t('customerDashboard.transactionsSubtitle')}</p>
                                     </div>
                                 </div>
 
@@ -1138,19 +1165,19 @@ export default function CustomerDashboardPage() {
                                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                             <CardTitle className="text-lg font-bold flex items-center gap-2">
                                                 <FileText className="h-5 w-5 text-primary" />
-                                                Transaction History
+                                                {t('customerDashboard.transactionHistory')}
                                             </CardTitle>
                                             <div className="flex items-center gap-2">
                                                 <Select value={transactionDateFilter} onValueChange={setTransactionDateFilter}>
                                                     <SelectTrigger className="h-9 w-[130px] text-xs border-border">
-                                                        <SelectValue placeholder="Date Range" />
+                                                        <SelectValue placeholder={t('customerDashboard.dateRange')} />
                                                     </SelectTrigger>
                                                     <SelectContent className="border-border">
-                                                        <SelectItem value="all">All Time</SelectItem>
-                                                        <SelectItem value="today">Today</SelectItem>
-                                                        <SelectItem value="yesterday">Yesterday</SelectItem>
-                                                        <SelectItem value="this-month">This Month</SelectItem>
-                                                        <SelectItem value="this-year">This Year</SelectItem>
+                                                        <SelectItem value="all">{t('customerDashboard.allTime')}</SelectItem>
+                                                        <SelectItem value="today">{t('customerDashboard.today')}</SelectItem>
+                                                        <SelectItem value="yesterday">{t('customerDashboard.yesterday')}</SelectItem>
+                                                        <SelectItem value="this-month">{t('customerDashboard.thisMonth')}</SelectItem>
+                                                        <SelectItem value="this-year">{t('customerDashboard.thisYear')}</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                                 <Select value={transactionStatus} onValueChange={setTransactionStatus}>
@@ -1158,10 +1185,10 @@ export default function CustomerDashboardPage() {
                                                         <SelectValue placeholder="Status" />
                                                     </SelectTrigger>
                                                     <SelectContent className="border-border">
-                                                        <SelectItem value="all">All Status</SelectItem>
-                                                        <SelectItem value="completed">Completed</SelectItem>
-                                                        <SelectItem value="pending">Pending</SelectItem>
-                                                        <SelectItem value="failed">Failed</SelectItem>
+                                                        <SelectItem value="all">{t('customerDashboard.allStatus')}</SelectItem>
+                                                        <SelectItem value="completed">{t('customerDashboard.completed')}</SelectItem>
+                                                        <SelectItem value="pending">{t('customerDashboard.pending')}</SelectItem>
+                                                        <SelectItem value="failed">{t('customerDashboard.failed')}</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -1172,16 +1199,18 @@ export default function CustomerDashboardPage() {
                                             <table className="w-full">
                                                 <thead>
                                                     <tr className="border-b border-border/50 bg-muted/5">
-                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Transaction ID</th>
-                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Description</th>
-                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Date</th>
-                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Amount</th>
-                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Status</th>
-                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">Action</th>
+                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('customerDashboard.transactionId')}</th>
+                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('customerDashboard.description')}</th>
+                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('customerDashboard.date')}</th>
+                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('customerDashboard.amount')}</th>
+                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('customerDashboard.status')}</th>
+                                                        <th className="px-6 py-4 text-left text-xs font-bold text-muted-foreground uppercase tracking-wider">{t('customerDashboard.action')}</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-border/50">
-                                                    {(() => {
+                                                    {isTransactionLoading && !hasCompletedInitialLoad ? (
+                                                        Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={6} />)
+                                                    ) : (() => {
                                                         const filteredTransactions = transactions.filter(t => {
                                                             const tDate = new Date(t.createdAt);
                                                             
@@ -1203,11 +1232,11 @@ export default function CustomerDashboardPage() {
                                                         if (filteredTransactions.length === 0) {
                                                             return (
                                                                 <tr>
-                                                                    <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                                                                    <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
                                                                         <div className="flex flex-col items-center justify-center space-y-2">
                                                                             <Search className="h-8 w-8 opacity-20" />
-                                                                            <p className="text-sm font-medium">No transactions found matching your criteria</p>
-                                                                            <Button variant="ghost" size="sm" onClick={() => { setTransactionSearch(''); setTransactionStatus('all'); }} className="text-primary hover:bg-transparent hover:underline text-xs">Clear all filters</Button>
+                                                                            <p className="text-sm font-medium">{t('customerDashboard.noTransactionsFound')}</p>
+                                                                            <Button variant="ghost" size="sm" onClick={() => { setTransactionDateFilter('all'); setTransactionStatus('all'); }} className="text-primary hover:bg-transparent hover:underline text-xs">{t('customerDashboard.clearFilters')}</Button>
                                                                         </div>
                                                                     </td>
                                                                 </tr>
@@ -1228,7 +1257,7 @@ export default function CustomerDashboardPage() {
                                                                         </div>
                                                                         <div>
                                                                             <p className="text-sm font-bold text-foreground">
-                                                                                {transaction.type === 'RENT' ? 'Rent Payment' : 'Property Purchase'}
+                                                                                {transaction.type === 'RENT' ? t('customerDashboard.rentPayment') : t('customerDashboard.propertyPurchase')}
                                                                             </p>
                                                                             <p className="text-xs text-muted-foreground">
                                                                                 {(transaction.metadata as any)?.month || transaction.property?.title || 'Payment'}
@@ -1250,7 +1279,7 @@ export default function CustomerDashboardPage() {
                                                                             transaction.status === 'FAILED' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
                                                                                 'bg-amber-500/10 text-amber-500 border-amber-500/20'
                                                                     }>
-                                                                        {transaction.status}
+                                                                        {t(`customerDashboard.${transaction.status.toLowerCase()}` as any) || transaction.status}
                                                                     </Badge>
                                                                 </td>
                                                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -1261,7 +1290,7 @@ export default function CustomerDashboardPage() {
                                                                             className="h-8 px-3 rounded-lg border-border hover:bg-[#005a41]/5 hover:text-[#005a41] group/btn transition-colors"
                                                                         >
                                                                             <FileText className="h-3.5 w-3.5 mr-1.5 opacity-60 group-hover/btn:opacity-100" />
-                                                                            View Receipt
+                                                                            {t('customerDashboard.viewReceipt')}
                                                                         </Button>
                                                                     </Link>
                                                                 </td>
@@ -1282,8 +1311,8 @@ export default function CustomerDashboardPage() {
                             <div className="space-y-6">
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                     <div>
-                                        <h2 className="text-2xl font-bold text-foreground">My Favorites</h2>
-                                        <p className="text-muted-foreground">Properties and cars you've saved for later</p>
+                                        <h2 className="text-2xl font-bold text-foreground">{t('customerDashboard.myFavorites')}</h2>
+                                        <p className="text-muted-foreground">{t('customerDashboard.favoritesSubtitle')}</p>
                                     </div>
                                     <div className="flex bg-muted/50 p-1 rounded-xl border border-border">
                                         <Button
@@ -1292,7 +1321,7 @@ export default function CustomerDashboardPage() {
                                             onClick={() => setFavoriteFilter('all')}
                                             className={cn("rounded-lg text-xs font-bold px-4", favoriteFilter === 'all' && "bg-white shadow-sm")}
                                         >
-                                            All
+                                            {t('customerDashboard.all')}
                                         </Button>
                                         <Button
                                             variant={favoriteFilter === 'HOME' ? 'secondary' : 'ghost'}
@@ -1300,7 +1329,7 @@ export default function CustomerDashboardPage() {
                                             onClick={() => setFavoriteFilter('HOME')}
                                             className={cn("rounded-lg text-xs font-bold px-4", favoriteFilter === 'HOME' && "bg-white shadow-sm")}
                                         >
-                                            Houses
+                                            {t('customerDashboard.houses')}
                                         </Button>
                                         <Button
                                             variant={favoriteFilter === 'CAR' ? 'secondary' : 'ghost'}
@@ -1308,12 +1337,16 @@ export default function CustomerDashboardPage() {
                                             onClick={() => setFavoriteFilter('CAR')}
                                             className={cn("rounded-lg text-xs font-bold px-4", favoriteFilter === 'CAR' && "bg-white shadow-sm")}
                                         >
-                                            Cars
+                                            {t('customerDashboard.cars')}
                                         </Button>
                                     </div>
                                 </div>
 
-                                {favorites.filter(f => favoriteFilter === 'all' || f.property.assetType === favoriteFilter).length > 0 ? (
+                                {isFavoriteLoading && !hasCompletedInitialLoad ? (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {Array.from({ length: 3 }).map((_, i) => <ListItemSkeleton key={i} />)}
+                                    </div>
+                                ) : favorites.filter(f => favoriteFilter === 'all' || f.property.assetType === favoriteFilter).length > 0 ? (
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {favorites
                                             .filter(f => favoriteFilter === 'all' || f.property.assetType === favoriteFilter)
@@ -1326,11 +1359,11 @@ export default function CustomerDashboardPage() {
                                 ) : (
                                     <div className="py-20 text-center border-2 border-dashed border-border rounded-2xl bg-muted/10">
                                         <Heart className="h-12 w-12 mx-auto text-muted-foreground/20 mb-4" />
-                                        <h3 className="text-lg font-bold text-muted-foreground">No favorites found</h3>
+                                        <h3 className="text-lg font-bold text-muted-foreground">{t('customerDashboard.noFavoritesFound')}</h3>
                                         <p className="text-sm text-muted-foreground max-w-xs mx-auto mt-2">
                                             {favoriteFilter === 'all'
-                                                ? "You haven't saved any items yet. Start exploring!"
-                                                : `You don't have any ${favoriteFilter === 'HOME' ? 'houses' : 'cars'} in your favorites.`}
+                                                ? t('customerDashboard.noFavoritesDesc')
+                                                : t('customerDashboard.noFavoritesTypeDesc').replace('{type}', favoriteFilter === 'HOME' ? t('customerDashboard.houses') : t('customerDashboard.cars'))}
                                         </p>
                                         {favoriteFilter !== 'all' && (
                                             <Button
@@ -1339,7 +1372,7 @@ export default function CustomerDashboardPage() {
                                                 onClick={() => setFavoriteFilter('all')}
                                                 className="mt-4 text-primary hover:bg-transparent hover:underline"
                                             >
-                                                Show all favorites
+                                                {t('customerDashboard.showAllFavorites')}
                                             </Button>
                                         )}
                                     </div>
@@ -1357,15 +1390,15 @@ export default function CustomerDashboardPage() {
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold flex items-center gap-2">
                             <CheckCircle className="h-5 w-5 text-primary" />
-                            Confirm Payment Email
+                            {t('customerDashboard.confirmPaymentEmail')}
                         </DialogTitle>
                         <DialogDescription className="text-muted-foreground">
-                            Chapa requires a valid email to process your rent payment. Please confirm your email address.
+                            {t('customerDashboard.confirmPaymentSubtitle')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="payment-email" className="text-sm font-medium">Email Address</Label>
+                            <Label htmlFor="payment-email" className="text-sm font-medium">{t('customerDashboard.emailAddress')}</Label>
                             <Input
                                 id="payment-email"
                                 type="email"
@@ -1382,7 +1415,7 @@ export default function CustomerDashboardPage() {
                             onClick={() => setIsEmailDialogOpen(false)}
                             className="rounded-xl hover:bg-muted font-medium"
                         >
-                            Cancel
+                            {t('customerDashboard.cancel')}
                         </Button>
                         <Button
                             disabled={!emailToConfirm.includes('@') || isPaymentLoading}
@@ -1394,7 +1427,7 @@ export default function CustomerDashboardPage() {
                             ) : (
                                 <DollarSign className="h-4 w-4 mr-2" />
                             )}
-                            Initialize Payment
+                            {t('customerDashboard.initializePayment')}
                         </Button>
                     </div>
                 </DialogContent>

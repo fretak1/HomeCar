@@ -20,6 +20,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from './common/Logo';
 import { Button } from '@/components/ui/button';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { useTranslation } from '@/contexts/LanguageContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +34,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useTranslation();
   const { currentUser, logout, isLoading: userLoading } = useUserStore();
   const { notifications, unreadCount, fetchNotifications, markAllAsRead, connectSocket, disconnectSocket } = useNotificationStore();
   const [displayNotifications, setDisplayNotifications] = useState<any[]>([]);
@@ -70,9 +73,13 @@ export function Navbar() {
   };
 
   const getDashboardLabel = () => {
-    if (!currentUser) return 'Dashboard';
+    if (!currentUser) return t('nav.dashboard');
     const role = currentUser.role.toLowerCase();
-    return `${role.charAt(0).toUpperCase() + role.slice(1)} Dashboard`;
+    if (role === 'customer') return t('nav.customerDashboard');
+    if (role === 'owner') return t('nav.ownerDashboard');
+    if (role === 'agent') return t('nav.agentDashboard');
+    if (role === 'admin') return t('nav.adminDashboard');
+    return t('nav.dashboard');
   };
 
   const getNotificationIcon = (type: string) => {
@@ -99,9 +106,9 @@ export function Navbar() {
 
           <div className="hidden md:flex items-center space-x-12 h-full">
             {[
-              { name: 'Home', href: '/' },
-              { name: 'Search On Map', href: '/search' },
-              { name: 'Properties', href: '/listings' },
+              { name: t('nav.home'), href: '/' },
+              { name: t('nav.searchOnMap'), href: '/search' },
+              { name: t('nav.properties'), href: '/listings' },
               { name: getDashboardLabel(), href: '/dashboard' },
             ].filter((item) => {
               // Hide all links while auth state is loading to prevent role-based glitch
@@ -131,6 +138,13 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center space-x-3">
+            <div className="block">
+              {userLoading ? (
+                <Skeleton className="h-9 w-24 rounded-full" />
+              ) : (
+                <LanguageSwitcher compact />
+              )}
+            </div>
             {userLoading ? null : !(currentUser && ['ADMIN', 'OWNER', 'AGENT'].includes(currentUser.role)) && (
               <Link href="/listings" className="md:hidden">
                 <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10">
@@ -150,7 +164,7 @@ export function Navbar() {
                   <Link href="/chat">
                     <Button variant="ghost" className="relative h-10 w-fit px-3 text-muted-foreground hover:bg-primary/5 rounded-xl transition-all active:scale-95 group flex items-center gap-2">
                       <MessageSquare className="h-5 w-5 group-hover:text-primary transition-colors" />
-                      <span className="text-[13px] font-bold group-hover:text-primary hidden sm:block">Messages</span>
+                      <span className="text-[13px] font-bold group-hover:text-primary hidden sm:block">{t('nav.messages')}</span>
                     </Button>
                   </Link>
                 )}
@@ -167,14 +181,14 @@ export function Navbar() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-80 mt-2 rounded-xl shadow-lg border-border p-0 overflow-hidden animate-in fade-in zoom-in duration-200">
                     <div className="p-3 border-b border-border flex justify-between items-center bg-gray-50/50">
-                      <span className="text-sm font-bold text-foreground">Notifications</span>
-                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Unread Only</span>
+                      <span className="text-sm font-bold text-foreground">{t('nav.notifications')}</span>
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{t('nav.unreadOnly')}</span>
                     </div>
                     <div className="max-h-[400px] overflow-y-auto">
                       {displayNotifications.length === 0 ? (
                         <div className="p-8 text-center">
                           <Bell className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
-                          <p className="text-xs text-muted-foreground font-medium">No new notifications</p>
+                          <p className="text-xs text-muted-foreground font-medium">{t('nav.noNotifications')}</p>
                         </div>
                       ) : (
                         displayNotifications.map((notification) => (
@@ -206,7 +220,7 @@ export function Navbar() {
                     </div>
                     <div className="p-2 border-t border-border bg-gray-50/50">
                       <Button variant="ghost" size="sm" className="w-full text-[11px] font-bold text-muted-foreground" onClick={() => router.push('/dashboard')}>
-                        See all in dashboard
+                        {t('nav.seeAllInDashboard')}
                       </Button>
                     </div>
                   </DropdownMenuContent>
@@ -235,7 +249,7 @@ export function Navbar() {
                       onClick={() => router.push('/profile')}
                     >
                       <User className="h-4 w-4 text-muted-foreground group-focus:text-white transition-colors" />
-                      <span className="text-sm font-semibold">My Profile</span>
+                      <span className="text-sm font-semibold">{t('nav.myProfile')}</span>
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
@@ -243,7 +257,7 @@ export function Navbar() {
                       onClick={() => router.push('/dashboard/ai-insights')}
                     >
                       <Brain className="h-4 w-4 text-muted-foreground group-focus:text-white transition-colors" />
-                      <span className="text-sm font-semibold">AI Insights</span>
+                      <span className="text-sm font-semibold">{t('nav.aiInsights')}</span>
                     </DropdownMenuItem>
 
 
@@ -260,7 +274,7 @@ export function Navbar() {
                       <div className="w-4 flex justify-center">
                         <span className="text-lg">↩</span>
                       </div>
-                      <span className="text-sm font-medium">Log out</span>
+                      <span className="text-sm font-medium">{t('nav.logout')}</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -268,10 +282,10 @@ export function Navbar() {
             ) : (
               <>
                 <Link href="/login">
-                  <Button variant="outline" size="sm" className="rounded-lg font-bold border-border">Sign In</Button>
+                  <Button variant="outline" size="sm" className="rounded-lg font-bold border-border">{t('nav.signIn')}</Button>
                 </Link>
                 <Link href="/signup">
-                  <Button size="sm" className="bg-primary hover:bg-primary/90 shadow-sm text-white rounded-lg font-bold">Sign Up</Button>
+                  <Button size="sm" className="bg-primary hover:bg-primary/90 shadow-sm text-white rounded-lg font-bold">{t('nav.signUp')}</Button>
                 </Link>
               </>
             )}

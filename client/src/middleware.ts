@@ -4,9 +4,10 @@ import type { NextRequest } from 'next/request';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const userRole = request.cookies.get('user-role')?.value;
+  const normalizedRole = userRole?.toUpperCase();
 
   // Management roles: ADMIN, OWNER, AGENT
-  const isManagementRole = userRole && ['ADMIN', 'OWNER', 'AGENT'].includes(userRole);
+  const isManagementRole = normalizedRole && ['ADMIN', 'OWNER', 'AGENT'].includes(normalizedRole);
 
   if (isManagementRole) {
     // Define management-allowed paths
@@ -15,9 +16,7 @@ export function middleware(request: NextRequest) {
       pathname.startsWith('/profile') || 
       pathname.startsWith('/property/') || 
       pathname.startsWith('/chat') ||
-      pathname.startsWith('/verify-email') ||
-      pathname.startsWith('/api') ||
-      pathname.includes('.'); // assets, etc.
+      pathname.startsWith('/verify-email');
 
     // If on a non-allowed path (like Home '/'), redirect to dashboard immediately
     if (!isAllowedPath && pathname !== '/login' && pathname !== '/signup') {
@@ -28,16 +27,11 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// See "Matching Paths" below to learn more
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/',
+    '/dashboard/:path*',
+    '/login',
+    '/signup',
   ],
 };

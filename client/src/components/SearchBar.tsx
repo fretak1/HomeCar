@@ -15,6 +15,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 import { ethiopiaLocations } from '@/lib/ethiopiaLocations';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface SearchBarProps {
   onSearch?: (filters: any) => void;
@@ -22,6 +23,7 @@ interface SearchBarProps {
 
 export function SearchBar({ onSearch }: SearchBarProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [location, setLocation] = useState('any');
   
   // Extract all unique cities from the hierarchical data
@@ -57,12 +59,12 @@ export function SearchBar({ onSearch }: SearchBarProps) {
   };
 
   const listingTypes = [
-    { value: 'rent', label: 'For Rent' },
-    { value: 'buy', label: 'For Sale' },
+    { value: 'rent', label: t('searchBar.forRent') },
+    { value: 'buy', label: t('searchBar.forSale') },
   ];
 
   const CategoryIcon = activeTab === 'property' ? Home : Car;
-  const categoryPlaceholder = 'Listing Type';
+  const categoryPlaceholder = t('searchBar.listingType');
 
   const propertyPrices = [
     { value: '0-10k', label: 'ETB 0 - 10k' },
@@ -116,8 +118,8 @@ export function SearchBar({ onSearch }: SearchBarProps) {
     <div className="w-full bg-white rounded-2xl shadow-lg p-6 border border-border">
       <Tabs defaultValue="property" className="w-full" onValueChange={onTabChange}>
         <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-6">
-          <TabsTrigger value="property">Properties</TabsTrigger>
-          <TabsTrigger value="vehicle">Cars</TabsTrigger>
+          <TabsTrigger value="property">{t('searchBar.properties')}</TabsTrigger>
+          <TabsTrigger value="vehicle">{t('searchBar.cars')}</TabsTrigger>
         </TabsList>
 
         <div 
@@ -134,11 +136,11 @@ export function SearchBar({ onSearch }: SearchBarProps) {
             <SelectTrigger className="h-12 bg-input-background border-border">
               <div className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-muted-foreground" />
-                <SelectValue placeholder="Select City" />
+                <SelectValue placeholder={t('searchBar.selectCity')} />
               </div>
             </SelectTrigger>
             <SelectContent className="max-h-[300px] rounded-xl shadow-2xl">
-              <SelectItem value="any">Search All Cities</SelectItem>
+              <SelectItem value="any">{t('searchBar.searchAllCities')}</SelectItem>
               {allCities.map((city) => (
                 <SelectItem key={city} value={city}>
                   {city}
@@ -163,10 +165,10 @@ export function SearchBar({ onSearch }: SearchBarProps) {
           <Select value={priceRange} onValueChange={setPriceRange} onOpenChange={handleOpenChange}>
             <SelectTrigger className="h-12 bg-input-background border-border">
               <ChartCandlestick />
-              <SelectValue placeholder="Price Range" />
+              <SelectValue placeholder={t('searchBar.priceRange')} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Prices</SelectItem>
+              <SelectItem value="all">{t('searchBar.allPrices')}</SelectItem>
               {currentPrices.map((price) => (
                 <SelectItem key={price.value} value={price.value}>
                   {price.label}
@@ -181,7 +183,7 @@ export function SearchBar({ onSearch }: SearchBarProps) {
             onClick={handleSearch}
           >
             <Search className="h-5 w-5 mr-2" />
-            Search
+            {t('searchBar.search')}
           </Button>
         </div>
       </Tabs>

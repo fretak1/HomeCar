@@ -88,10 +88,8 @@ export default function OwnerLeaseDetailsPage() {
                                 </Button>
                             </Link>
                             <div>
-                                <h1 className="text-xl font-bold text-foreground">Lease Management</h1>
-                                <p className="text-xs text-muted-foreground font-medium flex items-center">
-                                    ID: LEASE-{lease.id.substring(0, 12).toUpperCase()}-2026
-                                </p>
+                                <h1 className="text-xl font-bold text-foreground">Lease Agreement</h1>
+
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -108,22 +106,7 @@ export default function OwnerLeaseDetailsPage() {
                                  lease.status === 'CANCELLATION_PENDING' ? 'Cancellation Pending...' :
                                  lease.status}
                             </Badge>
-                            {(lease.status === 'ACTIVE' || (lease.status === 'CANCELLATION_PENDING' && !lease.ownerCancelled)) && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className={cn(
-                                        "h-7 text-[10px] font-bold uppercase tracking-widest transition-all duration-300",
-                                        lease.status === 'CANCELLATION_PENDING' 
-                                            ? "text-orange-600 border-orange-200 hover:bg-orange-50 font-black ring-1 ring-orange-200" 
-                                            : "text-rose-600 border-rose-200 hover:bg-rose-50"
-                                    )}
-                                    onClick={() => requestLeaseCancellation(lease.id, 'owner')}
-                                    disabled={isLoading}
-                                >
-                                    {lease.status === 'CANCELLATION_PENDING' ? 'Confirm Cancellation' : 'Cancel Lease'}
-                                </Button>
-                            )}
+                           
                         </div>
                     </div>
                 </div>
@@ -293,7 +276,7 @@ export default function OwnerLeaseDetailsPage() {
                                                                     <td className="px-6 py-4">
                                                                         {isPaid ? (
                                                                             <Link href={`/dashboard/customer/documents/receipt/${paymentRecord.id}`}>
-                                                                                <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold text-primary border-primary hover:bg-primary hover:text-white uppercase transition-colors">View Record</Button>
+                                                                                <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold text-primary border-primary hover:bg-primary hover:text-white uppercase transition-colors">View Receipt</Button>
                                                                             </Link>
                                                                         ) : (
                                                                             <span className="text-[10px] text-muted-foreground font-bold">—</span>

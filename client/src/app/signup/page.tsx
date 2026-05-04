@@ -21,11 +21,13 @@ import { SocialButtons } from '@/components/auth/SocialButtons';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/useUserStore';
 import { toast } from 'sonner';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 const strongPasswordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$/;
 
 export default function SignUpPage() {
     const router = useRouter();
+    const { t } = useTranslation();
     const { register, isLoading } = useUserStore();
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -48,18 +50,18 @@ export default function SignUpPage() {
         if (!isPasswordStrong) return;
 
         if (formData.password !== formData.confirmPassword) {
-            return toast.error('Passwords do not match');
+            return toast.error(t('auth.signup.passwordsDoNotMatch'));
         }
 
         try {
             const { confirmPassword, ...registerData } = formData;
             await register(registerData);
-            toast.success('Account created! Please enter the verification code sent to your email.');
+            toast.success(t('auth.signup.accountCreated'));
             router.push(`/verify-email?email=${encodeURIComponent(formData.email)}`);
         } catch (error: any) {
-            const message = error.message || 'Registration failed';
+            const message = error.message || t('auth.signup.registrationFailed');
             if (message.toLowerCase().includes('already') || message.toLowerCase().includes('exists')) {
-                toast.error('This email is already registered. Please go to Login.');
+                toast.error(t('auth.signup.emailExists'));
             } else {
                 toast.error(message);
             }
@@ -86,10 +88,10 @@ export default function SignUpPage() {
                         </div>
                         <div className="space-y-1">
                             <h1 className="text-2xl font-bold text-foreground tracking-tight">
-                                Create Account
+                                {t('auth.signup.createAccount')}
                             </h1>
                             <p className="text-muted-foreground text-[11px] font-bold tracking-widest">
-                                Join our HomeCar community
+                                {t('auth.signup.subtitle')}
                             </p>
                         </div>
                     </div>
@@ -99,11 +101,11 @@ export default function SignUpPage() {
                     <form className="space-y-3" onSubmit={handleSubmit}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <Label htmlFor="name" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Full Name</Label>
+                                <Label htmlFor="name" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('auth.signup.fullName')}</Label>
                                 <Input
                                     id="name"
                                     type="text"
-                                    placeholder="Enter Your Name"
+                                    placeholder={t('auth.signup.fullNamePlaceholder')}
                                     value={formData.name}
                                     onChange={(e) => handleInputChange('name', e.target.value)}
                                     className="h-10 rounded-xl border-border bg-muted/20 focus:bg-background transition-all text-sm"
@@ -112,11 +114,11 @@ export default function SignUpPage() {
                             </div>
 
                             <div className="space-y-1">
-                                <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Email</Label>
+                                <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('auth.signup.email')}</Label>
                                 <Input
                                     id="email"
                                     type="email"
-                                    placeholder="Enter Your Email"
+                                    placeholder={t('auth.signup.emailPlaceholder')}
                                     value={formData.email}
                                     onChange={(e) => handleInputChange('email', e.target.value)}
                                     className="h-10 rounded-xl border-border bg-muted/20 focus:bg-background transition-all text-sm"
@@ -127,12 +129,12 @@ export default function SignUpPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="space-y-1">
-                                <Label htmlFor="password" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Password</Label>
+                                <Label htmlFor="password" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('auth.signup.password')}</Label>
                                 <div className="relative">
                                     <Input
                                         id="password"
                                         type={showPassword ? 'text' : 'password'}
-                                        placeholder="Enter Your Password"
+                                        placeholder={t('auth.signup.passwordPlaceholder')}
                                         value={formData.password}
                                         onChange={(e) => handleInputChange('password', e.target.value)}
                                         className="h-10 rounded-xl border-border bg-muted/20 focus:bg-background transition-all pr-10 text-sm"
@@ -149,12 +151,12 @@ export default function SignUpPage() {
                             </div>
 
                             <div className="space-y-1">
-                                <Label htmlFor="confirmPassword" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Confirm</Label>
+                                <Label htmlFor="confirmPassword" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('auth.signup.confirm')}</Label>
                                 <div className="relative">
                                     <Input
                                         id="confirmPassword"
                                         type={showConfirmPassword ? 'text' : 'password'}
-                                        placeholder="Enter Your  Password"
+                                        placeholder={t('auth.signup.confirmPlaceholder')}
                                         value={formData.confirmPassword}
                                         onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                                         className="h-10 rounded-xl border-border bg-muted/20 focus:bg-background transition-all pr-10 text-sm"
@@ -175,10 +177,10 @@ export default function SignUpPage() {
                         {formData.password && (
                             <div className="flex flex-wrap gap-x-3 gap-y-1 mb-3 ml-1">
                                 {[
-                                    { label: '8+ Characters', met: formData.password.length >= 8 },
-                                    { label: 'Uppercase', met: /[A-Z]/.test(formData.password) },
-                                    { label: 'Number', met: /\d/.test(formData.password) },
-                                    { label: 'Special', met: /[^a-zA-Z0-9]/.test(formData.password) },
+                                    { label: t('auth.signup.passwordRequirements.characters'), met: formData.password.length >= 8 },
+                                    { label: t('auth.signup.passwordRequirements.uppercase'), met: /[A-Z]/.test(formData.password) },
+                                    { label: t('auth.signup.passwordRequirements.number'), met: /\d/.test(formData.password) },
+                                    { label: t('auth.signup.passwordRequirements.special'), met: /[^a-zA-Z0-9]/.test(formData.password) },
                                 ].map((req, i) => (
                                     <div key={i} className="flex items-center space-x-1 transition-all duration-300">
                                         {req.met ? (
@@ -195,15 +197,15 @@ export default function SignUpPage() {
                         )}
 
                         <div className="space-y-1">
-                            <Label htmlFor="role" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">Account Type</Label>
+                            <Label htmlFor="role" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1">{t('auth.signup.accountType')}</Label>
                             <Select value={formData.role} onValueChange={(value) => handleInputChange('role', value)}>
                                 <SelectTrigger className="h-10 rounded-xl border-border bg-muted/20 focus:bg-background transition-all text-sm">
-                                    <SelectValue placeholder="What describes you?" />
+                                    <SelectValue placeholder={t('auth.signup.accountTypePlaceholder')} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="CUSTOMER">Customer</SelectItem>
-                                    <SelectItem value="OWNER">Owner</SelectItem>
-                                    <SelectItem value="AGENT">Agent</SelectItem>
+                                    <SelectItem value="CUSTOMER">{t('auth.signup.customer')}</SelectItem>
+                                    <SelectItem value="OWNER">{t('auth.signup.owner')}</SelectItem>
+                                    <SelectItem value="AGENT">{t('auth.signup.agent')}</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -215,7 +217,7 @@ export default function SignUpPage() {
                             disabled={isLoading || !strongPasswordRegex.test(formData.password) || !formData.role}
                             className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed mt-1"
                         >
-                            {isLoading ? 'Creating Account...' : 'Create Account'}
+                            {isLoading ? t('auth.signup.creatingAccount') : t('auth.signup.createAccountButton')}
                         </Button>
                     </form>
 
@@ -224,7 +226,7 @@ export default function SignUpPage() {
 
                     <div className="text-center pt-2">
                         <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">
-                            Already a member? <Link href="/login" className="text-primary hover:text-primary/80 transition-colors ml-1">Log In</Link>
+                            {t('auth.signup.alreadyMember')} <Link href="/login" className="text-primary hover:text-primary/80 transition-colors ml-1">{t('auth.signup.logIn')}</Link>
                         </p>
                     </div>
                 </div>
@@ -241,18 +243,18 @@ export default function SignUpPage() {
                             <div className="flex items-center space-x-2">
                                 <Sparkles className="w-6 h-6 text-accent" />
                                 <span className="text-[10px] font-bold bg-accent/90 text-accent-foreground px-3 py-1 rounded-full uppercase tracking-wider">
-                                    Ai-Powered Experience
+                                    {t('auth.signup.badge')}
                                 </span>
                             </div>
-                            <h2 className="text-2xl font-bold leading-tight">Start Your Journey <br />Today</h2>
+                            <h2 className="text-2xl font-bold leading-tight">{t('auth.signup.heroTitle')}</h2>
                             <div className="space-y-2">
                                 <div className="flex items-center space-x-2 group">
                                     <CheckCircle2 className="w-4 h-4 text-accent" />
-                                    <p className="text-xs font-semibold text-white/90">Smart AI recommendations</p>
+                                    <p className="text-xs font-semibold text-white/90">{t('auth.signup.smartRecommendations')}</p>
                                 </div>
                                 <div className="flex items-center space-x-2 group">
                                     <CheckCircle2 className="w-4 h-4 text-accent" />
-                                    <p className="text-xs font-semibold text-white/90">Verified listings</p>
+                                    <p className="text-xs font-semibold text-white/90">{t('auth.signup.verifiedListings')}</p>
                                 </div>
                             </div>
                         </div>

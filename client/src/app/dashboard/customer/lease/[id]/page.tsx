@@ -157,63 +157,6 @@ export default function LeaseDetailsPage() {
 
     return (
         <div className="min-h-screen bg-muted/30 pb-20">
-            {/* Header Section */}
-            <div className="bg-white border-b border-border sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <Link href="/dashboard/customer?tab=leases">
-                                <Button variant="ghost" size="icon" className="rounded-full hover:bg-[#005a41]/5">
-                                    <ChevronLeft className="h-5 w-5 text-[#005a41]" />
-                                </Button>
-                            </Link>
-                            <div>
-                                <h1 className="text-xl font-bold text-foreground">Lease Details</h1>
-                                <p className="text-xs text-muted-foreground font-medium flex items-center">
-                                    ID: LEASE-{property.id.toUpperCase()}-2026
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Badge className={cn(
-                                "border-none px-3 py-1 text-[10px] font-bold uppercase tracking-widest",
-                                lease.status === 'ACTIVE' ? "bg-green-100 text-green-700" :
-                                    lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" :
-                                        lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700 font-black ring-1 ring-orange-200" :
-                                        lease.status === 'COMPLETED' ? "bg-blue-100 text-blue-700" : 
-                                        "bg-red-100 text-red-700"
-                            )}>
-                                {lease.status === 'ACTIVE' ? 'Active Agreement' : 
-                                 lease.status === 'PENDING' ? 'Agreement Pending' : 
-                                 lease.status === 'CANCELLATION_PENDING' ? 'Cancellation Pending...' :
-                                 lease.status}
-                            </Badge>
-                            {(lease.status === 'ACTIVE' || (lease.status === 'CANCELLATION_PENDING' && !lease.customerCancelled)) && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className={cn(
-                                        "h-7 text-[10px] font-bold uppercase tracking-widest transition-all duration-300",
-                                        lease.status === 'CANCELLATION_PENDING' 
-                                            ? "text-orange-600 border-orange-200 hover:bg-orange-50 font-black ring-1 ring-orange-200" 
-                                            : "text-rose-600 border-rose-200 hover:bg-rose-50"
-                                    )}
-                                    onClick={() => requestLeaseCancellation(lease.id, 'customer')}
-                                    disabled={isLeaseLoading}
-                                >
-                                    {lease.status === 'CANCELLATION_PENDING' ? 'Confirm Cancellation' : 'Cancel Lease'}
-                                </Button>
-                            )}
-                            {lease.status === 'CANCELLATION_PENDING' && lease.customerCancelled && (
-                                <Badge className="bg-amber-100 text-amber-700 border-none px-3 py-1 text-[10px] font-bold uppercase tracking-widest">
-                                    Cancellation Requested
-                                </Badge>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
@@ -502,12 +445,12 @@ export default function LeaseDetailsPage() {
                                         className="w-full bg-[#005a41] hover:bg-[#004a35] text-white font-bold h-11 rounded-xl shadow-md active:scale-95 transition-all"
                                     >
                                         <MessageSquare className="h-4 w-4 mr-2" />
-                                        Message Manager
+                                        Message Owner
                                     </Button>
                                     {ownerId && (
                                         <Link href={`/profile/${ownerId}`}>
                                             <Button variant="outline" className="w-full text-foreground font-bold h-11 border-border rounded-xl">
-                                                View Manager Profile
+                                                View Owner Profile
                                             </Button>
                                         </Link>
                                     )}

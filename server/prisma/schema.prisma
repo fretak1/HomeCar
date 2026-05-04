@@ -21,6 +21,7 @@ model User {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   role                Role                 @default(CUSTOMER)
+  aboutMe             String?
   
   // BetterAuth Relations
   accounts            Account[]
@@ -54,6 +55,9 @@ model User {
   propertyViews       PropertyView[]
   filterLogs          SearchFilterLog[]
   mapInteractions     MapInteraction[]
+  locationId          String?
+  location            Location?            @relation(fields: [locationId], references: [id])
+  adminVerifications  AdminVerification[]  @relation("AdminVerificationRecords")
 }
 
 model Session {
@@ -163,6 +167,7 @@ model Location {
   lat        Float?
   lng        Float?
   properties Property[]
+  users      User[]
 }
 
 model Favorite {
@@ -288,6 +293,7 @@ model Document {
   propertyId   String?
   property     Property? @relation("PropertyDocuments", fields: [propertyId], references: [id])
   user         User      @relation(fields: [userId], references: [id])
+  adminVerifications AdminVerification[] @relation("DocumentVerifications")
 }
 
 model PropertyView {
@@ -387,4 +393,21 @@ enum TransactionType {
   LEASE_DEPOSIT
   BOOKING_FEE
   FULL_PURCHASE
+}
+
+model AdminVerification {
+  id                String   @id @default(cuid())
+  entityId          String
+  entityType        String   // 'Property', 'Agent'
+  entityName        String?
+  entityEmail       String?
+  status            String   // 'Verified', 'Rejected', 'Pending'
+  adminId           String?
+  reason            String?
+  verificationPhoto String?  // Live reference to selfie URL
+  documentId        String?
+  document          Document? @relation("DocumentVerifications", fields: [documentId], references: [id])
+  createdAt         DateTime @default(now())
+  
+  admin             User?    @relation("AdminVerificationRecords", fields: [adminId], references: [id])
 }

@@ -93,6 +93,7 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import interactionRoutes from './routes/interactionRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 app.use('/api/user', userRoutes);
 app.use('/api/properties', propertyRoutes);
@@ -107,6 +108,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/interactions', interactionRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/health', (req: Request, res: Response) => {
     res.json({ status: 'OK', service: 'HomeCar Backend' });

@@ -1,8 +1,13 @@
+"use client";
+
 import { Facebook, Instagram, Send, Linkedin } from 'lucide-react';
 import Link from 'next/link';
 import { Logo } from './common/Logo';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export function Footer() {
+  const { t } = useTranslation();
+
   return (
     <footer className="bg-white border-t border-border ">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -12,7 +17,7 @@ export function Footer() {
               <Logo className="h-12 w-auto" />
             </Link>
             <p className="text-muted-foreground mb-4">
-              AI-powered platform for finding your perfect property or vehicle with confidence and ease.
+              {t('footer.tagline')}
             </p>
             <div className="flex space-x-3">
               <a href="#" className="bg-primary/10 p-2 rounded-lg hover:bg-primary/20 transition-colors">
@@ -31,42 +36,42 @@ export function Footer() {
           </div>
 
           <div>
-            <h3 className="mb-4 text-foreground">For Customers</h3>
+            <h3 className="mb-4 text-foreground">{t('footer.forCustomers')}</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/listings" className="text-muted-foreground hover:text-primary transition-colors">
-                  Browse Homes
+                  {t('footer.browseHomes')}
                 </Link>
               </li>
               <li>
                 <Link href="/listings" className="text-muted-foreground hover:text-primary transition-colors">
-                  Browse Cars
+                  {t('footer.browseCars')}
                 </Link>
               </li>
               <li>
                 <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                  Help Desk
+                  {t('footer.helpDesk')}
                 </a>
               </li>
               <li>
                 <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                  Pricing
+                  {t('footer.pricing')}
                 </a>
               </li>
             </ul>
           </div>
 
           <div>
-            <h3 className="mb-4 text-foreground">For Owners</h3>
+            <h3 className="mb-4 text-foreground">{t('footer.forOwners')}</h3>
             <ul className="space-y-2">
               <li>
                 <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                  List Your Home
+                  {t('footer.listYourHome')}
                 </a>
               </li>
               <li>
                 <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                  List Your Car
+                  {t('footer.listYourCar')}
                 </a>
               </li>
 
@@ -74,11 +79,11 @@ export function Footer() {
           </div>
 
           <div>
-            <h3 className="mb-4 text-foreground">Company</h3>
+            <h3 className="mb-4 text-foreground">{t('footer.company')}</h3>
             <ul className="space-y-2">
               <li>
                 <Link href="/about" className="text-muted-foreground hover:text-primary transition-colors">
-                  About Us
+                  {t('footer.aboutUs')}
                 </Link>
               </li>
                                                                   
@@ -87,7 +92,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-border mt-8 pt-8 text-center text-muted-foreground">
-          <p>&copy; 2026 HomeCar. All rights reserved. </p>
+          <p>&copy; 2026 HomeCar. {t('footer.copyright')}</p>
         </div>
       </div>
     </footer>

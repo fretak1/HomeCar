@@ -13,9 +13,11 @@ import {
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
 import { motion } from 'framer-motion';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 function VerifyEmailContent() {
     const router = useRouter();
+    const { t } = useTranslation();
     const searchParams = useSearchParams();
     const email = searchParams.get('email') || '';
     const [otp, setOtp] = useState('');
@@ -24,7 +26,7 @@ function VerifyEmailContent() {
 
     const handleVerify = async () => {
         if (otp.length !== 6) {
-            return toast.error('Please enter the full 6-digit code');
+            return toast.error(t('auth.verifyEmail.enterFullCode'));
         }
 
         setIsVerifying(true);
@@ -35,13 +37,13 @@ function VerifyEmailContent() {
             });
 
             if (error) {
-                throw new Error(error.message || 'Verification failed');
+                throw new Error(error.message || t('auth.verifyEmail.verificationFailed'));
             }
 
-            toast.success('Email verified successfully!');
+            toast.success(t('auth.verifyEmail.verifiedSuccess'));
             router.push('/login');
         } catch (error: any) {
-            toast.error(error.message || 'Invalid or expired code');
+            toast.error(error.message || t('auth.verifyEmail.invalidOrExpired'));
         } finally {
             setIsVerifying(false);
         }
@@ -56,9 +58,9 @@ function VerifyEmailContent() {
             });
 
             if (error) throw new Error(error.message);
-            toast.success('A new code has been sent to your email.');
+            toast.success(t('auth.verifyEmail.resendSuccess'));
         } catch (error: any) {
-            toast.error(error.message || 'Failed to resend code');
+            toast.error(error.message || t('auth.verifyEmail.resendFailed'));
         } finally {
             setIsResending(false);
         }
@@ -78,9 +80,9 @@ function VerifyEmailContent() {
                 </div>
 
                 <div className="space-y-2">
-                    <h1 className="text-2xl font-bold tracking-tight">Verify Your Email</h1>
+                    <h1 className="text-2xl font-bold tracking-tight">{t('auth.verifyEmail.title')}</h1>
                     <p className="text-sm text-muted-foreground leading-relaxed px-4">
-                        We've sent a 6-digit verification code to <br />
+                        {t('auth.verifyEmail.subtitleStart')} <br />
                         <span className="font-bold text-foreground">{email}</span>
                     </p>
                 </div>
@@ -110,14 +112,14 @@ function VerifyEmailContent() {
                         disabled={isVerifying || otp.length !== 6}
                         className="w-full h-12 rounded-xl text-md font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
                     >
-                        {isVerifying ? 'Verifying...' : 'Verify & Continue'}
+                        {isVerifying ? t('auth.verifyEmail.verifying') : t('auth.verifyEmail.verifyAndContinue')}
                         {!isVerifying && <ArrowRight className="ml-2 w-4 h-4" />}
                     </Button>
                 </div>
 
                 <div className="pt-4 space-y-4">
                     <p className="text-xs text-muted-foreground font-medium">
-                        Didn't receive the code?
+                        {t('auth.verifyEmail.didntReceive')}
                     </p>
                     <Button 
                         variant="outline" 
@@ -131,7 +133,7 @@ function VerifyEmailContent() {
                         ) : (
                             <Mail className="w-3.5 h-3.5 mr-2" />
                         )}
-                        Resend Code
+                        {t('auth.verifyEmail.resendCode')}
                     </Button>
                 </div>
             </motion.div>

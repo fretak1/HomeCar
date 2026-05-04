@@ -1,6 +1,64 @@
 import { Skeleton } from './skeleton';
 import { Card, CardContent, CardHeader } from './card';
 
+/** Shared dashboard route skeleton used for dashboard loading states */
+export function DashboardRouteSkeleton() {
+    return (
+        <div className="min-h-screen bg-background">
+            <div className="bg-[#005a41] py-12">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <Skeleton className="h-10 w-64 bg-white/20 rounded-lg mb-2" />
+                    <Skeleton className="h-6 w-48 bg-white/10 rounded-md" />
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    {[1, 2, 3, 4].map((i) => (
+                        <Card key={i} className="border-border/50 shadow-sm">
+                            <CardContent className="p-6">
+                                <div className="flex justify-between items-start mb-4">
+                                    <Skeleton className="h-3 w-24 rounded" />
+                                    <Skeleton className="h-9 w-9 rounded-lg" />
+                                </div>
+                                <Skeleton className="h-8 w-20 rounded mb-2" />
+                                <Skeleton className="h-3 w-32 rounded" />
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                <div className="flex gap-4 mb-8 border-b border-border/50 pb-px">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                        <Skeleton key={i} className="h-10 w-24 rounded-t-lg" />
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <Card className="border-border/50 shadow-md h-[400px]">
+                        <CardHeader className="pb-2">
+                            <Skeleton className="h-5 w-40 rounded mb-1" />
+                            <Skeleton className="h-3 w-28 rounded" />
+                        </CardHeader>
+                        <CardContent className="p-4">
+                            <Skeleton className="h-full w-full rounded" />
+                        </CardContent>
+                    </Card>
+                    <Card className="border-border/50 shadow-md h-[400px]">
+                        <CardHeader className="pb-2">
+                            <Skeleton className="h-5 w-40 rounded mb-1" />
+                            <Skeleton className="h-3 w-28 rounded" />
+                        </CardHeader>
+                        <CardContent className="p-4">
+                            <Skeleton className="h-full w-full rounded" />
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /** 4-col stat card row skeleton */
 export function StatCardsSkeleton({ count = 4 }: { count?: number }) {
     return (
@@ -166,21 +224,51 @@ export function PropertyDetailSkeleton() {
                                 <Skeleton key={i} className="w-full h-24 rounded-lg" />
                             ))}
                         </div>
-                        
-                        {/* Description/Tabs Area Skeleton */}
-                        <div className="mt-8 space-y-6">
-                            <div className="flex gap-4 border-b">
-                                <Skeleton className="h-10 w-24 rounded-t-lg" />
-                                <Skeleton className="h-10 w-24 rounded-t-lg" />
-                                <Skeleton className="h-10 w-24 rounded-t-lg" />
-                            </div>
-                            <div className="space-y-4">
-                                <Skeleton className="h-8 w-1/3 rounded" />
-                                <Skeleton className="h-4 w-full rounded" />
-                                <Skeleton className="h-4 w-full rounded" />
-                                <Skeleton className="h-4 w-3/4 rounded" />
-                            </div>
-                        </div>
+                        {/* Title/Stats/Description area skeleton */}
+                        <Card className="border-border mt-8">
+                            <CardContent className="p-6 space-y-8">
+                                <div className="space-y-4">
+                                    <Skeleton className="h-10 w-2/3 rounded" />
+                                    <div className="flex gap-4">
+                                        <Skeleton className="h-6 w-32 rounded" />
+                                        <Skeleton className="h-6 w-32 rounded" />
+                                    </div>
+                                </div>
+                                
+                                <div className="flex gap-8 py-4 border-y border-border">
+                                    {[1, 2, 3].map(i => (
+                                        <div key={i} className="flex items-center gap-2">
+                                            <Skeleton className="h-5 w-5 rounded" />
+                                            <Skeleton className="h-4 w-20 rounded" />
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="space-y-4">
+                                    <Skeleton className="h-6 w-32 rounded" />
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-4 w-full rounded" />
+                                        <Skeleton className="h-4 w-full rounded" />
+                                        <Skeleton className="h-4 w-3/4 rounded" />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Amenities skeleton */}
+                        <Card className="border-border mt-6">
+                            <CardContent className="p-6">
+                                <Skeleton className="h-6 w-32 mb-4" />
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                                        <div key={i} className="flex items-center gap-2">
+                                            <Skeleton className="h-5 w-5 rounded-full" />
+                                            <Skeleton className="h-4 w-24 rounded" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
 
                     {/* Booking/Contact Card Skeleton */}
@@ -218,10 +306,10 @@ export function ProfileSkeleton() {
         <div className="min-h-screen bg-muted/20 p-4 md:p-8">
             <div className="max-w-6xl mx-auto space-y-8">
                 <Card className="border-none shadow-xl shadow-black/5 overflow-hidden rounded-[2.5rem] bg-white">
-                    <div className="h-48 bg-gradient-to-r from-[#005a41] to-[#004a35]" />
+                    <div className="h-48 bg-[#005a41]" />
                     <CardContent className="px-8 pb-8 -mt-12 relative z-10">
                         <div className="flex flex-col md:flex-row items-end gap-6 mb-8">
-                            <Skeleton className="h-32 w-32 rounded-[2rem] border-4 border-white shadow-xl" />
+                            <Skeleton className="h-40 w-40 rounded-full border-4 border-white shadow-xl" />
                             <div className="flex-1 space-y-3 pb-2">
                                 <Skeleton className="h-8 w-64 rounded" />
                                 <Skeleton className="h-4 w-48 rounded" />
@@ -258,18 +346,6 @@ export function ProfileSkeleton() {
 export function LeaseDetailSkeleton() {
     return (
         <div className="min-h-screen bg-muted/30 pb-20">
-            <div className="bg-white border-b border-border sticky top-0 z-50 py-4">
-                <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                        <div className="space-y-1">
-                            <Skeleton className="h-6 w-32 rounded" />
-                            <Skeleton className="h-3 w-48 rounded" />
-                        </div>
-                    </div>
-                    <Skeleton className="h-8 w-24 rounded-full" />
-                </div>
-            </div>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-8">

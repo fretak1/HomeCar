@@ -111,7 +111,7 @@ export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
     // Role-based dynamics
     const isOwner = role === 'owner';
     const backUrl = `/dashboard/${role}?tab=transactions`;
-    const partyLabel = isOwner ? 'Payment From' : 'Billed To';
+    const partyLabel = isOwner ? 'Payment From' : 'Paid To';
     const partyValue = isOwner ? transaction.payer?.name : transaction.payee?.name;
     const priceLabel = isOwner ? 'Credit Amount' : 'Unit Price';
     const totalLabel = isOwner ? 'Gross Revenue' : 'Subtotal';
@@ -176,7 +176,7 @@ export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
                                         transaction.status === 'COMPLETED' ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
                                     )}>
                                         {transaction.status === 'COMPLETED' ? <CheckCircle className="h-3.5 w-3.5" /> : <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                                        {transaction.status === 'COMPLETED' ? 'Verified Receipt' : 'Pending Verification'}
+                                        {transaction.status === 'COMPLETED' ? 'Payment Completed' : 'Pending Verification'}
                                     </Badge>
                                 </div>
                             </div>
@@ -200,14 +200,12 @@ export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 md:block md:space-y-4">
                                         <div className="space-y-1">
-                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Date Recorded</p>
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Date Issued</p>
                                             <p className="text-sm font-bold">{format(new Date(transaction.createdAt), 'MMM dd, yyyy')}</p>
                                         </div>
-                                        <div className="space-y-1 md:pt-4">
-                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Verification</p>
-                                            <p className="text-sm font-bold flex items-center md:justify-end gap-2 text-[#005a41]">
-                                                <Badge variant="outline" className="text-[10px] uppercase font-bold border-[#005a41]/20 bg-[#005a41]/5 text-[#005a41]">Verified Deposit</Badge>
-                                            </p>
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">Payment Provider</p>
+                                            <p className="text-sm font-bold">Chapa Checkout</p>
                                         </div>
                                     </div>
                                 </div>
@@ -220,7 +218,6 @@ export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
                                 <thead className="border-b-2 border-foreground">
                                     <tr>
                                         <th className="py-4 text-xs font-black uppercase tracking-widest">Description</th>
-                                        <th className="py-4 text-xs font-black uppercase tracking-widest text-center">Qty</th>
                                         <th className="py-4 text-xs font-black uppercase tracking-widest text-right">{priceLabel}</th>
                                         <th className="py-4 text-xs font-black uppercase tracking-widest text-right">Total</th>
                                     </tr>
@@ -233,7 +230,6 @@ export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
                                                 {transaction.type === 'RENT' ? `Monthly rent collection` : 'Property payment'}
                                             </p>
                                         </td>
-                                        <td className="py-8 text-center font-bold">1</td>
                                         <td className="py-8 text-right font-bold text-muted-foreground">ETB {transaction.amount.toLocaleString()}</td>
                                         <td className="py-8 text-right font-black text-foreground">ETB {transaction.amount.toLocaleString()}</td>
                                     </tr>
@@ -263,19 +259,10 @@ export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
                         </div>
 
                         {/* Footer */}
-                        <div className="pt-20 border-t border-border flex flex-col md:flex-row justify-between items-center gap-8">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-[#005a41]/5 p-3 rounded-full">
-                                    <ShieldCheck className="h-6 w-6 text-[#005a41]" />
-                                </div>
-                                <div className="text-left">
-                                    <p className="text-xs font-black uppercase text-foreground">Verified Record</p>
-                                    <p className="text-[10px] text-muted-foreground font-medium">Secured by HomeCar Financial Cluster</p>
-                                </div>
+                        <div className="pt-20 border-t border-border text-center">
+                            <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                &copy; {new Date().getFullYear()} HomeCar Property Solutions
                             </div>
-                            <p className="text-[10px] text-muted-foreground font-medium max-w-xs text-center md:text-right italic">
-                                This is a computer-generated receipt and does not require a physical signature. For support, please contact homecarsupport@gmail.com.
-                            </p>
                         </div>
                     </CardContent>
                 </Card>

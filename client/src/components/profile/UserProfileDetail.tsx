@@ -37,7 +37,13 @@ interface UserProfileDetailProps {
         role: string;
         status?: string;
         createdAt: string;
-        location?: string;
+        location?: {
+            city?: string;
+            subcity?: string;
+            region?: string;
+            village?: string;
+        };
+        aboutMe?: string;
         bio?: string;
         gender?: string;
         marriageStatus?: string;
@@ -73,18 +79,10 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Header Actions */}
-            {showBackButton && (
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="sm" onClick={() => router.back()} className="text-muted-foreground hover:text-foreground">
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                    </Button>
-                </div>
-            )}
-
+          
             {/* Profile Header Card */}
             <Card className="border-border/50 shadow-xl overflow-hidden ring-1 ring-black/5">
-                <div className="h-48 bg-gradient-to-tr from-[#005a41] via-[#005a41] to-[#0d9488] relative">
+                <div className="h-48 bg-[#005a41] relative">
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
                 </div>
                 <CardHeader className="relative pt-0 pb-10">
@@ -104,11 +102,7 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                             {getRoleIcon(user.role)}
                                             <span className="text-xs uppercase tracking-widest font-bold">{displayRole}</span>
                                         </div>
-                                        <Badge variant="outline" className={`font-bold border px-3 py-1 uppercase tracking-tighter text-[10px] ${getStatusColor(displayStatus)}`}>
-                                            {displayStatus.toUpperCase() === 'ACTIVE' && <CheckCircle className="h-3 w-3 mr-1.5" />}
-                                            {displayStatus.toUpperCase() === 'SUSPENDED' && <XCircle className="h-3 w-3 mr-1.5" />}
-                                            {displayStatus}
-                                        </Badge>
+                                        
                                     </div>
                                 </div>
                                
@@ -121,27 +115,7 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Left Column: Info */}
                 <div className="space-y-8 lg:col-span-1">
-                    {/* Bio/About */}
-                    <Card className="border-border/50 shadow-md">
-                        <CardHeader>
-                            <CardTitle className="text-lg font-bold flex items-center gap-2">
-                                <User className="h-5 w-5 text-primary" />
-                                About {displayRole}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <p className="text-sm text-muted-foreground leading-relaxed italic">
-                                "{user.bio || `${displayRole} member since ${format(new Date(user.createdAt), 'MMMM yyyy')}.`}"
-                            </p>
-                            <div className="pt-4 grid grid-cols-2 gap-4">
-                                <div className="p-3 bg-muted/20 rounded-xl border border-border/50">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Status</p>
-                                    <p className="text-sm font-bold text-foreground">Verified Member</p>
-                                </div>
-                               
-                            </div>
-                        </CardContent>
-                    </Card>
+                   
 
                     {/* Contact Info */}
                     <Card className="border-border/50 shadow-md overflow-hidden ring-1 ring-[#005a41]/5">
@@ -171,15 +145,6 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                         <p className="text-sm font-bold text-foreground">{user.phoneNumber || 'N/A'}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4 p-5 hover:bg-muted/10 transition-colors">
-                                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
-                                        <MapPin className="h-5 w-5 text-orange-600" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Primary Location</p>
-                                        <p className="text-sm font-bold text-foreground">{user.location || 'Addis Ababa'}</p>
-                                    </div>
-                                </div>
                                 <div className="flex items-center gap-4 p-5 bg-muted/5">
                                     <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
                                         <CalendarDays className="h-5 w-5 text-slate-600" />
@@ -187,6 +152,56 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                     <div>
                                         <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Member Since</p>
                                         <p className="text-sm font-bold text-foreground">{format(new Date(user.createdAt), 'MMM dd, yyyy')}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Address Details */}
+                    <Card className="border-border/50 shadow-md overflow-hidden ring-1 ring-[#005a41]/5">
+                        <CardHeader className="bg-[#005a41]/5 border-b border-[#005a41]/10">
+                            <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                <MapPin className="h-5 w-5 text-[#005a41]" />
+                                Address Details
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="space-y-0 divide-y divide-border/50">
+                                <div className="flex items-center gap-4 p-5 hover:bg-muted/10 transition-colors">
+                                    <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                                        <Shield className="h-5 w-5 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Region</p>
+                                        <p className="text-sm font-bold text-foreground">{user.location?.region || 'N/A'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4 p-5 hover:bg-muted/10 transition-colors">
+                                    <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
+                                        <Building2 className="h-5 w-5 text-orange-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">City</p>
+                                        <p className="text-sm font-bold text-foreground">{user.location?.city || 'N/A'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4 p-5 hover:bg-muted/10 transition-colors">
+                                    <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+                                        <MapPin className="h-5 w-5 text-purple-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Subcity</p>
+                                        <p className="text-sm font-bold text-foreground">{user.location?.subcity || 'N/A'}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4 p-5 hover:bg-muted/10 transition-colors">
+                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                                        <MapPin className="h-5 w-5 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Village / Area</p>
+                                        <p className="text-sm font-bold text-foreground">{user.location?.village || 'N/A'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -222,6 +237,21 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Employment</p>
                                     <p className="text-sm font-bold text-foreground capitalize">{user.employmentStatus || 'Not specified'}</p>
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            {/* Bio Section */}
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-black uppercase tracking-widest text-[#005a41] flex items-center gap-2">
+                                    <User className="h-4 w-4" />
+                                    About {displayRole}
+                                </h4>
+                                <div className="p-6 bg-[#005a41]/5 border border-[#005a41]/10 rounded-2xl">
+                                    <p className="text-base text-foreground leading-relaxed">
+                                        {user.aboutMe || user.bio || `This ${displayRole.toLowerCase()} hasn't shared their story yet, but they've been a valued member of HomeCar since ${format(new Date(user.createdAt), 'MMMM yyyy')}.`}
+                                    </p>
                                 </div>
                             </div>
 

@@ -52,6 +52,7 @@ export interface Property {
         role: string;
         verificationPhoto?: string;
         chapaSubaccountId?: string;
+        aboutMe?: string;
     };
     ownerName?: string; // For backward compatibility or UI convenience
     rating?: number;

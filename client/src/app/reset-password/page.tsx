@@ -15,9 +15,11 @@ import {
 } from "@/components/ui/input-otp";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 function ResetPasswordContent() {
     const router = useRouter();
+    const { t } = useTranslation();
     const searchParams = useSearchParams();
     const email = searchParams.get("email") || "";
     
@@ -32,17 +34,17 @@ function ResetPasswordContent() {
         e.preventDefault();
 
         if (otp.length !== 6) {
-            toast.error("Please enter the 6-digit reset code.");
+            toast.error(t('auth.resetPassword.enterResetCode'));
             return;
         }
 
         if (password !== confirmPassword) {
-            toast.error("Passwords do not match.");
+            toast.error(t('auth.resetPassword.passwordMismatch'));
             return;
         }
 
         if (password.length < 8) {
-            toast.error("Password must be at least 8 characters.");
+            toast.error(t('auth.resetPassword.passwordTooShort'));
             return;
         }
 
@@ -56,16 +58,16 @@ function ResetPasswordContent() {
             });
 
             if (error) {
-                throw new Error(error.message || "Failed to reset password. The code may be invalid or expired.");
+                throw new Error(error.message || t('auth.resetPassword.resetFailed'));
             } else {
                 setIsSuccess(true);
-                toast.success("Password reset successful!");
+                toast.success(t('auth.resetPassword.resetSuccess'));
                 setTimeout(() => {
                     router.push("/login");
                 }, 3000);
             }
         } catch (error: any) {
-            toast.error(error.message || "An unexpected error occurred.");
+            toast.error(error.message || t('auth.resetPassword.unexpectedError'));
         } finally {
             setIsLoading(false);
         }
@@ -85,10 +87,10 @@ function ResetPasswordContent() {
                         </div>
                         <div>
                             <CardTitle className="text-3xl font-black text-foreground tracking-tight">
-                                Reset Password
+                                {t('auth.resetPassword.title')}
                             </CardTitle>
                             <CardDescription className="text-muted-foreground mt-2">
-                                Enter the 6-digit code sent to <br/>
+                                {t('auth.resetPassword.subtitleStart')} <br/>
                                 <span className="font-bold text-foreground text-xs">{email}</span>
                             </CardDescription>
                         </div>
@@ -98,7 +100,7 @@ function ResetPasswordContent() {
                             <form onSubmit={handleSubmit} className="space-y-6 text-center">
                                 {/* OTP Input Section */}
                                 <div className="flex flex-col items-center space-y-4 mb-4">
-                                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Reset Code</label>
+                                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t('auth.resetPassword.resetCode')}</label>
                                     <InputOTP 
                                         maxLength={6} 
                                         value={otp} 
@@ -124,7 +126,7 @@ function ResetPasswordContent() {
                                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-colors group-focus-within:text-primary" />
                                         <Input
                                             type={showPassword ? "text" : "password"}
-                                            placeholder="New Password"
+                                            placeholder={t('auth.resetPassword.newPassword')}
                                             className="pl-10 pr-10 h-12 rounded-xl border-border bg-white"
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
@@ -143,7 +145,7 @@ function ResetPasswordContent() {
                                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                         <Input
                                             type={showPassword ? "text" : "password"}
-                                            placeholder="Confirm New Password"
+                                            placeholder={t('auth.resetPassword.confirmNewPassword')}
                                             className="pl-10 h-12 rounded-xl border-border bg-white"
                                             value={confirmPassword}
                                             onChange={(e) => setConfirmPassword(e.target.value)}
@@ -160,10 +162,10 @@ function ResetPasswordContent() {
                                     {isLoading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Resetting...
+                                            {t('auth.resetPassword.resetting')}
                                         </>
                                     ) : (
-                                        "Reset Password"
+                                        t('auth.resetPassword.resetPasswordButton')
                                     )}
                                 </Button>
                             </form>
@@ -179,10 +181,9 @@ function ResetPasswordContent() {
                                     </motion.div>
                                 </div>
                                 <div className="space-y-2">
-                                    <h3 className="text-2xl font-bold text-foreground">All set!</h3>
+                                    <h3 className="text-2xl font-bold text-foreground">{t('auth.resetPassword.allSet')}</h3>
                                     <p className="text-muted-foreground">
-                                        Your password has been securely updated. <br/>
-                                        Redirecting you to sign in...
+                                        {t('auth.resetPassword.successMessage')}
                                     </p>
                                 </div>
                                 <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary opacity-50" />

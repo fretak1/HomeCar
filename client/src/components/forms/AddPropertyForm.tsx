@@ -147,8 +147,11 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
         return initialImages.length > 0 ? initialImages : [null, null, null, null];
     });
     // Show existing ownership document from backend
+    const sortedDocs = [...(initialData?.ownershipDocuments || [])]
+        .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime());
+        
     const [ownershipDoc, setOwnershipDoc] = useState<string | null>(
-        initialData?.ownershipDocuments?.[0]?.url || initialData?.ownershipDocument || null
+        sortedDocs[0]?.url || initialData?.ownershipDocument || null
     );
     const [ownershipFile, setOwnershipFile] = useState<File | null>(null);
 
@@ -367,6 +370,11 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
             newFiles[index] = null;
         }
 
+        // Reset the input value so the same file can be uploaded again
+        if (fileInputRefs.current[index]) {
+            fileInputRefs.current[index]!.value = '';
+        }
+
         setImages(newImages);
         setImageFiles(newFiles);
     };
@@ -450,8 +458,13 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
 
             // Status is already handled in the bulk loop above (lines 381-385)
 
+            console.log("Submitting FormData:");
             for (let [key, value] of formData.entries()) {
-                console.log(key, value);
+                if (value instanceof File) {
+                    console.log(`- ${key}: File (${value.name}, ${value.size} bytes)`);
+                } else {
+                    console.log(`- ${key}:`, value);
+                }
             }
 
             if (isEditMode) {
@@ -666,7 +679,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                 <div className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors">
                                                     {activeType === 'Home' ? <Home className="h-full w-full" /> : <Car className="h-full w-full" />}
                                                 </div>
-                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder={activeType === 'Home' ? "Modern Villa" : "Tesla Model S"} {...field} />
+                                                <Input className="pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white transition-all rounded-xl" placeholder={activeType === 'Home' ? "Enter Catchy Title" : "Enter Catchy Title"} {...field} />
                                             </div>
                                         </FormControl>
                                         <FormMessage />
@@ -883,7 +896,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                     }}
                                 />
                                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest text-center italic">
-                                    Precisely pinning your location increases buyer/renter trust by 40%
+                                    Precisely pinning your location increases buyer/renter trust
                                 </p>
                             </div>
                         )}
@@ -913,7 +926,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                             "pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl transition-all",
                                                             isSmallUnit && "bg-muted/30 cursor-not-allowed opacity-70"
                                                         )}
-                                                        placeholder={isSmallUnit ? "0 (Shared/None)" : "3"} 
+                                                        placeholder={"Number of Bedrooms"} 
                                                         disabled={isSmallUnit}
                                                         {...field} 
                                                     />
@@ -937,7 +950,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                             "pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl transition-all",
                                                             isSmallUnit && "bg-muted/30 cursor-not-allowed opacity-70"
                                                         )}
-                                                        placeholder="2" 
+                                                        placeholder="Number of Bathrooms" 
                                                         disabled={isSmallUnit}
                                                         {...field} 
                                                     />
@@ -961,7 +974,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                             "pl-10 h-11 bg-muted/5 border-border/60 focus:bg-white rounded-xl transition-all",
                                                             isSmallUnit && "bg-muted/30 cursor-not-allowed opacity-70"
                                                         )}
-                                                        placeholder="150" 
+                                                        placeholder="Area in Square Meters" 
                                                         disabled={isSmallUnit}
                                                         {...field} 
                                                     />
@@ -1230,7 +1243,9 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                             }
 
                                                             // Case 2: Use the Base64 Data Proxy if it exists in DB
-                                                            const docId = initialData?.ownershipDocuments?.[0]?.id;
+                                                            const sortedInitialDocs = [...(initialData?.ownershipDocuments || [])]
+                                                                .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime());
+                                                            const docId = sortedInitialDocs[0]?.id;
                                                             if (docId) {
                                                                 const token = localStorage.getItem('auth_token');
                                                                 const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/properties/document/${docId}/view`, {
@@ -1279,7 +1294,11 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                 type="button"
                                                 variant="ghost"
                                                 size="sm"
-                                                onClick={() => setOwnershipDoc(null)}
+                                                onClick={() => {
+                                                    setOwnershipDoc(null);
+                                                    setOwnershipFile(null);
+                                                    if (docInputRef.current) docInputRef.current.value = '';
+                                                }}
                                                 className="text-destructive hover:bg-destructive/10"
                                             >
                                                 <X className="h-4 w-4 mr-2" />
@@ -1367,29 +1386,25 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                             >
                                                 View
                                             </Button>
-                                            {!currentUser?.verificationPhoto && (
-                                                <>
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={openCamera}
-                                                        className="font-bold border-[#005a41]/20 text-[#005a41] hover:bg-[#005a41]/5 rounded-xl"
-                                                    >
-                                                        Retake
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => setOwnerPhoto(null)}
-                                                        className="text-destructive hover:bg-destructive/10 rounded-xl"
-                                                    >
-                                                        <X className="h-4 w-4 mr-2" />
-                                                        Remove
-                                                    </Button>
-                                                </>
-                                            )}
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={openCamera}
+                                                className="font-bold border-[#005a41]/20 text-[#005a41] hover:bg-[#005a41]/5 rounded-xl"
+                                            >
+                                                Retake
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setOwnerPhoto(null)}
+                                                className="text-destructive hover:bg-destructive/10 rounded-xl"
+                                            >
+                                                <X className="h-4 w-4 mr-2" />
+                                                Remove
+                                            </Button>
                                         </div>
                                     </div>
                                 ) : (
@@ -1428,7 +1443,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                     type="button"
                                     onClick={handleAIEstimate}
                                     disabled={isPredicting}
-                                    className="bg-black hover:bg-black/90 text-white rounded-2xl px-6 py-6 h-auto font-bold border-2 border-white/20 shadow-2xl transition-all hover:scale-105"
+                                    className="bg-primary hover:bg-primary/90 text-white rounded-2xl px-6 py-6 h-auto font-bold border-2 border-white/20 shadow-2xl transition-all hover:scale-105"
                                 >
                                     {isPredicting && (
                                         <Loader2 className="h-5 w-5 animate-spin mr-2" />

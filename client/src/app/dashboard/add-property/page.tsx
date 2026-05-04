@@ -45,8 +45,8 @@ export default function AddPropertyPage() {
                             </h2>
                             <p className="text-lg text-muted-foreground max-w-2xl">
                                 {initialData
-                                    ? 'Update your listing details and media to keep your property information accurate and attractive.'
-                                    : 'List your property or vehicle with detailed specs and high-quality info to reach thousands of potential verified buyers and tenants.'}
+                                    ? 'Update your listing details and media to keep your property information accurate.'
+                                    : 'List your property or vehicle with detailed specs and high-quality info.'}
                             </p>
                         </div>
 

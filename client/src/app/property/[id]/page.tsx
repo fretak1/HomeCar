@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslation } from '@/contexts/LanguageContext';
 import {
     Heart,
     MessageSquare,
@@ -58,6 +59,7 @@ export default function PropertyDetailPage() {
     const params = useParams();
     const id = params?.id as string;
     const router = useRouter();
+    const { t } = useTranslation();
     const { fetchPropertyById, isLoading: isPropertyLoading } = usePropertyStore();
     const { reviews: propertyReviews, fetchReviews, isLoading: isReviewsLoading } = useReviewStore();
     const { currentUser } = useUserStore();
@@ -82,7 +84,7 @@ export default function PropertyDetailPage() {
         e.preventDefault();
         e.stopPropagation();
         if (!currentUser || !id) {
-            toast.error("Please log in to add favorites");
+            toast.error(t('customerDashboard.pleaseLogin'));
             return;
         }
 
@@ -122,11 +124,11 @@ export default function PropertyDetailPage() {
                 propertyId: id,
                 message: applicationMessage
             });
-            toast.success("Application submitted successfully!");
+            toast.success(t('ownerDashboard.propertyApplications') + " submitted successfully!");
             setIsDialogOpen(false);
             setApplicationMessage("");
         } catch (error) {
-            toast.error("Failed to submit application.");
+            toast.error(t('common.error'));
         }
     };
 
@@ -181,9 +183,9 @@ export default function PropertyDetailPage() {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
                 <div className="text-center">
-                    <h1 className="text-3xl mb-4">Property Not Found</h1>
+                    <h1 className="text-3xl mb-4">{t('property.notFound')}</h1>
                     <Link href="/listings" className="cursor-pointer">
-                        <Button>Back to Listings</Button>
+                        <Button>{t('property.backToListings')}</Button>
                     </Link>
                 </div>
             </div>
@@ -200,13 +202,7 @@ export default function PropertyDetailPage() {
     return (
         <div className="min-h-screen bg-background">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <button
-                    onClick={() => router.back()}
-                    className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors mb-6 group cursor-pointer"
-                >
-                    <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                    Back to Listings
-                </button>
+               
                 {/* Image Gallery */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
                     <div className="lg:col-span-2">
@@ -221,7 +217,7 @@ export default function PropertyDetailPage() {
                                     <Button
                                         size="icon"
                                         variant="secondary"
-                                        className={`rounded-full cursor-pointer hover:scale-110 transition-transform ${favorite ? 'text-rose-500 hover:text-rose-600 shadow-sm' : 'text-gray-500 hover:text-gray-600 bg-white/90'}`}
+                                        className={`rounded-full cursor-pointer hover:scale-110 transition-transform ${favorite ? 'text-primary hover:text-primary/90 shadow-sm bg-white' : 'text-gray-500 hover:text-gray-600 bg-white/90'}`}
                                         onClick={handleFavoriteClick}
                                     >
                                         <Heart className={`h-5 w-5 ${favorite ? 'fill-current' : ''}`} />
@@ -260,7 +256,7 @@ export default function PropertyDetailPage() {
                                             const t = type.toLowerCase();
                                             return t.includes('rent') || t.includes('lease');
                                         }) && (
-                                                <span className="text-muted-foreground">/month</span>
+                                                <span className="text-muted-foreground">{t('property.perMonth')}</span>
                                             )}
                                     </div>
                                 </div>
@@ -276,25 +272,31 @@ export default function PropertyDetailPage() {
                                                         className="w-full bg-primary hover:bg-primary/90 cursor-pointer"
                                                         size="lg"
                                                         disabled={
-                                                            currentUser?.role === 'OWNER' ||
-                                                            currentUser?.role === 'AGENT' ||
-                                                            currentUser?.role === 'ADMIN' ||
+                                                            currentUser?.role?.toUpperCase() === 'OWNER' ||
+                                                            currentUser?.role?.toUpperCase() === 'AGENT' ||
+                                                            currentUser?.role?.toUpperCase() === 'ADMIN' ||
                                                             property.status === 'RENTED' ||
                                                             property.status === 'SOLD' ||
                                                             property.status === 'UNAVAILABLE' ||
-                                                            applications.some(app => app.propertyId === id)
+                                                            applications.some(app => app.propertyId === id && app.customerId === currentUser?.id)
                                                         }
                                                     >
                                                         <Calendar className="h-5 w-5 mr-2" />
-                                                        {property.status === 'RENTED' 
-                                                            ? 'Property Already Rented' 
+                                                        {currentUser?.role?.toUpperCase() === 'ADMIN'
+                                                            ? 'Admins cannot apply'
+                                                            : currentUser?.role?.toUpperCase() === 'OWNER'
+                                                            ? 'Owners cannot apply'
+                                                            : currentUser?.role?.toUpperCase() === 'AGENT'
+                                                            ? 'Agents cannot apply'
+                                                            : property.status === 'RENTED' 
+                                                            ? t('property.alreadyRented') 
                                                             : property.status === 'SOLD'
-                                                            ? 'Property Already Sold'
+                                                            ? t('property.alreadySold')
                                                             : property.status === 'UNAVAILABLE'
-                                                            ? 'Listing Currently Unavailable'
-                                                            : applications.some(app => app.propertyId === id)
-                                                            ? 'Already Applied'
-                                                            : `Apply For ${listingTypes[0]}`
+                                                            ? t('property.currentlyUnavailable')
+                                                            : applications.some(app => app.propertyId === id && app.customerId === currentUser?.id)
+                                                            ? t('property.alreadyApplied')
+                                                            : t('property.applyFor').replace('{type}', listingTypes[0] || '')
                                                         }
                                                     </Button>
                                                 </DialogTrigger>
@@ -302,17 +304,17 @@ export default function PropertyDetailPage() {
                                                     <DialogHeader>
                                                         <DialogTitle className="flex items-center gap-2">
                                                             <Send className="h-5 w-5 text-primary" />
-                                                            Apply for Property
+                                                            {t('property.applyForProperty')}
                                                         </DialogTitle>
                                                         <DialogDescription>
-                                                            Send a message to the owner to express your interest.
+                                                            {t('property.messageOwner')}
                                                         </DialogDescription>
                                                     </DialogHeader>
                                                     <div className="grid gap-4 py-4">
                                                         <div className="space-y-2">
-                                                            <h4 className="font-medium text-sm">Message</h4>
+                                                            <h4 className="font-medium text-sm">{t('ownerDashboard.tabs.messages' as any) || 'Message'}</h4>
                                                             <Textarea
-                                                                placeholder="Tell the owner why you're interested ..."
+                                                                placeholder={t('profile.aboutMePlaceholder')}
                                                                 value={applicationMessage}
                                                                 onChange={(e) => setApplicationMessage(e.target.value)}
                                                                 className="min-h-[120px] resize-none"
@@ -326,7 +328,7 @@ export default function PropertyDetailPage() {
                                                             className="w-full"
                                                         >
                                                             {isApplying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                                                            Submit Application
+                                                            {t('property.submitApplication')}
                                                         </Button>
                                                     </DialogFooter>
                                                 </DialogContent>
@@ -347,7 +349,7 @@ export default function PropertyDetailPage() {
                                                 ) : (
                                                     <CheckCircle2 className="h-5 w-5 mr-2" />
                                                 )}
-                                                Pay and Secure Listing
+                                                {t('property.payAndSecure')}
                                             </Button>
                                         )}
                                 </div>
@@ -361,9 +363,15 @@ export default function PropertyDetailPage() {
                                         </Avatar>
                                         <div>
                                             <p className="text-foreground font-bold">{ownerName}</p>
-                                            <p className="text-sm text-muted-foreground">{property.owner?.role || 'Property Owner'}</p>
+                                            <p className="text-sm text-muted-foreground">{property.owner?.role === 'AGENT' ? t('common.agent') : t('common.owner')}</p>
                                         </div>
                                     </div>
+
+                                    {property.owner?.aboutMe && (
+                                        <p className="text-xs text-muted-foreground italic mb-4 line-clamp-3 leading-relaxed">
+                                            "{property.owner.aboutMe}"
+                                        </p>
+                                    )}
                                     <Button
                                         disabled={!property.owner?.id}
                                         variant="outline"
@@ -379,7 +387,7 @@ export default function PropertyDetailPage() {
                                         }}
                                     >
                                         <User className="h-4 w-4 mr-2" />
-                                        {property.owner?.role === 'AGENT' ? 'See Agent Profile' : 'See Owner Profile'}
+                                        {property.owner?.role === 'AGENT' ? t('property.seeAgentProfile') : t('property.seeOwnerProfile')}
                                     </Button>
                                 </div>
                             </CardContent>
@@ -436,29 +444,29 @@ export default function PropertyDetailPage() {
                                         <>
                                             <div className="flex items-center space-x-2">
                                                 <Bed className="h-5 w-5 text-primary" />
-                                                <span className="text-foreground font-medium">{property.bedrooms} Bedrooms</span>
+                                                <span className="text-foreground font-medium">{property.bedrooms} {t('property.bedrooms')}</span>
                                             </div>
                                             <div className="flex items-center space-x-2">
                                                 <Bath className="h-5 w-5 text-primary" />
-                                                <span className="text-foreground font-medium">{property.bathrooms} Bathrooms</span>
+                                                <span className="text-foreground font-medium">{property.bathrooms} {t('property.bathrooms')}</span>
                                             </div>
                                             <div className="flex items-center space-x-2">
                                                 <Square className="h-5 w-5 text-primary" />
-                                                <span className="text-foreground font-medium">{property.area} sq ft</span>
+                                                <span className="text-foreground font-medium">{property.area} {t('property.sqft')}</span>
                                             </div>
                                         </>
                                     ) : (
                                         <>
                                             <div className="flex items-center space-x-2">
-                                                <span className="font-bold text-primary">Brand:</span>
+                                                <span className="font-bold text-primary">{t('property.brand')}:</span>
                                                 <span className="text-foreground font-medium">{property.brand}</span>
                                             </div>
                                             <div className="flex items-center space-x-2">
-                                                <span className="font-bold text-primary">Year:</span>
+                                                <span className="font-bold text-primary">{t('property.year')}:</span>
                                                 <span className="text-foreground font-medium">{property.year}</span>
                                             </div>
                                             <div className="flex items-center space-x-2">
-                                                <span className="font-bold text-primary">Trans:</span>
+                                                <span className="font-bold text-primary">{t('property.transmission')}:</span>
                                                 <span className="text-foreground font-medium">{property.transmission}</span>
                                             </div>
                                         </>
@@ -466,7 +474,7 @@ export default function PropertyDetailPage() {
                                 </div>
 
                                 <div className="mt-6">
-                                    <h3 className="mb-3 text-lg font-bold text-foreground">Description</h3>
+                                    <h3 className="mb-3 text-lg font-bold text-foreground">{t('property.description')}</h3>
                                     <p className="text-muted-foreground leading-relaxed">
                                         {property.description}
                                     </p>
@@ -478,7 +486,7 @@ export default function PropertyDetailPage() {
                         {property.amenities && property.amenities.length > 0 && (
                             <Card className="border-border mb-6">
                                 <CardContent className="p-6">
-                                    <h3 className="mb-4 text-lg font-bold text-foreground">Amenities</h3>
+                                    <h3 className="mb-4 text-lg font-bold text-foreground">{t('property.amenities')}</h3>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                         {property.amenities.map((amenity) => (
                                             <div key={amenity} className="flex items-center space-x-2">
@@ -494,7 +502,7 @@ export default function PropertyDetailPage() {
                         {/* Reviews */}
                         <Card className="border-border">
                             <CardContent className="p-6">
-                                <h3 className="mb-6 text-lg font-bold text-foreground">Reviews</h3>
+                                <h3 className="mb-6 text-lg font-bold text-foreground">{t('property.reviews')}</h3>
 
                                 {/* Review Form - Only for customers with completed transactions */}
                                 {currentUser?.role === 'CUSTOMER' &&
@@ -521,7 +529,7 @@ export default function PropertyDetailPage() {
                                         ))
                                     ) : (
                                         <p className="text-muted-foreground text-center py-8">
-                                            No reviews yet. Be the first to review!
+                                            {t('property.noReviews')}
                                         </p>
                                     )}
                                 </div>
@@ -539,7 +547,7 @@ export default function PropertyDetailPage() {
 
                         <Card className="border-border">
                             <CardContent className="p-6">
-                                <h3 className="mb-4 text-lg font-bold text-foreground">Available For</h3>
+                                <h3 className="mb-4 text-lg font-bold text-foreground">{t('ownerDashboard.tabs.overview' as any) || 'Available For'}</h3>
                                 <div className="space-y-2">
                                     {listingTypes.map((type) => (
                                         <Badge
@@ -559,7 +567,7 @@ export default function PropertyDetailPage() {
                 {/* Similar Properties - Hidden for restricted roles */}
                 {!(currentUser && ['ADMIN', 'OWNER', 'AGENT'].includes(currentUser.role)) && (
                     <div className="mt-16">
-                        <AIRecommendations type={property.assetType === 'HOME' ? 'property' : 'car'} title="Similar Listings" />
+                        <AIRecommendations type={property.assetType === 'HOME' ? 'property' : 'car'} title={t('property.similarProperties' as any) || 'Similar Listings'} />
                     </div>
                 )}
             </div>
@@ -570,15 +578,15 @@ export default function PropertyDetailPage() {
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold flex items-center gap-2">
                             <CheckCircle className="h-5 w-5 text-primary" />
-                            Confirm Payment Email
+                            {t('property.confirmPaymentEmail')}
                         </DialogTitle>
                         <DialogDescription className="text-muted-foreground">
-                            Chapa requires a valid email to process your payment for "{property?.title}". Please confirm your email address.
+                            {t('property.chapaEmailWarning').replace('{title}', property?.title || '')}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                            <Label htmlFor="payment-email" className="text-sm font-medium">Email Address</Label>
+                            <Label htmlFor="payment-email" className="text-sm font-medium">{t('customerDashboard.emailAddress')}</Label>
                             <Input
                                 id="payment-email"
                                 type="email"
@@ -595,7 +603,7 @@ export default function PropertyDetailPage() {
                             onClick={() => setIsEmailDialogOpen(false)}
                             className="rounded-xl hover:bg-muted font-medium"
                         >
-                            Cancel
+                            {t('common.cancel')}
                         </Button>
                         <Button
                             disabled={!emailToConfirm.includes('@') || isPaymentLoading}
@@ -607,7 +615,7 @@ export default function PropertyDetailPage() {
                             ) : (
                                 <DollarSign className="h-4 w-4 mr-2" />
                             )}
-                            Initialize Payment
+                            {t('property.initializePayment')}
                         </Button>
                     </div>
                 </DialogContent>
