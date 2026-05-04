@@ -229,7 +229,7 @@ export default function AdminDashboardPage() {
 
 
     // Filtering Logic
-    const filteredTransactions = transactions.filter(t => {
+    const filteredTransactions = (transactions as any[]).filter((t: any) => {
         const matchesStatus = statusFilter === 'all' || t.status.toLowerCase() === statusFilter.toLowerCase();
 
         let matchesDate = true;
@@ -253,7 +253,7 @@ export default function AdminDashboardPage() {
     });
 
     // Lease Filtering Logic
-    const filteredLeases = leases.filter(l => {
+    const filteredLeases = (leases as any[]).filter((l: any) => {
         const matchesStatus = leaseStatusFilter === 'all' || l.status.toLowerCase() === leaseStatusFilter.toLowerCase();
 
         let matchesTerm = true;
@@ -282,7 +282,7 @@ export default function AdminDashboardPage() {
     const vehicles = allAssets.filter(p => p.assetType === 'CAR');
 
     // Listing Filtering Logic for Properties Tab
-    const filteredAllAssets = allAssets.filter(p => {
+    const filteredAllAssets = (allAssets as any[]).filter((p: any) => {
         const matchesSearch = propSearch === '' ||
             p.title.toLowerCase().includes(propSearch.toLowerCase()) ||
             p.location?.city?.toLowerCase().includes(propSearch.toLowerCase()) ||
@@ -338,14 +338,14 @@ export default function AdminDashboardPage() {
 
 
     // Real Data for Charts
-    const transactionData = transactions.slice(-6).map(t => ({
+    const transactionData = (transactions as any[]).slice(-6).map((t: any) => ({
         name: new Date((t as any).date || (t as any).createdAt).toLocaleDateString(undefined, { month: 'short' }),
         Amount: t.amount
     }));
 
     const getPropertyDistribution = () => {
         const typeCounts: Record<string, number> = {};
-        properties.forEach(p => {
+        properties.forEach((p: any) => {
             let type = p.propertyType || (p as any).category || 'Other';
             type = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
             typeCounts[type] = (typeCounts[type] || 0) + 1;
@@ -358,7 +358,7 @@ export default function AdminDashboardPage() {
 
     const getCarDistribution = () => {
         const brandCounts: Record<string, number> = {};
-        vehicles.forEach(v => {
+        vehicles.forEach((v: any) => {
             let brand = v.brand || 'Other';
             // capitalize properly
             brand = brand.charAt(0).toUpperCase() + brand.slice(1).toLowerCase();
@@ -374,16 +374,16 @@ export default function AdminDashboardPage() {
     const carDistributionData = getCarDistribution();
 
     const recentUsers = [...users]
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 5)
-        .map(u => ({
+        .map((u: any) => ({
             name: u.name,
             email: u.email,
             role: u.role,
             avatar: u.profileImage || ''
         }));
 
-    const pendingProperties = allAssets.filter(p => !p.isVerified && !p.rejectionReason).map(p => ({
+    const pendingProperties = (allAssets as any[]).filter((p: any) => !p.isVerified && !p.rejectionReason).map((p: any) => ({
         id: p.id,
         title: p.title,
         owner: (p as any).owner?.name || p.ownerName || 'Unknown Owner',
@@ -394,7 +394,7 @@ export default function AdminDashboardPage() {
         documentUrl: '#'
     }));
 
-    const pendingAgents = users.filter(u => u.role === 'AGENT' && !u.verified && !u.rejectionReason).map(u => ({
+    const pendingAgents = (users as any[]).filter((u: any) => u.role === 'AGENT' && !u.verified && !u.rejectionReason).map((u: any) => ({
         id: u.id,
         name: u.name,
         email: u.email,
@@ -431,7 +431,7 @@ export default function AdminDashboardPage() {
                 const createdAt = new Date(l.createdAt);
                 return createdAt >= dayStart && createdAt <= dayEnd;
             }).length,
-            buy: transactions.filter(t => {
+            buy: (transactions as any[]).filter((t: any) => {
                 const createdAt = new Date(t.date || t.createdAt);
                 return t.status.toLowerCase() === 'completed' && createdAt >= dayStart && createdAt <= dayEnd;
             }).length
@@ -449,17 +449,17 @@ export default function AdminDashboardPage() {
 
         return {
             name: monthName,
-            Customers: users.filter(u => u.role === 'CUSTOMER' && new Date(u.createdAt) >= monthStart && new Date(u.createdAt) <= monthEnd).length,
-            Owners: users.filter(u => u.role === 'OWNER' && new Date(u.createdAt) >= monthStart && new Date(u.createdAt) <= monthEnd).length,
-            Agents: users.filter(u => u.role === 'AGENT' && new Date(u.createdAt) >= monthStart && new Date(u.createdAt) <= monthEnd).length
+            Customers: (users as any[]).filter((u: any) => u.role === 'CUSTOMER' && new Date(u.createdAt) >= monthStart && new Date(u.createdAt) <= monthEnd).length,
+            Owners: (users as any[]).filter((u: any) => u.role === 'OWNER' && new Date(u.createdAt) >= monthStart && new Date(u.createdAt) <= monthEnd).length,
+            Agents: (users as any[]).filter((u: any) => u.role === 'AGENT' && new Date(u.createdAt) >= monthStart && new Date(u.createdAt) <= monthEnd).length
         };
     });
 
     // Calculate Verification History (Merge accurate logs with inferred fallback)
     const verificationHistory = [
-        ...loggedHistory
-            .filter(log => log.status === 'Verified' || log.status === 'Rejected')
-            .map(log => ({
+        ...(loggedHistory as any[])
+            .filter((log: any) => log.status === 'Verified' || log.status === 'Rejected')
+            .map((log: any) => ({
                 id: log.entityId,
                 uniqueKey: log.id,
             title: log.entityName,
@@ -472,7 +472,7 @@ export default function AdminDashboardPage() {
             admin: log.admin ? log.admin.name : 'User Submission'
         })),
         // Fallback inferred data for records before the logging system was implemented
-        ...allAssets.filter(p => p.isVerified && !loggedHistory.find(l => l.entityId === p.id)).map(p => ({
+        ...(allAssets as any[]).filter((p: any) => p.isVerified && !loggedHistory.find((l: any) => l.entityId === p.id)).map((p: any) => ({
             id: p.id,
             uniqueKey: p.id,
             title: p.title,
