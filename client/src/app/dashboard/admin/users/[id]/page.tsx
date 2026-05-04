@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from 'react';
+import {  useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { UserProfileDetail } from '@/components/profile/UserProfileDetail';
 import { createApi, API_ROUTES } from '@/lib/api';
