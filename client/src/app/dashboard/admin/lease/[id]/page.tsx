@@ -79,15 +79,15 @@ export default function AdminLeaseDetailsPage() {
                         <div className="flex items-center gap-2">
                             <Badge className={cn(
                                 "border-none px-3 py-1 text-[10px] font-bold uppercase tracking-widest hover:bg-transparent",
-                                lease.status === 'ACTIVE' ? "bg-green-100 text-green-700" :
-                                    lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" :
-                                        lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700 font-black ring-1 ring-orange-200" :
-                                        lease.status === 'COMPLETED' ? "bg-blue-100 text-blue-700" : 
+                                (lease.status as any) === 'ACTIVE' || (lease.status as any) === 'Active' ? "bg-green-100 text-green-700" :
+                                    (lease.status as any) === 'PENDING' || (lease.status as any) === 'Pending' ? "bg-amber-100 text-amber-700" :
+                                        (lease.status as any) === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700 font-black ring-1 ring-orange-200" :
+                                        (lease.status as any) === 'COMPLETED' ? "bg-blue-100 text-blue-700" : 
                                         "bg-red-100 text-red-700"
                             )}>
-                                {lease.status === 'ACTIVE' ? 'Active Agreement' : 
-                                 lease.status === 'PENDING' ? 'Agreement Pending' : 
-                                 lease.status === 'CANCELLATION_PENDING' ? 'Cancellation Pending...' :
+                                {(lease.status as any) === 'ACTIVE' || (lease.status as any) === 'Active' ? 'Active Agreement' : 
+                                 (lease.status as any) === 'PENDING' || (lease.status as any) === 'Pending' ? 'Agreement Pending' : 
+                                 (lease.status as any) === 'CANCELLATION_PENDING' ? 'Cancellation Pending...' :
                                  lease.status}
                             </Badge>
                         </div>
@@ -143,10 +143,10 @@ export default function AdminLeaseDetailsPage() {
                                         <div className="flex items-center">
                                             <Badge className={cn(
                                                 "border-none px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest",
-                                                lease.status === 'ACTIVE' ? "bg-green-100 text-green-700 hover:bg-green-100" :
-                                                    lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" :
-                                                        lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700" :
-                                                            lease.status === 'COMPLETED' ? "bg-blue-100 text-blue-700" :
+                                                (lease.status as any) === 'ACTIVE' || (lease.status as any) === 'Active' ? "bg-green-100 text-green-700 hover:bg-green-100" :
+                                                    (lease.status as any) === 'PENDING' || (lease.status as any) === 'Pending' ? "bg-amber-100 text-amber-700" :
+                                                        (lease.status as any) === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700" :
+                                                            (lease.status as any) === 'COMPLETED' ? "bg-blue-100 text-blue-700" :
                                                                 "bg-red-100 text-red-700"
                                             )}>
                                                 {lease.status}
