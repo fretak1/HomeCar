@@ -27,7 +27,7 @@ export default function AdminLeaseDetailsPage() {
     const params = useParams();
     const id = params?.id as string;
 
-    const { leases, isLoading } = useLeaseStore();
+    const { leases } = useLeaseStore();
     const { properties } = usePropertyStore();
     const { transactions, fetchTransactions } = useTransactionStore();
 
