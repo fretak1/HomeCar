@@ -38,7 +38,7 @@ export default function AdminLeaseDetailsPage() {
     }, [fetchTransactions, transactions.length]);
 
     const lease = leases.find(l => l.id === id);
-    const property = lease ? (lease.property || properties.find(p => p.id === lease.propertyId)) : null;
+    const property = (lease ? (lease.property || properties.find(p => p.id === lease.propertyId)) : null) as any;
 
     const tenantName = lease ? (lease as any).customer?.name || "Unknown Tenant" : "Unknown Tenant";
     const ownerName = lease ? (lease as any).owner?.name || "Unknown Owner" : "Unknown Owner";
