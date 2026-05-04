@@ -37,7 +37,7 @@ export default function AdminLeaseDetailsPage() {
         }
     }, [fetchTransactions, transactions.length]);
 
-    const lease = leases.find(l => l.id === id);
+    const lease = leases.find(l => l.id === id) as any;
     const property = (lease ? (lease.property || properties.find(p => p.id === lease.propertyId)) : null) as any;
 
     const tenantName = lease ? (lease as any).customer?.name || "Unknown Tenant" : "Unknown Tenant";
@@ -248,7 +248,7 @@ export default function AdminLeaseDetailsPage() {
                                                                         <p className="text-sm font-bold text-foreground">{format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd, yyyy')}</p>
                                                                     </td>
                                                                     <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
-                                                                        {isPaid ? format(new Date(paymentRecord.updatedAt), 'MMM dd, yyyy') : '—'}
+                                                                        {isPaid ? format(new Date((paymentRecord as any).updatedAt), 'MMM dd, yyyy') : '—'}
                                                                     </td>
                                                                     <td className="px-6 py-4 text-sm font-black text-foreground">ETB {(lease.recurringAmount || lease.totalPrice).toLocaleString()}</td>
                                                                     <td className="px-6 py-4">
