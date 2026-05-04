@@ -29,9 +29,9 @@ export default function UserProfilePage() {
                     ...userData,
                     phone: userData.phoneNumber || '+251 911 234 567',
                     location: userData.location || 'Addis Ababa',
-                    bio: userData.bio || `${userData.role} active on HomeCar since ${new Date(userData.createdAt).getFullYear()}.`,
+                    bio: (userData as any).bio || `${userData.role} active on HomeCar since ${new Date((userData as any).createdAt).getFullYear()}.`,
                     status: userData.status || 'Active',
-                    joinDate: userData.createdAt,
+                    joinDate: (userData as any).createdAt,
                     stats: {
                         listings: 0,
                         rents: 0,

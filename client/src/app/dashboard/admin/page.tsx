@@ -189,13 +189,13 @@ function AdminDashboardSkeleton() {
 
 export default function AdminDashboardPage() {
     const { t } = useTranslation();
-    const { total: totalProps, properties: allAssets, fetchProperties, isLoading: propsLoading } = usePropertyStore();
-    const { fetchApplications } = useApplicationStore();
-    const { fetchRequests: fetchMaintenanceRequests } = useMaintenanceStore();
-    const { leases, fetchLeases, isLoading: leasesLoading } = useLeaseStore();
-    const { users, fetchUsers, isLoading: usersLoading } = useUserStore();
-    const { transactions, fetchTransactions, isLoading: txLoading } = useTransactionStore();
-    const { verificationHistory: loggedHistory, fetchVerificationHistory, isLoading: adminLoading } = useAdminStore();
+    const { total: totalProps, properties: allAssets, fetchProperties, isLoading: propsLoading } = usePropertyStore() as any;
+    const { fetchApplications } = useApplicationStore() as any;
+    const { fetchRequests: fetchMaintenanceRequests } = useMaintenanceStore() as any;
+    const { leases, fetchLeases, isLoading: leasesLoading } = useLeaseStore() as any;
+    const { users, fetchUsers, isLoading: usersLoading } = useUserStore() as any;
+    const { transactions, fetchTransactions, isLoading: txLoading } = useTransactionStore() as any;
+    const { verificationHistory: loggedHistory, fetchVerificationHistory, isLoading: adminLoading } = useAdminStore() as any;
 
     const isLoading = propsLoading || usersLoading || leasesLoading || txLoading || adminLoading;
 
@@ -339,7 +339,7 @@ export default function AdminDashboardPage() {
 
     // Real Data for Charts
     const transactionData = transactions.slice(-6).map(t => ({
-        name: new Date(t.date || t.createdAt).toLocaleDateString(undefined, { month: 'short' }),
+        name: new Date((t as any).date || (t as any).createdAt).toLocaleDateString(undefined, { month: 'short' }),
         Amount: t.amount
     }));
 
