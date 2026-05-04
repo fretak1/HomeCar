@@ -234,7 +234,7 @@ export default function AdminDashboardPage() {
 
         let matchesDate = true;
         if (dateFilter !== 'all') {
-            const txDate = new Date(t.date || t.createdAt);
+            const txDate = new Date((t as any).date || (t as any).createdAt);
             const today = new Date();
             const currentYear = today.getFullYear();
             const txYear = txDate.getFullYear();
