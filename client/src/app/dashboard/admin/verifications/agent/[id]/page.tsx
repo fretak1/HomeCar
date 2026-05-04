@@ -4,7 +4,6 @@ import { use } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-    ChevronLeft,
     Check,
     X,
     Calendar,
@@ -14,7 +13,6 @@ import {
     Shield,
     Loader2,
     Download,
-    Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -107,9 +105,9 @@ export default function AgentVerificationPage({ params }: { params: Promise<{ id
         if (id || logId) fetchAgentOrHistory();
     }, [id, logId, router]);
 
-    const licenseDoc = agent?.documents
-        ?.filter(d => d.type === 'AGENT_LICENSE')
-        ?.sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())[0];
+    const licenseDoc = (agent?.documents || [])
+        ?.filter((d: any) => d.type === 'AGENT_LICENSE')
+        ?.sort((a: any, b: any) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime())[0];
 
     useEffect(() => {
         // Clear stale document state when ID changes
@@ -424,7 +422,7 @@ export default function AgentVerificationPage({ params }: { params: Promise<{ id
                                                                             </div>
                                                                         }
                                                                     >
-                                                                        {Array.from(new Array(numPages), (el, index) => (
+                                                                        {Array.from(new Array(numPages), (_: any, index: number) => (
                                                                             <div key={`page_${index + 1}`} className="mb-6 bg-white shadow-2xl rounded-sm overflow-hidden border border-slate-200">
                                                                                 <Page 
                                                                                     pageNumber={index + 1} 

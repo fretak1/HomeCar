@@ -4,10 +4,8 @@ import { use } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-    ChevronLeft,
     Check,
     X,
-    MapPin,
     Calendar,
     Building2,
     FileText,
@@ -17,8 +15,7 @@ import {
     Download,
     Eye,
     Shield,
-    Mail,
-    User
+
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -31,7 +28,6 @@ import { API_BASE_URL, createApi } from '@/lib/api';
 
 const api = createApi();
 import { useEffect, useState } from 'react';
-import { cn } from '@/lib/utils';
 import { Document, Page, pdfjs } from 'react-pdf';
 
 // Configure PDF.js worker using a reliable CDN
@@ -297,7 +293,7 @@ export default function PropertyVerificationPage({ params }: { params: Promise<{
                                                 <div className="pt-2">
                                                     <span className="text-[10px] uppercase font-bold text-muted-foreground block mb-2 px-1">Amenities</span>
                                                     <div className="flex flex-wrap gap-1.5">
-                                                        {property.amenities.map((item, idx) => (
+                                                        {(property.amenities as any[]).map((item: any, idx: number) => (
                                                             <Badge key={idx} variant="secondary" className="px-2 py-0 h-5 text-[9px] font-medium bg-slate-100 hover:bg-slate-100 text-slate-600 border-none">
                                                                 {item}
                                                             </Badge>
@@ -453,7 +449,7 @@ export default function PropertyVerificationPage({ params }: { params: Promise<{
                             <CardContent className="p-6">
                                 {property.images && property.images.length > 0 ? (
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                        {property.images.map((img) => (
+                                        {(property.images as any[]).map((img: any) => (
                                             <div key={img.id} className="aspect-square rounded-xl overflow-hidden border bg-slate-50 group relative">
                                                 <img
                                                     src={img.url.startsWith('http') ? img.url : `http://localhost:5000/${img.url}`}
@@ -574,7 +570,7 @@ export default function PropertyVerificationPage({ params }: { params: Promise<{
                                                                             </div>
                                                                         }
                                                                     >
-                                                                        {Array.from(new Array(numPages), (el, index) => (
+                                                                        {Array.from(new Array(numPages), (_: any, index: number) => (
                                                                             <div key={`page_${index + 1}`} className="mb-6 bg-white shadow-2xl rounded-sm overflow-hidden border border-slate-200">
                                                                                 <Page 
                                                                                     pageNumber={index + 1} 
@@ -600,15 +596,12 @@ export default function PropertyVerificationPage({ params }: { params: Promise<{
                                                                             title="Full Screen Review"
                                                                             size="sm" 
                                                                             className="h-8 w-8 p-0 hover:bg-slate-100" 
-                                                                            onClick={async () => {
-                                                                                const docId = property?.ownershipDocuments?.[0]?.id;
-                                                                                if (!docId) return;
-                                                                                try {
-                                                                                    const url = await getSignedUrl(docId);
-                                                                                    window.open(url, '_blank');
-                                                                                } catch (e) {
-                                                                                    toast.error("Security: Failed to generate temporary full-screen link.");
-                                                                                }
+                                                                            onClick={() => {
+                                                                                const docUrl = (property?.ownershipDocuments?.[0]?.url || '').trim();
+                                                                                if (!docUrl) return;
+                                                                                const isAbsolute = docUrl.startsWith('http');
+                                                                                const fullUrl = isAbsolute ? docUrl : `${API_BASE_URL.replace('/api', '')}/${docUrl}`;
+                                                                                window.open(fullUrl, '_blank');
                                                                             }}
                                                                         >
                                                                             <FileText className="h-4 w-4 text-slate-600" />
