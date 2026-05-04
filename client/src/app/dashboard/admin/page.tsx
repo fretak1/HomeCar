@@ -278,8 +278,8 @@ export default function AdminDashboardPage() {
         { value: 'verifications', label: t('adminDashboard.tabs.verifications') },
     ];
 
-    const properties = allAssets.filter(p => p.assetType === 'HOME');
-    const vehicles = allAssets.filter(p => p.assetType === 'CAR');
+    const properties = (allAssets as any[]).filter((p: any) => p.assetType === 'HOME');
+    const vehicles = (allAssets as any[]).filter((p: any) => p.assetType === 'CAR');
 
     // Listing Filtering Logic for Properties Tab
     const filteredAllAssets = (allAssets as any[]).filter((p: any) => {
@@ -333,7 +333,7 @@ export default function AdminDashboardPage() {
         { label: t('adminDashboard.stats.totalUsers'), value: users.length.toString(), trend: userTrend.trend, isUp: userTrend.isUp, icon: Users, color: 'bg-blue-50 text-blue-600' },
         { label: t('adminDashboard.stats.totalAssets'), value: totalProps.toString(), trend: propertyTrend.trend, isUp: propertyTrend.isUp, icon: Building2, color: 'bg-indigo-50 text-indigo-600' },
         { label: t('adminDashboard.stats.totalTransactions'), value: transactions.length.toString(), trend: vehicleTrend.trend, isUp: vehicleTrend.isUp, icon: Car, color: 'bg-teal-50 text-teal-600' },
-        { label: t('adminDashboard.stats.monthlyRevenue'), value: `ETB ${(transactions.reduce((sum, t) => sum + t.amount, 0) / 1000).toFixed(1)}K`, trend: transactionTrend.trend, isUp: transactionTrend.isUp, icon: CreditCard, color: 'bg-green-50 text-green-600' },
+        { label: t('adminDashboard.stats.monthlyRevenue'), value: `ETB ${((transactions as any[]).reduce((sum: number, t: any) => sum + t.amount, 0) / 1000).toFixed(1)}K`, trend: transactionTrend.trend, isUp: transactionTrend.isUp, icon: CreditCard, color: 'bg-green-50 text-green-600' },
     ];
 
 
@@ -415,19 +415,19 @@ export default function AdminDashboardPage() {
 
         return {
             name: dayName,
-            allListings: allAssets.filter(p => {
+            allListings: (allAssets as any[]).filter((p: any) => {
                 const createdAt = new Date(p.createdAt);
                 return createdAt >= dayStart && createdAt <= dayEnd;
             }).length,
-            house: allAssets.filter(p => {
+            house: (allAssets as any[]).filter((p: any) => {
                 const createdAt = new Date(p.createdAt);
                 return p.assetType === 'HOME' && createdAt >= dayStart && createdAt <= dayEnd;
             }).length,
-            car: allAssets.filter(p => {
+            car: (allAssets as any[]).filter((p: any) => {
                 const createdAt = new Date(p.createdAt);
                 return p.assetType === 'CAR' && createdAt >= dayStart && createdAt <= dayEnd;
             }).length,
-            rent: leases.filter(l => {
+            rent: (leases as any[]).filter((l: any) => {
                 const createdAt = new Date(l.createdAt);
                 return createdAt >= dayStart && createdAt <= dayEnd;
             }).length,
@@ -483,7 +483,7 @@ export default function AdminDashboardPage() {
             status: 'Verified',
             admin: 'System'
         })),
-        ...allAssets.filter(p => !p.isVerified && p.rejectionReason && !loggedHistory.find(l => l.entityId === p.id)).map(p => ({
+        ...(allAssets as any[]).filter((p: any) => !p.isVerified && p.rejectionReason && !(loggedHistory as any[]).find((l: any) => l.entityId === p.id)).map((p: any) => ({
             id: p.id,
             uniqueKey: `rejected-${p.id}`,
             title: p.title,
@@ -494,7 +494,7 @@ export default function AdminDashboardPage() {
             status: 'Rejected',
             admin: 'System'
         })),
-        ...users.filter(u => u.verified && !loggedHistory.find(l => l.entityId === u.id)).map(u => ({
+        ...(users as any[]).filter((u: any) => u.verified && !(loggedHistory as any[]).find((l: any) => l.entityId === u.id)).map((u: any) => ({
             id: u.id,
             uniqueKey: `verified-user-${u.id}`,
             name: u.name,
@@ -506,7 +506,7 @@ export default function AdminDashboardPage() {
             status: 'Verified',
             admin: 'System'
         })),
-        ...users.filter(u => u.role === 'AGENT' && !u.verified && u.rejectionReason && !loggedHistory.find(l => l.entityId === u.id)).map(u => ({
+        ...(users as any[]).filter((u: any) => u.role === 'AGENT' && !u.verified && u.rejectionReason && !(loggedHistory as any[]).find((l: any) => l.entityId === u.id)).map((u: any) => ({
             id: u.id,
             uniqueKey: `rejected-user-${u.id}`,
             name: u.name,
@@ -518,7 +518,7 @@ export default function AdminDashboardPage() {
             status: 'Rejected',
             admin: 'System'
         }))
-    ].sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
+    ].sort((a: any, b: any) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
 
     if (isLoading) return <AdminDashboardSkeleton />;
 
@@ -779,7 +779,7 @@ export default function AdminDashboardPage() {
                                                         <Avatar className="h-10 w-10 border border-border/50">
                                                             <AvatarImage src={user.avatar} />
                                                             <AvatarFallback className="bg-[#005a41]/10 text-[#005a41] font-bold">
-                                                                {user.name.split(' ').map(n => n[0]).join('')}
+                                                                {(user.name as string).split(' ').map((n: string) => n[0]).join('')}
                                                             </AvatarFallback>
                                                         </Avatar>
                                                         <div>
@@ -876,8 +876,8 @@ export default function AdminDashboardPage() {
                                         <tbody>
                                             {isLoading
                                                 ? Array.from({ length: 8 }).map((_, i) => <TableRowSkeleton key={i} cols={4} />)
-                                                : filteredAllAssets.length > 0 ? (
-                                                filteredAllAssets.map((property) => (
+                                                : (filteredAllAssets as any[]).length > 0 ? (
+                                                (filteredAllAssets as any[]).map((property: any) => (
                                                     <tr key={property.id} className="border-b last:border-0 hover:bg-muted/10">
                                                         <td className="p-4">
                                                             <div className="font-bold">{property.title}</div>
@@ -886,7 +886,7 @@ export default function AdminDashboardPage() {
                                                         <td className="p-4">
                                                             <div className="flex items-center gap-2">
                                                                 <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
-                                                                    {(property.owner?.name || property.ownerName || 'Unknown').split(' ').map(n => n[0]).join('') || '??'}
+                                                                    {((property.owner?.name || property.ownerName || 'Unknown') as string).split(' ').map((n: string) => n[0]).join('') || '??'}
                                                                 </div>
                                                                 <span>{property.owner?.name || property.ownerName || 'Unknown'}</span>
                                                             </div>
@@ -934,7 +934,7 @@ export default function AdminDashboardPage() {
                                         </div>
                                         <div>
                                             <p className="text-[10px] text-[#005a41] font-black uppercase tracking-widest leading-none">{t('ownerDashboard.totalRevenue')}</p>
-                                            <p className="text-xl font-black text-foreground">ETB {transactions.reduce((acc, t) => t.status === 'COMPLETED' ? acc + t.amount : acc, 0).toLocaleString()}</p>
+                                            <p className="text-xl font-black text-foreground">ETB {((transactions as any[]).reduce((acc: number, t: any) => t.status === 'COMPLETED' ? acc + t.amount : acc, 0)).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 </Card>
@@ -1013,7 +1013,7 @@ export default function AdminDashboardPage() {
                                                         );
                                                     }
 
-                                                    return filteredTransactions.map((transaction) => (
+                                                    return (filteredTransactions as any[]).map((transaction: any) => (
                                                         <tr key={transaction.id} className="hover:bg-muted/5 transition-colors group">
                                                             <td className="px-6 py-5 whitespace-nowrap">
                                                                 <span className="text-xs font-mono font-bold text-muted-foreground group-hover:text-foreground transition-colors">
@@ -1040,7 +1040,7 @@ export default function AdminDashboardPage() {
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-5 whitespace-nowrap text-sm font-bold text-muted-foreground">
-                                                                {transaction.date || new Date(transaction.createdAt).toLocaleDateString()}
+                                                                {(transaction as any).date || new Date((transaction as any).createdAt).toLocaleDateString()}
                                                             </td>
                                                             <td className="px-6 py-5 whitespace-nowrap">
                                                                 <span className="text-sm font-black text-foreground">
@@ -1184,9 +1184,9 @@ export default function AdminDashboardPage() {
                                         </h4>
                                     </div>
 
-                                    {pendingProperties.length > 0 ? (
-                                        <div className="space-y-4">
-                                            {pendingProperties.map(p => (
+                                            {pendingProperties.length > 0 ? (
+                                                <div className="space-y-4">
+                                                    {pendingProperties.map((p: any) => (
                                                 <Card key={p.id} className="border border-border/60 shadow-sm hover:shadow-md transition-all">
                                                     <CardContent className="p-4">
                                                         <div className="flex justify-between items-start mb-2">
@@ -1231,14 +1231,14 @@ export default function AdminDashboardPage() {
                                         </h4>
                                     </div>
 
-                                    {pendingAgents.length > 0 ? (
-                                        <div className="space-y-4">
-                                            {pendingAgents.map(a => (
+                                            {pendingAgents.length > 0 ? (
+                                                <div className="space-y-4">
+                                                    {pendingAgents.map((a: any) => (
                                                 <Card key={a.id} className="border border-border/60 shadow-sm hover:shadow-md transition-all">
                                                     <CardContent className="p-4">
                                                         <div className="flex items-start gap-3 mb-3">
                                                             <div className="h-8 w-8 rounded-full bg-[#005a41]/10 flex items-center justify-center text-[#005a41] font-bold text-xs">
-                                                                {a.name.split(' ').map(n => n[0]).join('')}
+                                                                {(a.name as string).split(' ').map((n: string) => n[0]).join('')}
                                                             </div>
                                                             <div>
                                                                 <h5 className="font-bold text-sm">{a.name}</h5>
@@ -1335,8 +1335,8 @@ export default function AdminDashboardPage() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {verificationHistory
-                                                .filter(item => {
+                                            {(verificationHistory as any[])
+                                                .filter((item: any) => {
                                                     const matchesStatus = verificationHistoryFilter === 'all' || item.status === verificationHistoryFilter;
                                                     const matchesCategory = verificationCategoryFilter === 'all' || item.type === verificationCategoryFilter;
                                                     
@@ -1364,7 +1364,7 @@ export default function AdminDashboardPage() {
 
                                                     return matchesStatus && matchesCategory && matchesDate;
                                                 })
-                                                .map((item) => (
+                                                .map((item: any) => (
                                                     <tr key={item.uniqueKey} className="border-b last:border-0 hover:bg-muted/5 transition-colors">
                                                         <td className="p-4">
                                                             <div className="font-bold">{item.title || item.name}</div>
