@@ -11,7 +11,6 @@ import {
     Wrench,
     Calendar,
     CheckCircle,
-    AlertCircle,
     Clock,
     ClipboardList,
     ChevronUp,
@@ -68,17 +67,13 @@ import { useFavoriteStore } from '@/store/useFavoriteStore';
 import { useLeaseStore } from '@/store/useLeaseStore';
 import {
     StatCardsSkeleton,
-    PropertyGridSkeleton,
-    LeaseCardSkeleton,
-    MaintenanceCardSkeleton,
     ListItemSkeleton,
     TableRowSkeleton,
     DashboardRouteSkeleton,
 } from '@/components/ui/dashboard-skeletons';
-import { useNotificationStore } from '@/store/useNotificationStore';
 import { useTranslation } from '@/contexts/LanguageContext';
 
-import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth, addDays, isWithinInterval, isToday, isYesterday, isThisMonth, isThisYear } from 'date-fns';
+import { format, isBefore, isWithinInterval, addDays, differenceInDays, isToday, isYesterday, isThisMonth, isThisYear } from 'date-fns';
 
 
 export default function CustomerDashboardPage() {
@@ -120,8 +115,7 @@ export default function CustomerDashboardPage() {
     const { requests: rawRequests, updateRequestStatus, fetchRequests, addRequest, isLoading: isMaintenanceLoading } = useMaintenanceStore();
     const maintenanceRequests = rawRequests || [];
     const { transactions, fetchTransactions, isLoading: isTransactionLoading } = useTransactionStore();
-    const { connectSocket, socket } = useChatStore();
-    const { notifications } = useNotificationStore();
+    const { connectSocket } = useChatStore();
 
     const isLoading = isUserLoading || isAppLoading || isLeaseLoading || isMaintenanceLoading || isTransactionLoading || isFavoriteLoading;
     const showInitialDashboardSkeleton = isLoading && !hasCompletedInitialLoad;
@@ -1000,10 +994,6 @@ export default function CustomerDashboardPage() {
                                         <div className="text-center py-10 text-muted-foreground">{t('customerDashboard.loadingRequests')}</div>
                                     ) : maintenanceRequests.length > 0 ? (
                                         maintenanceRequests.map((request) => {
-                                            const handleSetComplete = (id: string) => {
-                                                console.log('Set complete', id);
-                                            };
-
                                             return (
                                                 <Card key={request.id} className="border-border hover:shadow-xl transition-all duration-300 overflow-hidden group">
                                                     <CardContent className="p-0">
@@ -1209,7 +1199,7 @@ export default function CustomerDashboardPage() {
                                                 </thead>
                                                 <tbody className="divide-y divide-border/50">
                                                     {isTransactionLoading && !hasCompletedInitialLoad ? (
-                                                        Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} columns={6} />)
+                                                        Array.from({ length: 5 }).map((_, i) => <TableRowSkeleton key={i} cols={6} />)
                                                     ) : (() => {
                                                         const filteredTransactions = transactions.filter(t => {
                                                             const tDate = new Date(t.createdAt);

@@ -114,34 +114,34 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
     }, [isLongTerm, paymentModel, setValue]);
 
     // For agents and owners, filter customers who have an ACCEPTED application with the logged-in user (manager)
-    const acceptedApplicantIds = applications
-        .filter(app => app.status.toLowerCase() === 'accepted')
-        .map(app => app.customerId);
+    const acceptedApplicantIds = (applications as any[])
+        .filter((app: any) => app.status?.toLowerCase() === 'accepted')
+        .map((app: any) => app.customerId);
 
-    const availableTenants = allUsers.filter(u => acceptedApplicantIds.includes(u.id));
+    const availableTenants = (allUsers as any[]).filter((u: any) => acceptedApplicantIds.includes(u.id));
 
     // Agent can select properties managed by them, filtered by selected owner
     const propertySource = allProperties;
 
 
     // Owners are users with the role 'OWNER' or users who own properties in the propertySource
-    const ownersFromProps = Array.from(new Set(propertySource.map(p => p.owner?.id || p.ownerName))).filter(Boolean);
-    const ownerList = allUsers
-        .filter(u => u.role === 'OWNER' || ownersFromProps.includes(u.id))
-        .map(u => ({ id: u.id, name: u.name }));
+    const ownersFromProps = Array.from(new Set((propertySource as any[]).map((p: any) => p.owner?.id || p.ownerName))).filter(Boolean);
+    const ownerList = (allUsers as any[])
+        .filter((u: any) => u.role === 'OWNER' || ownersFromProps.includes(u.id))
+        .map((u: any) => ({ id: u.id, name: u.name }));
 
-    const filteredOwnerList = ownerList.filter(o =>
-        o.name.toLowerCase().includes(ownerSearchQuery.toLowerCase())
+    const filteredOwnerList = (ownerList as any[]).filter((o: any) =>
+        o.name?.toLowerCase().includes(ownerSearchQuery.toLowerCase())
     );
 
     const filteredProperties = useMemo(() => {
         const source = Array.isArray(propertySource) ? propertySource : [];
-        const activeLeasePropertyIds = leases
-            .filter(l => l.status === 'ACTIVE')
-            .map(l => l.propertyId);
+        const activeLeasePropertyIds = (leases as any[])
+            .filter((l: any) => l.status === 'ACTIVE')
+            .map((l: any) => l.propertyId);
 
-        return source.filter(p =>
-            p.listingType.includes('RENT') &&
+        return source.filter((p: any) =>
+            p.listingType?.includes('RENT') &&
             !activeLeasePropertyIds.includes(p.id)
         );
     }, [propertySource, leases]);
@@ -149,7 +149,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
     useEffect(() => {
         if (!propertyId) return;
 
-        const property = propertySource.find(p => p.id === propertyId);
+        const property = (propertySource as any[]).find((p: any) => p.id === propertyId);
         if (property) {
             const price = property.price;
             setValue('recurringAmount', price.toString());
@@ -235,7 +235,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                                         <Input
                                                             placeholder={t('lease.searchOwner')}
                                                             className="h-14 pl-11 bg-muted/5 border-border/60 rounded-xl font-normal focus:bg-white transition-all"
-                                                            value={field.value && !ownerSearchQuery ? (ownerList.find(o => o.id === field.value)?.name || '') : ownerSearchQuery}
+                                                            value={field.value && !ownerSearchQuery ? ((ownerList as any[]).find((o: any) => o.id === field.value)?.name || '') : ownerSearchQuery}
                                                             onChange={(e) => {
                                                                 setOwnerSearchQuery(e.target.value);
                                                                 if (!ownerSearchOpen) setOwnerSearchOpen(true);
@@ -258,7 +258,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                                             <CommandEmpty className="py-6 text-sm">{t('lease.noOwnerFound')}</CommandEmpty>
                                                         ) : (
                                                             <CommandGroup heading={t('lease.results')}>
-                                                                {filteredOwnerList.map((o) => (
+                                                                {filteredOwnerList.map((o: any) => (
                                                                     <CommandItem
                                                                         value={`${o.name} ${o.id}`}
                                                                         key={o.id}
@@ -313,7 +313,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                         </FormControl>
                                         <SelectContent position="popper" side="bottom" sideOffset={4} className="rounded-xl max-h-56 z-[100]">
                                             {availableTenants.length > 0 ? (
-                                                availableTenants.map(c => (
+                                                availableTenants.map((c: any) => (
                                                     <SelectItem key={c.id} value={c.id}>{c.name} {c.email ? `(${c.email})` : ''}</SelectItem>
                                                 ))
                                             ) : (
@@ -353,7 +353,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                     </FormControl>
                                     <SelectContent position="popper" side="bottom" sideOffset={4} className="rounded-xl max-h-56 z-[110]">
                                         {filteredProperties.length > 0 ? (
-                                            filteredProperties.map(p => (
+                                            filteredProperties.map((p: any) => (
                                                 <SelectItem key={p.id} value={p.id}>
                                                     <div className="flex items-center space-x-3">
                                                         <div className="w-8 h-8 rounded overflow-hidden border border-border bg-muted flex-shrink-0">

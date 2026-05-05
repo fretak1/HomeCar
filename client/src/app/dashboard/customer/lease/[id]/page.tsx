@@ -4,12 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-    ChevronLeft,
+
     MapPin,
     DollarSign,
     FileText,
     ShieldCheck,
-    Download,
     MessageSquare,
     User,
     Clock,
@@ -35,9 +34,8 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
-import { format, differenceInMonths, isBefore, startOfMonth, endOfMonth, isSameMonth, addMonths, differenceInDays, addDays, isWithinInterval } from 'date-fns';
+import { format, differenceInDays, addDays,isBefore, isWithinInterval } from 'date-fns';
 
 import { LeaseDetailSkeleton } from '@/components/ui/dashboard-skeletons';
 
@@ -371,7 +369,7 @@ export default function LeaseDetailsPage() {
                                                                 <p className="text-[10px] text-muted-foreground">{lease.recurringAmount ? 'Fixed 30-Day Billing Cycle' : 'Full Lease Term'}</p>
                                                             </td>
                                                             <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
-                                                                {isPaid ? format(new Date(transaction.updatedAt), 'MMM dd, yyyy') : '—'}
+                                                                {isPaid ? format(new Date(transaction.createdAt), 'MMM dd, yyyy') : '—'}
                                                             </td>
                                                             <td className="px-6 py-4 text-sm font-black text-foreground">ETB {(lease.recurringAmount || lease.totalPrice).toLocaleString()}</td>
                                                             <td className="px-6 py-4">

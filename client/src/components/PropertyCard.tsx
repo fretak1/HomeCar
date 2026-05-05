@@ -62,10 +62,10 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
 
           {/* Top Left Corner (Listing Type: Rent / Buy) */}
           <div className="absolute top-4 left-4 z-10 flex flex-col items-start gap-1.5 pt-0.5 pl-0.5">
-            {property.listingType?.filter(type => 
+            {property.listingType?.filter((type: any) => 
               type.toUpperCase() !== property.status.toUpperCase() && 
               type.toUpperCase() !== 'AVAILABLE'
-            ).map((type) => (
+            ).map((type: any) => (
               <Badge
                 key={type}
                 className="bg-white/90 text-[#005a41] border-none shadow-sm text-[10px] font-black uppercase tracking-widest px-2 py-0.5 gap-1"

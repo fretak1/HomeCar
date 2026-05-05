@@ -6,23 +6,19 @@ import {
     ChevronLeft,
     Printer,
     Download,
-    FileText,
     Building2,
-    Calendar,
-    User,
     ShieldCheck,
-    MapPin,
-    Square
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatLocation } from '@/lib/utils';
 import { mockProperties } from '@/data/mockData';
 
 export default function OwnerContractPage() {
     const params = useParams();
     const id = params?.id as string;
     const property = mockProperties.find(p => p.id === id);
-    const tenantName = "Abebe Kebede"; // Mock tenant name
+    const tenantName = "Abebe Kelemu"; // Mock tenant name
 
     if (!property) {
         return (
@@ -50,7 +46,7 @@ export default function OwnerContractPage() {
                     <Link href={`/dashboard/owner/lease/${property.id}`}>
                         <Button variant="ghost" size="sm" className="gap-2 text-[#005a41] font-bold">
                             <ChevronLeft className="h-4 w-4" />
-                            Back to Lease Details
+                            Back to Details
                         </Button>
                     </Link>
                     <div className="flex gap-2">
@@ -102,7 +98,7 @@ export default function OwnerContractPage() {
                                 <p>
                                     The Landlord hereby leases to the Tenant, and the Tenant hereby leases from the Landlord, the following property:
                                     <span className="font-bold italic"> {property.title} </span>, located at
-                                    <span className="font-bold italic underline px-1"> {property.location}, Addis Ababa, Ethiopia </span>
+                                    <span className="font-bold italic underline px-1"> {formatLocation(property.location)}, Addis Ababa, Ethiopia </span>
                                     (the "Premises"), to be used only as a primary residence.
                                 </p>
                             </section>

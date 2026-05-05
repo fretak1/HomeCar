@@ -18,6 +18,7 @@ export interface Application {
     listingType?: string;
     date?: string;
     customer?: {
+        id: string;
         name: string;
         email: string;
         profileImage?: string;

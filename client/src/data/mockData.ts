@@ -84,7 +84,7 @@ export interface Lease {
   totalPrice: number;
   recurringAmount: number | null;
   terms: string;
-  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'TERMINATED' | 'Pending' | 'Active'; // Supporting both for now
+  status: 'PENDING' | 'ACTIVE' | 'COMPLETED' | 'TERMINATED' | 'Pending' | 'Active' | 'CANCELLATION_PENDING'; // Supporting both for now
 
   ownerAccepted: boolean;
   customerAccepted: boolean;
@@ -92,15 +92,7 @@ export interface Lease {
   customerId: string;
   ownerId: string;
   createdAt: string;
-  property?: {
-    id: string;
-    title: string;
-    assetType: AssetType;
-    description: string;
-    listingType: string
-    price: number;
-    location: string;
-  };
+  property?: Property;
   owner: {
     name: string;
     profileImage: string;
@@ -122,6 +114,7 @@ export interface User {
   gender?: string;
   employmentStatus?: string;
   verificationPhoto?: string;
+  rejectionReason?: string;
   verified: boolean;
   documents?: Document[];
   aboutMe?: string;

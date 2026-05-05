@@ -12,7 +12,6 @@ import {
     Search,
     FileText,
     ClipboardList,
-    Users,
     DollarSign,
     ChevronUp,
     ChevronDown,
@@ -57,15 +56,13 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
 import { formatLocation, getListingMainImage } from '@/lib/utils';
 import Link from 'next/link';
-import { format, differenceInMonths, differenceInDays, isBefore, startOfMonth, endOfMonth, addMonths, isSameMonth, addDays, isWithinInterval, isToday, isYesterday, isThisMonth, isThisYear } from 'date-fns';
+import { format, differenceInDays, isBefore, addDays, isWithinInterval, isToday, isYesterday, isThisMonth, isThisYear } from 'date-fns';
 
 import DashboardTabs from '@/components/DashboardTabs';
 import { PropertyCard } from '@/components/PropertyCard';
 import PayoutSettings from '@/components/PayoutSettings';
-import { mockTransactions } from '@/data/mockData';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useApplicationStore } from '@/store/useApplicationStore';
 import { useMaintenanceStore } from '@/store/useMaintenanceStore';
@@ -73,13 +70,11 @@ import { useUserStore } from '@/store/useUserStore';
 import { useLeaseStore } from '@/store/useLeaseStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
 import { useChatStore } from '@/store/useChatStore';
-import { useNotificationStore } from '@/store/useNotificationStore';
 import {
     StatCardsSkeleton,
     PropertyGridSkeleton,
     LeaseCardSkeleton,
     MaintenanceCardSkeleton,
-    TabListSkeleton,
     ListItemSkeleton,
     TableRowSkeleton,
     DashboardRouteSkeleton,
@@ -93,7 +88,6 @@ export default function OwnerDashboardPage() {
     const [itemToDelete, setItemToDelete] = useState<any>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [expandedSchedules, setExpandedSchedules] = useState<string[]>([]);
-    const [transactionSearch, setTransactionSearch] = useState('');
     const [transactionDateFilter, setTransactionDateFilter] = useState('all');
     const [transactionStatus, setTransactionStatus] = useState('all');
     const [hasStartedInitialLoad, setHasStartedInitialLoad] = useState(false);
@@ -104,8 +98,7 @@ export default function OwnerDashboardPage() {
     const { requests: maintenanceRequests, fetchRequests: fetchMaintenanceRequests, updateRequestStatus, isLoading: isMaintenanceLoading } = useMaintenanceStore();
     const { leases, fetchLeases, acceptLease, requestLeaseCancellation, isLoading: isLeaseLoading } = useLeaseStore();
     const { transactions, fetchTransactions, isLoading: isTransactionLoading } = useTransactionStore();
-    const { connectSocket, socket } = useChatStore();
-    const { notifications } = useNotificationStore();
+    const { connectSocket } = useChatStore();
 
     const isLoading = isPropLoading || isAppLoading || isLeaseLoading || isMaintenanceLoading || isTransactionLoading;
 

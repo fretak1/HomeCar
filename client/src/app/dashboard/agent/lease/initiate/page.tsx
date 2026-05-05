@@ -2,8 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { CreateLeaseForm } from '@/components/forms/CreateLeaseForm';
-import { Button } from '@/components/ui/button';
-import { ChevronLeft, FileText, ShieldCheck } from 'lucide-react';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function AgentInitiateLeasePage() {

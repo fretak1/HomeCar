@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import {
     ChevronLeft,
     MapPin,
     DollarSign,
-    FileText,
     ShieldCheck,
     MessageSquare,
     Users,
@@ -29,10 +28,8 @@ import { format, differenceInDays, isBefore, isWithinInterval, addDays } from 'd
 export default function OwnerLeaseDetailsPage() {
     const params = useParams();
     const id = params?.id as string;
-    const searchParams = useSearchParams();
-    const isFromAdmin = searchParams.get('source') === 'admin';
 
-    const { leases, requestLeaseCancellation, isLoading } = useLeaseStore();
+    const { leases } = useLeaseStore();
     const { properties } = usePropertyStore();
     const router = useRouter();
     const { initiateChat } = useChatStore();
@@ -259,7 +256,7 @@ export default function OwnerLeaseDetailsPage() {
                                                                         <p className="text-sm font-bold text-foreground">{format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd, yyyy')}</p>
                                                                     </td>
                                                                     <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
-                                                                        {isPaid ? format(new Date(paymentRecord.updatedAt), 'MMM dd, yyyy') : '—'}
+                                                                        {isPaid ? format(new Date(paymentRecord.createdAt), 'MMM dd, yyyy') : '—'}
                                                                     </td>
                                                                     <td className="px-6 py-4 text-sm font-black text-foreground">ETB {(lease.recurringAmount || lease.totalPrice).toLocaleString()}</td>
                                                                     <td className="px-6 py-4">

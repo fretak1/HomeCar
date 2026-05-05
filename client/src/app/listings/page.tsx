@@ -4,7 +4,6 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { 
-    Filter, 
     SlidersHorizontal, 
     Search, 
     MapPin, 
@@ -27,7 +26,6 @@ import { useGlobalStore } from '@/store/useGlobalStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useInteractionStore } from '@/store/useInteractionStore';
-import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ethiopiaLocations } from '@/lib/ethiopiaLocations';
 import FiltersFull from '../search/components/FiltersFull';
@@ -53,7 +51,7 @@ function ListingContent() {
     } = useGlobalStore();
     const searchParams = useSearchParams();
 
-    const { properties, isLoading, total, page, totalPages, fetchProperties, clearProperties } = usePropertyStore();
+    const { properties, isLoading, total, totalPages, fetchProperties, clearProperties } = usePropertyStore();
     const { currentUser } = useUserStore();
     const { logSearchFilter } = useInteractionStore();
 

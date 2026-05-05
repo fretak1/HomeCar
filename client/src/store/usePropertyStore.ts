@@ -29,6 +29,7 @@ export interface Property {
     aiPredictedPrice?: number;
     status: string;
     isVerified: boolean;
+    rejectionReason?: string;
     propertyType?: string;
     bedrooms?: number;
     bathrooms?: number;

@@ -6,16 +6,13 @@ import {
     ChevronLeft,
     Printer,
     Download,
-    FileText,
     Building2,
-    Calendar,
-    User,
     ShieldCheck,
-    MapPin,
-    Square
+
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatLocation } from '@/lib/utils';
 import { mockProperties } from '@/data/mockData';
 
 export default function ContractPage() {
@@ -101,7 +98,7 @@ export default function ContractPage() {
                                 <p>
                                     The Landlord hereby leases to the Tenant, and the Tenant hereby leases from the Landlord, the following property:
                                     <span className="font-bold italic"> {property.title} </span>, located at
-                                    <span className="font-bold italic underline px-1"> {property.location}, Addis Ababa, Ethiopia </span>
+                                    <span className="font-bold italic underline px-1"> {formatLocation(property.location)}, Addis Ababa, Ethiopia </span>
                                     (the "Premises"), to be used only as a primary residence.
                                 </p>
                             </section>

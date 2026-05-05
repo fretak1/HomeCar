@@ -7,23 +7,17 @@ import { cn } from "@/lib/utils";
 import {
     Plus,
     Building2,
-    Search,
     FileText,
     ClipboardList,
     Users,
-    DollarSign,
-    ChevronUp,
-    ChevronDown,
-    CheckCircle,
-    Clock,
-    Calendar,
-    Eye,
     AlertCircle,
     Check,
+    Clock,
+    CheckCircle,
     X,
-    User
+    User2
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TabsContent } from '@/components/ui/tabs';
@@ -38,15 +32,8 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
+
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
 import Link from 'next/link';
 
 import DashboardTabs from '@/components/DashboardTabs';
@@ -56,8 +43,14 @@ import { useApplicationStore } from '@/store/useApplicationStore';
 import { useLeaseStore } from '@/store/useLeaseStore';
 import { useUserStore } from '@/store/useUserStore';
 import { formatLocation, getListingMainImage } from '@/lib/utils';
-import { format, differenceInMonths, addMonths, isBefore, endOfMonth, isSameMonth, startOfMonth, differenceInDays } from 'date-fns';
-import { DashboardRouteSkeleton } from '@/components/ui/dashboard-skeletons';
+import { differenceInMonths } from 'date-fns';
+import {
+    DashboardRouteSkeleton,
+    StatCardsSkeleton,
+    PropertyGridSkeleton,
+    ListItemSkeleton,
+    LeaseCardSkeleton 
+} from '@/components/ui/dashboard-skeletons';
 
 export default function AgentDashboardPage() {
     const router = useRouter();
@@ -66,13 +59,10 @@ export default function AgentDashboardPage() {
     const [activeTab, setActiveTab] = useState('properties');
     const [itemToDelete, setItemToDelete] = useState<any>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [expandedSchedules, setExpandedSchedules] = useState<string[]>([]);
-    const [transactionSearch, setTransactionSearch] = useState('');
-    const [transactionStatus, setTransactionStatus] = useState('all');
     const [hasStartedInitialLoad, setHasStartedInitialLoad] = useState(false);
     const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false);
 
-    const { properties, fetchProperties, fetchPropertiesByOwnerId, isLoading: isPropLoading, deleteProperty } = usePropertyStore();
+    const { properties, fetchProperties, isLoading: isPropLoading, deleteProperty } = usePropertyStore();
     const { applications, fetchApplications, updateApplicationStatus, isLoading: isAppLoading } = useApplicationStore();
     const { leases, fetchLeases, isLoading: isLeaseLoading } = useLeaseStore();
 
@@ -95,11 +85,7 @@ export default function AgentDashboardPage() {
         }
     }, [hasStartedInitialLoad, isLoading]);
 
-    const toggleSchedule = (id: string) => {
-        setExpandedSchedules(prev =>
-            prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-        );
-    };
+    
 
     const agentTabs = [
         { value: 'properties', label: t('agentDashboard.tabs.properties') },
@@ -208,7 +194,7 @@ export default function AgentDashboardPage() {
                 {/* Property Verification Banners for Agents */}
                 {properties.some(p => !p.isVerified) && (
                     <div className="space-y-4 mb-8">
-                        {properties.filter(p => !p.isVerified).map(property => (
+                        {(properties as any[]).filter((p: any) => !p.isVerified).map((property: any) => (
                             <Card key={`alert-${property.id}`} className={cn(
                                 "border shadow-sm overflow-hidden",
                                 property.rejectionReason 
@@ -262,7 +248,7 @@ export default function AgentDashboardPage() {
                     <StatCardsSkeleton count={3} />
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        {stats.map((stat, i) => (
+                        {(stats as any[]).map((stat: any, i: number) => (
                             <Card key={i} className="border-border">
                                 <CardContent className="p-6">
                                     <div className="flex items-center gap-4">
@@ -291,7 +277,7 @@ export default function AgentDashboardPage() {
                             {isPropLoading && !hasCompletedInitialLoad ? (
                                 <PropertyGridSkeleton count={6} />
                             ) : properties.length > 0 ? (
-                                properties.map((property) => (
+                                (properties as any[]).map((property: any) => (
                                     <PropertyCard
                                         key={property.id}
                                         property={property as any}
@@ -350,7 +336,7 @@ export default function AgentDashboardPage() {
                                         {Array.from({ length: 4 }).map((_, i) => <ListItemSkeleton key={i} />)}
                                     </div>
                                 ) : applications.length > 0 ? (
-                                    applications.map((app) => (
+                                    (applications as any[]).map((app: any) => (
                                         <Card key={app.id} className="border-border hover:shadow-xl transition-all duration-300 overflow-hidden group border-l-4 border-l-[#005a41] cursor-pointer" onClick={() => router.push(`/property/${app.propertyId}`)}>
                                             <CardContent className="p-0">
                                                 <div className="flex flex-col xl:flex-row relative min-h-[160px]">
@@ -372,7 +358,7 @@ export default function AgentDashboardPage() {
                                                                         {app.propertyTitle}
                                                                     </h3>
                                                                     <p className="text-sm text-muted-foreground flex items-center">
-                                                                        <User className="h-3 w-3 mr-1.5" />
+                                                                        <User2 className="h-3 w-3 mr-1.5" />
                                                                         {app.customer?.name || t('common.unknownApplicant')}
                                                                     </p>
                                                                     <p className="text-[10px] text-muted-foreground font-medium flex items-center mt-1">
@@ -419,7 +405,7 @@ export default function AgentDashboardPage() {
                                                                 }
                                                             }}
                                                         >
-                                                            <User className="h-3.5 w-3.5 mr-2" />
+                                                            <User2 className="h-3.5 w-3.5 mr-2" />
                                                             {t('common.seeProfile')}
                                                         </Button>
                                                         {app.status === 'pending' && (

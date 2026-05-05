@@ -129,11 +129,11 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
     const normalizeAmenities = (raw: string[] | undefined): string[] => {
         if (!raw || raw.length === 0) return [];
         const allAmenities = [...PROPERTY_AMENITIES, ...VEHICLE_AMENITIES];
-        return raw.map(item => {
+        return raw.map((item: any) => {
             // If it's already a known id, keep it
-            if (allAmenities.some(a => a.id === item)) return item;
+            if (allAmenities.some((a: any) => a.id === item)) return item;
             // Otherwise try to find by label (case-insensitive)
-            const found = allAmenities.find(a =>
+            const found = allAmenities.find((a: any) =>
                 a.label.trim().toLowerCase() === item.trim().toLowerCase()
             );
             return found ? found.id : item.toLowerCase().replace(/\s+/g, '_');
@@ -148,7 +148,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
     });
     // Show existing ownership document from backend
     const sortedDocs = [...(initialData?.ownershipDocuments || [])]
-        .sort((a, b) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime());
+        .sort((a: any, b: any) => new Date(b.uploadedAt || 0).getTime() - new Date(a.uploadedAt || 0).getTime());
         
     const [ownershipDoc, setOwnershipDoc] = useState<string | null>(
         sortedDocs[0]?.url || initialData?.ownershipDocument || null
@@ -319,8 +319,8 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
 
 
     const toggleAmenity = (id: string) => {
-        setSelectedAmenities((prev) =>
-            prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
+        setSelectedAmenities((prev: any[]) =>
+            prev.includes(id) ? prev.filter((a: any) => a !== id) : [...prev, id]
         );
     };
 
@@ -416,7 +416,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
             if (isEditMode) {
                 // Determine which existing images we are keeping
                 // images state contains both URLs (existing) and data: (previews of new uploads)
-                const keepImages = images.filter(img => img && img.startsWith('http'));
+                const keepImages = (images as any[]).filter((img: any) => img && img.startsWith('http'));
                 formData.append('keepImages', JSON.stringify(keepImages));
                 console.log("Image reconciliation - keeping:", keepImages);
             }
@@ -583,7 +583,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                         </div>
 
                         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                            {images.map((img, idx) => (
+                            {(images as any[]).map((img: any, idx: number) => (
                                 <div
                                     key={idx}
                                     className={cn(
@@ -709,7 +709,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent className="rounded-xl max-h-[300px]">
-                                                {availableRegions.map(r => (
+                                                {(availableRegions as any[]).map((r: any) => (
                                                     <SelectItem key={r} value={r}>{r}</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -744,7 +744,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent className="rounded-xl max-h-[300px]">
-                                                {availableCities.map(c => (
+                                                {(availableCities as any[]).map((c: any) => (
                                                     <SelectItem key={c} value={c}>{c}</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -778,7 +778,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent className="rounded-xl max-h-[300px]">
-                                                {availableSubCities.map(sc => (
+                                                {(availableSubCities as any[]).map((sc: any) => (
                                                     <SelectItem key={sc} value={sc}>{sc}</SelectItem>
                                                 ))}
                                             </SelectContent>
@@ -808,7 +808,7 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent className="rounded-xl max-h-[300px]">
-                                                {availableVillages.map(v => (
+                                                {(availableVillages as any[]).map((v: any) => (
                                                     <SelectItem key={v} value={v}>{v}</SelectItem>
                                                 ))}
                                             </SelectContent>

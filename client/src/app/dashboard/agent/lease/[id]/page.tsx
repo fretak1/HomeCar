@@ -1,15 +1,11 @@
 "use client";
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
 import {
-    ChevronLeft,
     MapPin,
     DollarSign,
-    FileText,
     ShieldCheck,
-    MessageSquare,
     Users,
     Clock,
     Home,
@@ -22,19 +18,14 @@ import { Progress } from '@/components/ui/progress';
 import { cn, formatLocation, getListingMainImage } from '@/lib/utils';
 import { useLeaseStore } from '@/store/useLeaseStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
-import { useChatStore } from '@/store/useChatStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
 import { format, differenceInDays, isBefore, isWithinInterval, addDays } from 'date-fns';
 
 export default function AgentLeaseDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const searchParams = useSearchParams();
-    const isFromAdmin = searchParams.get('source') === 'admin';
 
-    const { leases, requestLeaseCancellation, isLoading } = useLeaseStore();
+    const { leases } = useLeaseStore();
     const { properties, fetchProperties } = usePropertyStore();
-    const router = useRouter();
-    const { initiateChat } = useChatStore();
     const { transactions, fetchTransactions } = useTransactionStore();
 
     useEffect(() => {
@@ -46,19 +37,10 @@ export default function AgentLeaseDetailsPage({ params }: { params: Promise<{ id
         }
     }, [fetchTransactions, fetchProperties, transactions.length, properties.length]);
 
-    const lease = leases.find(l => l.id === id);
-    const property = lease ? (lease.property || properties.find(p => p.id === lease.propertyId)) : null;
+    const lease = (leases as any[]).find((l: any) => l.id === id);
+    const property = lease ? (lease.property || (properties as any[]).find((p: any) => p.id === lease.propertyId)) : null;
 
     const tenantName = lease ? (lease as any).customer?.name || "Unknown Tenant" : "Unknown Tenant";
-
-    const handleMessageTenant = async () => {
-        if (lease?.customerId) {
-            const chatId = await initiateChat(lease.customerId);
-            if (chatId) {
-                router.push(`/chat?partnerId=${lease.customerId}`);
-            }
-        }
-    };
 
     if (!lease || !property) {
         return (
@@ -101,7 +83,7 @@ export default function AgentLeaseDetailsPage({ params }: { params: Promise<{ id
                                             <h2 className="text-3xl font-black text-white">{property.title}</h2>
                                             <p className="text-white/80 flex items-center text-sm font-medium">
                                                 <MapPin className="h-4 w-4 mr-2 text-primary" />
-                                                {formatLocation(property.location || (property as any).location)}
+                                                {formatLocation((property as any).location)}
                                             </p>
                                         </div>
                                         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 text-white min-w-[140px]">
@@ -117,7 +99,7 @@ export default function AgentLeaseDetailsPage({ params }: { params: Promise<{ id
                                         <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Listing Category</p>
                                         <p className="font-bold text-foreground capitalize flex items-center">
                                             {property.assetType === 'HOME' ? <Home className="h-3.5 w-3.5 mr-2 text-[#005a41]" /> : <ShieldCheck className="h-3.5 w-3.5 mr-2 text-[#005a41]" />}
-                                            {property.propertyType || (property.assetType === 'HOME' ? 'Home' : 'Vehicle')}
+                                            {(property as any).propertyType || (property.assetType === 'HOME' ? 'Home' : 'Vehicle')}
                                         </p>
                                     </div>
                                     {property.assetType === 'CAR' ? (
@@ -128,7 +110,7 @@ export default function AgentLeaseDetailsPage({ params }: { params: Promise<{ id
                                             </div>
                                             <div className="space-y-1">
                                                 <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Mileage</p>
-                                                <p className="font-bold text-foreground">{property.mileage ? `${property.mileage.toLocaleString()} km` : 'N/A'}</p>
+                                                <p className="font-bold text-foreground">{(property as any).mileage ? `${(property as any).mileage.toLocaleString()} km` : 'N/A'}</p>
                                             </div>
                                         </>
                                     ) : (
@@ -214,11 +196,11 @@ export default function AgentLeaseDetailsPage({ params }: { params: Promise<{ id
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-border/50">
-                                                        {Array.from({ length: totalMonths }).map((_, i) => {
+                                                        {Array.from({ length: totalMonths }).map((_: any, i: number) => {
                                                             const periodStart = addDays(startDate, i * 30);
                                                             const periodEnd = addDays(periodStart, 30);
                                                             const monthKey = format(periodStart, 'MMM-yyyy');
-                                                            const paymentRecord = transactions.find(t => 
+                                                            const paymentRecord = (transactions as any[]).find((t: any) => 
                                                                 t.leaseId === lease.id && 
                                                                 t.status === 'COMPLETED' && 
                                                                 (t.metadata as any)?.month === monthKey
@@ -235,7 +217,7 @@ export default function AgentLeaseDetailsPage({ params }: { params: Promise<{ id
                                                                     <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
                                                                         {isPaid ? format(new Date(paymentRecord.updatedAt), 'MMM dd, yyyy') : '—'}
                                                                     </td>
-                                                                    <td className="px-6 py-4 text-sm font-black text-foreground">ETB {(lease.recurringAmount || property.price).toLocaleString()}</td>
+                                                                    <td className="px-6 py-4 text-sm font-black text-foreground">ETB {((lease as any).recurringAmount || (property as any).price).toLocaleString()}</td>
                                                                     <td className="px-6 py-4">
                                                                         {isPaid ? (
                                                                             <Badge className="bg-green-100 text-green-700 border-none px-2 py-0.5 text-[8px] font-bold">COLLECTED</Badge>
@@ -275,7 +257,7 @@ export default function AgentLeaseDetailsPage({ params }: { params: Promise<{ id
                             <CardContent className="p-6">
                                 <div className="flex items-center gap-4 mb-6">
                                     <div className="w-16 h-16 rounded-2xl bg-[#005a41]/10 flex items-center justify-center font-bold text-xl text-[#005a41] border border-[#005a41]/20 shadow-sm">
-                                        {tenantName.split(' ').map((n: string) => n[0]).join('')}
+                                        {tenantName.split(' ').filter(Boolean).map((n: string) => n[0]).join('')}
                                     </div>
                                     <div className="min-w-0">
                                         <h4 className="font-bold text-foreground truncate">{tenantName}</h4>
@@ -284,10 +266,10 @@ export default function AgentLeaseDetailsPage({ params }: { params: Promise<{ id
                                 </div>
                                 <div className="flex items-center gap-4 mb-6">
                                     <div className="w-16 h-16 rounded-2xl bg-[#005a41]/10 flex items-center justify-center font-bold text-xl text-[#005a41] border border-[#005a41]/20 shadow-sm">
-                                        {(lease.owner.name || 'Owner').split(' ').map((n: string) => n[0]).join('')}
+                                        {((lease as any).owner?.name || 'Owner').split(' ').map((n: string) => n[0]).join('')}
                                     </div>
                                     <div className="min-w-0">
-                                        <h4 className="font-bold text-foreground truncate">{lease.owner.name || 'Property Owner'}</h4>
+                                        <h4 className="font-bold text-foreground truncate">{(lease as any).owner?.name || 'Property Owner'}</h4>
                                         <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-0.5">Property Owner</p>
                                     </div>
                                 </div>
