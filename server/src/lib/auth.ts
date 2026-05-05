@@ -31,7 +31,7 @@ const isAllowedTrustedOrigin = (origin?: string | null) => {
 
 export const auth = betterAuth({
     baseURL: process.env.BETTER_AUTH_URL,
-    appURL: "http://localhost:3000",
+    appURL: process.env.CORS_ORIGINS?.split(',')[0] || "http://localhost:3000",
     database: prismaAdapter(prisma, {
         provider: "postgresql",
     }),
