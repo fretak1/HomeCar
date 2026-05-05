@@ -8,26 +8,22 @@ import {
     Camera,
     UploadCloud,
     AlertCircle,
-    ArrowLeft,
-    Clock,
     X,
     Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CameraCapture } from '@/components/CameraCapture';
 import { useUserStore } from '@/store/useUserStore';
-import { createApi, API_ROUTES } from '@/lib/api';
 import { toast } from 'sonner';
 import { useTranslation } from '@/contexts/LanguageContext';
 
 
-const api = createApi();
 
 export default function AgentVerificationPage() {
     const router = useRouter();
     const { t } = useTranslation();
-    const { currentUser, getMe } = useUserStore();
+    const { currentUser } = useUserStore();
 
     const [licenseFile, setLicenseFile] = useState<File | null>(null);
     const [licensePreview, setLicensePreview] = useState<string | null>(null);
@@ -79,7 +75,6 @@ export default function AgentVerificationPage() {
 
     const isPending = !currentUser?.verified && !!currentUser?.verificationPhoto && !currentUser?.rejectionReason;
     const isRejected = !currentUser?.verified && !!currentUser?.rejectionReason;
-    const isFormVisible = isEditing || (!isPending && !isRejected);
 
     const handleDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -114,10 +109,7 @@ export default function AgentVerificationPage() {
                 formData.append('selfie', blob, 'selfie.jpg');
             }
 
-            const response = await api.patch(`${API_ROUTES.USER}/verify`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-
+            
             // Immediately update global state to reflect success and fetch documents securely
             await useUserStore.getState().getMe();
             toast.success(t('agentDashboard.verification.capturedSuccessfully'));
