@@ -110,7 +110,11 @@ export const auth = betterAuth({
     },
     advanced: {
         cookiePrefix: "better-auth",
-        crossOrigin: true, // Fix for cross-port localhost
+        crossSubDomain: false, // Do not use crossSubDomain on public suffixes like .onrender.com
+        defaultCookieAttributes: {
+            sameSite: "none",
+            secure: true,
+        }
     },
     // We'll configure advanced email verification once we have the SMTP service ready
 });
