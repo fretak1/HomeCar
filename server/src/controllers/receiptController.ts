@@ -394,7 +394,7 @@ export const downloadLeaseContract = async (req: any, res: Response) => {
 
         drawLabelValue('Property', lease.property.title, 50, height - 150);
         drawLabelValue('Location', locationParts.length > 0 ? locationParts.join(', ') : 'Unknown location', 300, height - 150);
-        drawLabelValue('Lease type', lease.leaseType, 50, height - 205);
+        drawLabelValue('Property type', lease.property.assetType, 50, height - 205);
         drawLabelValue('Status', lease.status.replace(/_/g, ' '), 300, height - 205);
         drawLabelValue('Start date', format(new Date(lease.startDate), 'MMM dd, yyyy'), 50, height - 260);
         drawLabelValue('End date', format(new Date(lease.endDate), 'MMM dd, yyyy'), 300, height - 260);

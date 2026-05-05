@@ -458,7 +458,7 @@ export const updateProperty = async (req: any, res: Response) => {
             }
         }
 
-        if (location) {
+        if (location && existing.locationId) {
             const loc = typeof location === 'string' ? JSON.parse(location) : location;
             await prisma.location.update({
                 where: { id: existing.locationId },

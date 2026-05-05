@@ -61,7 +61,7 @@ export const auth = betterAuth({
             },
         },
     },
-    trustedOrigins: async (request) => {
+    trustedOrigins: async (request?: Request) => {
         const requestOrigin = request?.headers.get("origin");
         return [
             ...configuredTrustedOrigins,
@@ -86,7 +86,7 @@ export const auth = betterAuth({
         expo(),
         emailOTP({
             overrideDefaultEmailVerification: true,
-            async sendVerificationOTP({ email, otp, type }) {
+            async sendVerificationOTP({ email, otp, type }: { email: string, otp: string, type: string }) {
                 if (type === "email-verification") {
                     await sendEmail(
                         email,
