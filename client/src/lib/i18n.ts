@@ -354,9 +354,9 @@ export const translations: Record<Language, TranslationTree> = {
       startChat: "Start Chat",
       noApplicationsFound: "No applications found",
       noApplicationsDesc: "You haven't submitted any applications yet.",
-      paymentSetupIncomplete: "Payment setup incomplete. Please contact the owner.",
-      failedToGeneratePaymentLink: "Failed to generate payment link.",
-      paymentInitializationFailed: "Payment initialization failed.",
+
+
+
       maxPhotosError: "Maximum 2 images allowed.",
       fillAllFields: "Please fill in all required fields.",
       maintenanceSuccess: "Maintenance request submitted successfully!",

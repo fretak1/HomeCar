@@ -21,6 +21,7 @@ interface NotificationState {
     error: string | null;
     markAsRead: (id: string) => Promise<void>;
     markAllAsRead: () => Promise<void>;
+    fetchNotifications: () => Promise<void>;
     connectSocket: () => void;
     disconnectSocket: () => void;
 }

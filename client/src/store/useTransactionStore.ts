@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { createApi, API_ROUTES } from '@/lib/api';
+import { createApi } from '@/lib/api';
 
 const api = createApi();
 

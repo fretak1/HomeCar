@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, ReactNode } from 'react';
 import { useUserStore } from '@/store/useUserStore';
 
 type UserRole = 'customer' | 'owner' | 'agent' | 'admin';
@@ -22,7 +22,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { currentUser, login: storeLogin, logout: storeLogout, isLoading } = useUserStore();
+  const { currentUser, login: storeLogin, logout: storeLogout } = useUserStore();
 
   const login = async (email: string, password: string) => {
     await storeLogin(email, password);

@@ -62,7 +62,7 @@ interface AIState {
     sendMessageToAI: (message: string) => Promise<string | null>;
 }
 
-export const useAIStore = create<AIState>((set) => ({
+export const useAIStore = create<AIState>((set, get) => ({
     isPredicting: false,
     isRecommendationLoading: false,
     recommendations: [],
@@ -133,8 +133,8 @@ export const useAIStore = create<AIState>((set) => ({
     },
 
     sendMessageToAI: async (message) => {
-        const { chatHistory } = useAIStore.getState();
-        const newHistory = [...chatHistory, { role: 'user', parts: message }];
+        const { chatHistory } = get();
+        const newHistory: { role: 'user' | 'model', parts: string }[] = [...chatHistory, { role: 'user', parts: message }];
 
         set({ isChatLoading: true, chatHistory: newHistory });
 

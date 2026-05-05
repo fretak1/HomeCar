@@ -22,6 +22,12 @@ export type Review = {
   comment: string;
   date: string;
   propertyId: string; // Unified to propertyId
+  createdAt?: string;
+  reviewerId?: string;
+  reviewer?: {
+    name: string;
+    profileImage?: string;
+  };
 }
 
 export interface Message {
@@ -116,6 +122,10 @@ export interface User {
   verificationPhoto?: string;
   rejectionReason?: string;
   verified: boolean;
+  payoutBankCode?: string;
+  payoutAccountNumber?: string;
+  payoutAccountName?: string;
+  chapaSubaccountId?: string;
   documents?: Document[];
   aboutMe?: string;
   locationId?: string;
@@ -148,147 +158,8 @@ export interface Favorite {
   createdAt: string;
 }
 
-export const mockProperties: Property[] = [
-  // Homes
-  {
-    id: 'p1',
-    title: 'Modern Family House',
-    description: 'Beautiful modern house with spacious rooms, hardwood floors, and a large backyard. Perfect for families looking for comfort and style.',
-    assetType: 'HOME',
-    listingType: ['rent'],
-    price: 450000,
-    status: 'AVAILABLE',
-    propertyType: 'house',
-    bedrooms: 4,
-    bathrooms: 3,
-    area: 2400,
-    amenities: ['Parking', 'Wifi', 'Air Conditioning', 'Furnished', 'Kichen'],
-    ownerName: ' Frezer Takele',
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBob3VzZSUyMGV4dGVyaW9yfGVufDF8fHx8MTc3MDAzMTUwMHww&ixlib=rb-4.1.0&q=80&w=1080',
-    images: [
-      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBob3VzZSUyMGV4dGVyaW9yfGVufDF8fHx8MTc3MDAzMTUwMHww&ixlib=rb-4.1.0&q=80&w=1080',
-      'https://images.unsplash.com/photo-1638454668466-e8dbd5462f20?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBhcGFydG1lbnQlMjBpbnRlcmlvcnxlbnwxfHx8fDE3Njk5MzQ0MzF8MA&ixlib=rb-4.1.0&q=80&w=1080',
-      'https://images.unsplash.com/photo-1605191353027-d21e534a419a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3p5JTIwaG9tZSUyMGludGVyaW9yfGVufDF8fHx8MTc3MDAzMzc0OXww&ixlib=rb-4.1.0&q=80&w=1080',
-    ],
-    rating: 4.8,
-    reviews: 24,
-  },
-  {
-    id: 'p2',
-    title: 'Luxury Downtown Apartment',
-    description: 'Stunning apartment in the heart of downtown with floor-to-ceiling windows and breathtaking city views. Modern amenities and premium finishes throughout.',
-    assetType: 'HOME',
-    listingType: ['rent'],
-    price: 3200,
-    status: 'AVAILABLE',
-    propertyType: 'apartment',
-    bedrooms: 2,
-    bathrooms: 2,
-    area: 1200,
-    amenities: ['Parking', 'Wifi', 'Air Conditioning', 'Furnished', 'Kichen'],
-    ownerName: ' Fikadu Kebede',
-    image: 'https://images.unsplash.com/photo-1638454668466-e8dbd5462f20?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBhcGFydG1lbnQlMjBpbnRlcmlvcnxlbnwxfHx8fDE3Njk5MzQ0MzF8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    images: [
-      'https://images.unsplash.com/photo-1638454668466-e8dbd5462f20?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBhcGFydG1lbnQlMjBpbnRlcmlvcnxlbnwxfHx8fDE3Njk5MzQ0MzF8MA&ixlib=rb-4.1.0&q=80&w=1080',
-      'https://images.unsplash.com/photo-1605191353027-d21e534a419a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3p5JTIwaG9tZSUyMGludGVyaW9yfGVufDF8fHx8MTc3MDAzMzc0OXww&ixlib=rb-4.1.0&q=80&w=1080',
-    ],
-    rating: 4.9,
-    reviews: 18,
-  },
-  {
-    id: 'p3',
-    title: 'Cozy Suburban Home',
-    description: 'Charming home in a quiet neighborhood. Recently renovated with modern appliances and cozy living spaces.',
-    assetType: 'HOME',
-    listingType: ['buy'],
-    price: 2800,
-    status: 'AVAILABLE',
-    propertyType: 'house',
-    bedrooms: 3,
-    bathrooms: 2,
-    area: 1800,
-    amenities: ['Parking', 'Wifi', 'Air Conditioning', 'Furnished', 'Kichen'],
-    ownerName: 'Tadesse Kebede',
-    image: 'https://images.unsplash.com/photo-1605191353027-d21e534a419a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3p5JTIwaG9tZSUyMGludGVyaW9yfGVufDF8fHx8MTc3MDAzMzc0OXww&ixlib=rb-4.1.0&q=80&w=1080',
-    images: [
-      'https://images.unsplash.com/photo-1605191353027-d21e534a419a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3p5JTIwaG9tZSUyMGludGVyaW9yfGVufDF8fHx8MTc3MDAzMzc0OXww&ixlib=rb-4.1.0&q=80&w=1080',
-    ],
-    rating: 4.6,
-    reviews: 12,
-  },
-];
 
-export const mockCars: Property[] = [
-  // Cars
-  {
-    id: 'c1',
-    title: 'Mercedes-Benz S-Class',
-    description: 'Luxury sedan with premium features, advanced safety technology, and unmatched comfort. Perfect for executives and special occasions.',
-    assetType: 'CAR',
-    listingType: ['rent'],
-    price: 95000,
-    status: 'AVAILABLE',
-    brand: 'Mercedes-Benz',
-    model: 'S-Class',
-    year: 2023,
-    fuelType: 'Hybrid',
-    transmission: 'Automatic',
-    mileage: 8500,
 
-    ownerName: 'Abel Tesfaye',
-    image: 'https://images.unsplash.com/photo-1758216383800-7023ee8ed42b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBjYXIlMjBzZWRhbnxlbnwxfHx8fDE3NzAwNTEyNDd8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    images: [
-      'https://images.unsplash.com/photo-1758216383800-7023ee8ed42b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBjYXIlMjBzZWRhbnxlbnwxfHx8fDE3NzAwNTEyNDd8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    ],
-    rating: 4.9,
-    reviews: 15,
-  },
-  {
-    id: 'c2',
-    title: 'Tesla Model X',
-    description: 'All-electric SUV with Autopilot, spacious interior, and cutting-edge technology. Zero emissions, maximum performance.',
-    assetType: 'CAR',
-    listingType: ['rent'],
-    price: 850,
-    status: 'AVAILABLE',
-    brand: 'Tesla',
-    model: 'Model X',
-    year: 2024,
-    fuelType: 'Electric',
-    transmission: 'Automatic',
-    mileage: 12000,
-
-    ownerName: 'Fikadu Kebede',
-    image: 'https://images.unsplash.com/photo-1758217209786-95458c5d30a7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBzdXYlMjB2ZWhpY2xlfGVufDF8fHx8MTc2OTkzNzc3MXww&ixlib=rb-4.1.0&q=80&w=1080',
-    images: [
-      'https://images.unsplash.com/photo-1758217209786-95458c5d30a7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBzdXYlMjB2ZWhpY2xlfGVufDF8fHx8MTc2OTkzNzc3MXww&ixlib=rb-4.1.0&q=80&w=1080',
-    ],
-    rating: 4.8,
-    reviews: 22,
-  },
-  {
-    id: 'c3',
-    title: 'Porsche 911 Carrera',
-    description: 'Iconic sports car with exceptional performance and timeless design. Experience the thrill of driving excellence.',
-    assetType: 'CAR',
-    listingType: ['buy'],
-    price: 120000,
-    status: 'AVAILABLE',
-    brand: 'Porsche',
-    model: '911 Carrera',
-    year: 2023,
-    fuelType: 'Gasoline',
-    transmission: 'Manual',
-    mileage: 5200,
-    ownerName: 'Tadesse Kebede',
-    image: 'https://images.unsplash.com/photo-1742056024244-02a093dae0b5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBjYXIlMjBsdXh1cnl8ZW58MXx8fHwxNzcwMDM3MjgwfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    images: [
-      'https://images.unsplash.com/photo-1742056024244-02a093dae0b5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBjYXIlMjBsdXh1cnl8ZW58MXx8fHwxNzcwMDM3MjgwfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    ],
-    rating: 5.0,
-    reviews: 8,
-  },
-];
 
 export const mockReviews: Review[] = [
   {
@@ -353,38 +224,7 @@ export const mockTransactions: Transaction[] = [
   },
 ];
 
-export const mockMaintenanceRequests: MaintenanceRequest[] = [
-  {
-    id: 'm1',
-    propertyId: 'p2',
-    propertyTitle: 'Luxury Downtown Apartment',
-    category: 'Plumbing',
-    description: 'The pipes have been dripping constantly.',
-    status: 'inProgress',
-    date: 'Jan 28, 2026',
-    image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400',
-  },
-  {
-    id: 'm2',
-    propertyId: 'p2',
-    propertyTitle: 'Luxury Downtown Apartment',
-    category: 'Other',
-    description: 'The roof has been leaking for a few days.',
-    status: 'pending',
-    date: 'Feb 1, 2026',
-    image: 'https://images.unsplash.com/photo-1632733027509-00f75e24c6e9?w=400',
-  },
-  {
-    id: 'm3',
-    propertyId: 'p1',
-    propertyTitle: 'Modern Family House',
-    category: 'Electrical',
-    description: 'Sparks noticed in the kitchen outlet.',
-    status: 'completed',
-    date: 'Feb 10, 2026',
-    image: 'https://images.unsplash.com/photo-1558350315-8aa00e4e569b?w=400',
-  },
-];
+
 
 export const mockMessages: Message[] = [
   {
@@ -480,86 +320,7 @@ export const mockDocuments: Document[] = [
   }
 ];
 
-export const mockUsers: User[] = [
-  {
-    id: 'u1',
-    name: 'Selam Tesfaye',
-    email: 'selam@example.com',
-    role: 'CUSTOMER',
-    profileImage: 'ST',
-    createdAt: '2026-01-01T10:00:00Z'
-  },
-  {
-    id: 'u2',
-    name: 'Ermias Kebede',
-    email: 'ermias@example.com',
-    role: 'CUSTOMER',
-    profileImage: 'EK',
-    createdAt: '2026-01-05T14:00:00Z'
-  },
-  {
-    id: 'u3',
-    name: 'Teshome Gemechu',
-    email: 'teshome@example.com',
-    role: 'CUSTOMER',
-    profileImage: 'EK',
-    createdAt: '2026-01-10T09:30:00Z'
-  },
-  {
-    id: 'u4',
-    name: 'Aster Awoke',
-    email: 'aster@example.com',
-    role: 'CUSTOMER',
-    createdAt: '2026-01-12T11:20:00Z',
-    profileImage: 'EK',
 
-  },
-  {
-    id: 'owner1',
-    name: 'Frezer Takele',
-    email: 'frezer@example.com',
-    role: 'CUSTOMER',
-    createdAt: '2025-12-01T08:00:00Z',
-    profileImage: 'EK',
-    password: 'password'
-  },
-  {
-    id: 'owner2',
-    name: 'Fikadu Kebede',
-    email: 'fikadu@example.com',
-    role: 'CUSTOMER',
-    createdAt: '2025-12-10T09:00:00Z',
-    profileImage: 'EK',
-    password: 'password'
-  },
-  {
-    id: 'owner3',
-    name: 'Tadesse Kebede',
-    email: 'tadesse@example.com',
-    role: 'CUSTOMER',
-    createdAt: '2025-12-15T10:00:00Z',
-    profileImage: 'EK',
-    password: 'password'
-  },
-  {
-    id: 'admin1',
-    name: 'Admin User',
-    email: 'admin@homecar.com',
-    role: 'CUSTOMER',
-    createdAt: '2025-11-01T00:00:00Z',
-    profileImage: 'EK',
-    password: 'password'
-  },
-  {
-    id: 'agent1',
-    name: 'Agent User',
-    email: 'agent@homecar.com',
-    role: 'CUSTOMER',
-    createdAt: '2025-11-15T00:00:00Z',
-    profileImage: 'EK',
-    password: 'password'
-  }
-];
 
 // For backward compatibility if needed, but we should move to mockUsers
 export const mockFavorites: Favorite[] = [
@@ -579,5 +340,3 @@ export const mockFavorites: Favorite[] = [
   }
 ];
 
-// For backward compatibility if needed, but we should move to mockUsers
-export const mockCustomers = mockUsers.filter(u => u.role === 'CUSTOMER');
