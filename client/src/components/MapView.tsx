@@ -3,8 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { ZoomIn, ZoomOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || '';
 
@@ -19,8 +18,8 @@ export const MapView: React.FC<MapViewProps> = ({ location, height = 'h-[300px]'
     const marker = useRef<mapboxgl.Marker | null>(null);
     
     // Safely parse lat/lng ensuring they are valid numbers, otherwise default to Addis Ababa
-    const lat = typeof location.lat === 'number' && !isNaN(location.lat) ? location.lat : (parseFloat(location.lat as string) || 9.032);
-    const lng = typeof location.lng === 'number' && !isNaN(location.lng) ? location.lng : (parseFloat(location.lng as string) || 38.740);
+    const lat = typeof location.lat === 'number' && !isNaN(location.lat) ? location.lat : (parseFloat(location.lat as unknown as string) || 9.032);
+    const lng = typeof location.lng === 'number' && !isNaN(location.lng) ? location.lng : (parseFloat(location.lng as unknown as string) || 38.740);
 
     useEffect(() => {
         if (!mapContainer.current) return;
