@@ -2,13 +2,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useAIStore } from '@/store/useAIStore';
-import { Bot, Send, X, MessageSquare, Loader2, User } from 'lucide-react';
+import { Bot, Send, X, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardContent} from '@/components/ui/card';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 const normalizeChatHref = (rawHref: string): { isInternal: boolean; href: string } => {

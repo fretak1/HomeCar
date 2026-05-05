@@ -25,7 +25,6 @@ import {
     ChevronsUpDown,
     Search
 } from 'lucide-react';
-import { mockProperties } from '@/data/mockData';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Users } from 'lucide-react';
@@ -45,7 +44,6 @@ import {
     Command,
     CommandEmpty,
     CommandGroup,
-    CommandInput,
     CommandItem,
     CommandList,
 } from '@/components/ui/command';
@@ -94,7 +92,6 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
     });
 
     const { watch, setValue } = form;
-    const watchedOwnerId = watch('ownerId');
     const propertyId = watch('propertyId');
     const startDate = watch('startDate');
     const endDate = watch('endDate');

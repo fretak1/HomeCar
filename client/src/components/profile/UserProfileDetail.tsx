@@ -10,18 +10,12 @@ import {
     Briefcase,
     Shield,
     CheckCircle,
-    XCircle,
-    ArrowLeft,
     Building2,
-    MessageSquare,
-    ExternalLink
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { useLeaseStore } from '@/store/useLeaseStore';
 import { usePropertyStore } from '@/store/usePropertyStore';
@@ -56,10 +50,7 @@ interface UserProfileDetailProps {
 
 export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({ 
     user, 
-    onMessage,
-    showBackButton = true 
 }) => {
-    const router = useRouter();
     const { leases, fetchLeases, isLoading: leasesLoading } = useLeaseStore();
     const { properties, fetchPropertiesByOwnerId, fetchProperties, isLoading: propertiesLoading } = usePropertyStore();
 
@@ -75,7 +66,6 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
     }, [user.id, user.role, fetchLeases, fetchPropertiesByOwnerId, fetchProperties]);
 
     const displayRole = user.role.charAt(0) + user.role.slice(1).toLowerCase();
-    const displayStatus = user.status || 'Active';
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -350,15 +340,3 @@ const getRoleIcon = (role: string) => {
     }
 };
 
-const getStatusColor = (status: string) => {
-    switch (status.toUpperCase()) {
-        case 'ACTIVE':
-            return 'bg-emerald-50 text-emerald-700 border-emerald-100';
-        case 'PENDING':
-            return 'bg-amber-50 text-amber-700 border-amber-100';
-        case 'SUSPENDED':
-            return 'bg-rose-50 text-rose-700 border-rose-100';
-        default:
-            return 'bg-slate-50 text-slate-700 border-slate-100';
-    }
-};

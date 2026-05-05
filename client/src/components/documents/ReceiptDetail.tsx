@@ -5,15 +5,12 @@ import Link from 'next/link';
 import {
     FileText,
     Download,
-    Printer,
     ChevronLeft,
     CheckCircle,
-    Building2,
     Loader2,
     Mail,
     Phone,
     MapPin,
-    ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -65,9 +62,7 @@ export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
         );
     }
 
-    const handlePrint = () => {
-        window.print();
-    };
+
 
     const handleDownloadPdf = async () => {
         if (!transaction) return;
@@ -112,7 +107,6 @@ export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
     const isOwner = role === 'owner';
     const backUrl = `/dashboard/${role}?tab=transactions`;
     const partyLabel = isOwner ? 'Payment From' : 'Paid To';
-    const partyValue = isOwner ? transaction.payer?.name : transaction.payee?.name;
     const priceLabel = isOwner ? 'Credit Amount' : 'Unit Price';
     const totalLabel = isOwner ? 'Gross Revenue' : 'Subtotal';
     const netLabel = isOwner ? 'Net Credited' : 'Total Amount';

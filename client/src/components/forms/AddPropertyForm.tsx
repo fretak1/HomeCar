@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import Link from 'next/link';
-import { usePropertyStore, Property } from '@/store/usePropertyStore';
+import { usePropertyStore } from '@/store/usePropertyStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useAIStore } from '@/store/useAIStore';
 import { toast } from 'sonner';
