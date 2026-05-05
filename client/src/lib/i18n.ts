@@ -66,9 +66,7 @@ export const translations: Record<Language, TranslationTree> = {
       payment: "Payment",
       current: "Current",
       unknownBank: "Unknown Bank",
-      unknownTenant: "Unknown Tenant",
       unknownProperty: "Unknown Property",
-      etb: "ETB",
       dateRange: "Date Range",
       allTime: "All Time",
       today: "Today",
@@ -568,7 +566,7 @@ export const translations: Record<Language, TranslationTree> = {
         applications: "Applications",
       },
     },
-    profile: {
+    publicProfile: {
       notFound: "Profile Not Found",
       notFoundDesc: "The user you're looking for doesn't exist.",
       backToDashboard: "Back to Dashboard",
@@ -1045,9 +1043,7 @@ export const translations: Record<Language, TranslationTree> = {
       payment: "ክፍያ",
       current: "የአሁኑ",
       unknownBank: "ያልታወቀ ባንክ",
-      unknownTenant: "ያልታወቀ ተከራይ",
       unknownProperty: "ያልታወቀ ንብረት",
-      etb: "ETB",
       dateRange: "የቀን ገደብ",
       allTime: "ሁልጊዜ",
       today: "ዛሬ",
@@ -1544,7 +1540,7 @@ export const translations: Record<Language, TranslationTree> = {
         applications: "ማመልከቻዎች",
       },
     },
-    profile: {
+    publicProfile: {
       notFound: "ፕሮፋይል አልተገኘም",
       notFoundDesc: "የሚፈልጉት ተጠቃሚ የለም።",
       backToDashboard: "ወደ ዳሽቦርድ ተመለስ",

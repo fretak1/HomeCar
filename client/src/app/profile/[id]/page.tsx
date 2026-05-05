@@ -60,11 +60,11 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                     <AlertCircle className="h-12 w-12 text-red-500" />
                 </div>
                 <div className="text-center">
-                    <h2 className="text-2xl font-black text-foreground">{t('profile.notFound')}</h2>
-                    <p className="text-muted-foreground mt-2">{t('profile.notFoundDesc')}</p>
+                    <h2 className="text-2xl font-black text-foreground">{t('publicProfile.notFound')}</h2>
+                    <p className="text-muted-foreground mt-2">{t('publicProfile.notFoundDesc')}</p>
                 </div>
                 <Button onClick={() => router.back()} className="bg-[#005a41] hover:bg-[#004a35] font-bold h-12 px-8 rounded-xl">
-                    {t('profile.backToDashboard')}
+                    {t('publicProfile.backToDashboard')}
                 </Button>
             </div>
         );
