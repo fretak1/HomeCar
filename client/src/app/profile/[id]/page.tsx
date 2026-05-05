@@ -11,6 +11,7 @@ import { useChatStore } from '@/store/useChatStore';
 const api = createApi();
 
 import { ProfileSkeleton } from '@/components/ui/dashboard-skeletons';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function PublicProfilePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -19,6 +20,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { initiateChat } = useChatStore();
+    const { t } = useTranslation();
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -58,11 +60,11 @@ export default function PublicProfilePage({ params }: { params: Promise<{ id: st
                     <AlertCircle className="h-12 w-12 text-red-500" />
                 </div>
                 <div className="text-center">
-                    <h2 className="text-2xl font-black text-foreground">Profile Not Found</h2>
-                    <p className="text-muted-foreground mt-2">The user you're looking for doesn't exist.</p>
+                    <h2 className="text-2xl font-black text-foreground">{t('profile.notFound')}</h2>
+                    <p className="text-muted-foreground mt-2">{t('profile.notFoundDesc')}</p>
                 </div>
                 <Button onClick={() => router.back()} className="bg-[#005a41] hover:bg-[#004a35] font-bold h-12 px-8 rounded-xl">
-                    Back to Dashboard
+                    {t('profile.backToDashboard')}
                 </Button>
             </div>
         );

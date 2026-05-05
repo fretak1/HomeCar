@@ -735,7 +735,7 @@ export default function CustomerDashboardPage() {
                                                                                                                 {format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd')}
                                                                                                             </h5>
                                                                                                             {isCurrentMonth && (
-                                                                                                                <Badge className="bg-primary text-white text-[8px] h-4 px-1 border-none shadow-sm">CURRENT</Badge>
+                                                                                                                <Badge className="bg-primary text-white text-[8px] h-4 px-1 border-none shadow-sm">{t('common.current')}</Badge>
                                                                                                             )}
                                                                                                         </div>
                                                                                                         <p className="text-2xl font-black text-foreground">
@@ -747,7 +747,7 @@ export default function CustomerDashboardPage() {
                                                                                                         <div className="flex justify-between text-[9px] font-bold text-muted-foreground uppercase tracking-tight">
                                                                                                             <span>{lease.recurringAmount ? t('customerDashboard.billingProgress') : t('customerDashboard.leaseTermProgress')}</span>
                                                                                                             <span className={isMonthPast ? 'text-green-600' : isCurrentMonth ? 'text-primary' : ''}>
-                                                                                                                {lease.recurringAmount ? `${daysFilled}/30 Days` : `${Math.round(progressPercentage)}%`}
+                                                                                                                {lease.recurringAmount ? `${daysFilled}/30 ${t('customerDashboard.days')}` : `${Math.round(progressPercentage)}%`}
                                                                                                             </span>
                                                                                                         </div>
                                                                                                         <div className="flex gap-0.5 h-3">
@@ -981,7 +981,7 @@ export default function CustomerDashboardPage() {
                                                         disabled={!newRequest.propertyId || !newRequest.category || isUploading}
                                                         onClick={handleCreateMaintenanceRequest}
                                                     >
-                                                        {isUploading ? t('customerDashboard.submitting' as any) || "Submitting..." : t('customerDashboard.submitRequest')}
+                                                        {isUploading ? t('common.processing') : t('customerDashboard.submitRequest')}
                                                     </Button>
                                                 </div>
                                             </div>
@@ -1019,7 +1019,7 @@ export default function CustomerDashboardPage() {
                                                                                 request.status === 'completed' ? "bg-green-100 text-green-700" :
                                                                                     request.status === 'inProgress' ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"
                                                                             )}>
-                                                                                {request.status.replace(/([A-Z])/g, ' $1').trim()}
+                                                                                {t(`ownerDashboard.maintenanceStatus.${request.status}` as any) || request.status}
                                                                             </Badge>
 
                                                                             <span className="text-xs text-muted-foreground flex items-center">
@@ -1048,7 +1048,7 @@ export default function CustomerDashboardPage() {
                                                                                 <Button
                                                                                     onClick={() => {
                                                                                         updateRequestStatus(request.id, 'completed');
-                                                                                        toast.success('Maintenance marked as fixed');
+                                                                                        toast.success(t('customerDashboard.maintenanceFixedSuccess'));
                                                                                     }}
                                                                                     size="sm"
                                                                                     className="bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-sm"
@@ -1090,7 +1090,7 @@ export default function CustomerDashboardPage() {
                                                                                                     request.status === 'completed' ? "bg-green-100 text-green-700" :
                                                                                                         request.status === 'inProgress' ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"
                                                                                                 )}>
-                                                                                                    {request.status.replace(/([A-Z])/g, ' $1').trim()}
+                                                                                                    {t(`ownerDashboard.maintenanceStatus.${request.status}` as any) || request.status}
                                                                                                 </Badge>
                                                                                             </div>
                                                                                             <div>
@@ -1100,7 +1100,7 @@ export default function CustomerDashboardPage() {
                                                                                         </div>
                                                                                         <div className="grid grid-cols-2 gap-4">
                                                                                             <div>
-                                                                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">{t('customerDashboard.property' as any) || 'Property'}</p>
+                                                                                                <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">{t('common.property')}</p>
                                                                                                 <p className="text-xs font-semibold truncate">{request.propertyTitle}</p>
                                                                                             </div>
                                                                                             <div>
@@ -1109,7 +1109,7 @@ export default function CustomerDashboardPage() {
                                                                                             </div>
                                                                                         </div>
                                                                                         <div>
-                                                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">{t('customerDashboard.description' as any) || 'Description'}</p>
+                                                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">{t('common.description')}</p>
                                                                                             <p className="text-xs text-foreground/80 leading-relaxed bg-muted/30 p-3 rounded-lg border border-border/50">
                                                                                                 {request.description}
                                                                                             </p>
@@ -1250,7 +1250,7 @@ export default function CustomerDashboardPage() {
                                                                                 {transaction.type === 'RENT' ? t('customerDashboard.rentPayment') : t('customerDashboard.propertyPurchase')}
                                                                             </p>
                                                                             <p className="text-xs text-muted-foreground">
-                                                                                {(transaction.metadata as any)?.month || transaction.property?.title || 'Payment'}
+                                                                                {(transaction.metadata as any)?.month || transaction.property?.title || t('common.payment')}
                                                                             </p>
                                                                         </div>
                                                                     </div>

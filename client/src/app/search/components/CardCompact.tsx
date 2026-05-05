@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Heart, Maximize, Bath, Bed, Calendar, Gauge, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 interface CardProps {
     item: any;
@@ -14,6 +15,7 @@ interface CardProps {
 }
 
 const CardCompact = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, itemLink, type }: CardProps) => {
+    const { t } = useTranslation();
     if (!item) return null;
     const isProperty = type === 'property';
 
@@ -99,7 +101,7 @@ const CardCompact = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, i
                                 ETB {item.price.toLocaleString()}
                             </span>
                             <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tighter">
-                                {isProperty ? 'per month' : 'total price'}
+                                {isProperty ? t('listings.perMonth') : t('listings.totalPrice')}
                             </span>
                         </div>
                     </div>

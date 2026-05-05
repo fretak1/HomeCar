@@ -8,6 +8,7 @@ import { usePropertyStore } from "@/store/usePropertyStore";
 import { useUserStore } from "@/store/useUserStore";
 import { useInteractionStore } from "@/store/useInteractionStore";
 import { formatLocation, getListingMainImage } from "@/lib/utils";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 // Fix for Mapbox token
 const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -21,6 +22,7 @@ const Map = () => {
     const { filters, searchType } = useGlobalStore();
     const { currentUser } = useUserStore();
     const { logMapInteraction } = useInteractionStore();
+    const { t } = useTranslation();
 
     const { properties, isLoading, error } = usePropertyStore();
 
@@ -74,7 +76,7 @@ const Map = () => {
                 const lng = item.location?.lng;
 
                 if (lat !== undefined && lng !== undefined && lat !== null && lng !== null) {
-                    createMarker(item, mapRef.current!, [lng, lat], searchType);
+                    createMarker(item, mapRef.current!, [lng, lat], searchType, t);
                     bounds.extend([lng, lat]);
                     hasValidCoords = true;
                 } else {
@@ -82,7 +84,7 @@ const Map = () => {
                     const center = mapRef.current?.getCenter() || { lng: -74.5, lat: 40 };
                     const fallbackLng = center.lng + (Math.random() - 0.5) * 0.01;
                     const fallbackLat = center.lat + (Math.random() - 0.5) * 0.01;
-                    createMarker(item, mapRef.current!, [fallbackLng, fallbackLat], searchType);
+                    createMarker(item, mapRef.current!, [fallbackLng, fallbackLat], searchType, t);
                 }
             });
 
@@ -113,15 +115,12 @@ const Map = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                     </div>
-                    <h3 className="font-semibold text-foreground mb-1">Maps Configuration Required</h3>
+                    <h3 className="font-semibold text-foreground mb-1">{t("listings.mapsConfigRequired")}</h3>
                     <p className="text-sm text-muted-foreground max-w-xs mb-4">
-                        A valid Mapbox access token is required to display the search results on a map.
+                        {t("listings.mapsConfigDesc")}
                     </p>
-                    <div className="text-xs text-left bg-background p-3 rounded-lg border border-border font-mono text-muted-foreground">
-                        1. Go to mapbox.com<br />
-                        2. Get your access token<br />
-                        3. Add it to .env as:<br />
-                        NEXT_PUBLIC_MAPBOX_TOKEN=pk...
+                    <div className="text-xs text-left bg-background p-3 rounded-lg border border-border font-mono text-muted-foreground whitespace-pre-line">
+                        {t("listings.mapsConfigInstructions")}
                     </div>
                 </div>
             </div>
@@ -135,7 +134,7 @@ const Map = () => {
     );
 };
 
-const createMarker = (item: any, map: mapboxgl.Map, lngLat: [number, number], type: string) => {
+const createMarker = (item: any, map: mapboxgl.Map, lngLat: [number, number], type: string, t: any) => {
     const el = document.createElement('div');
     const imageUrl = getListingMainImage(item);
     const locationStr = formatLocation(item.location);
@@ -151,7 +150,7 @@ const createMarker = (item: any, map: mapboxgl.Map, lngLat: [number, number], ty
     el.style.cursor = 'pointer';
 
     const priceTag = document.createElement('div');
-    priceTag.innerText = `ETB ${(item.price / 1000).toFixed(0)}k`;
+    priceTag.innerText = `${t('common.etb')} ${(item.price / 1000).toFixed(0)}k`;
     priceTag.className = "bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md absolute -bottom-1 left-1/2 transform -translate-x-1/2 whitespace-nowrap z-10 border border-white/20";
 
     const container = document.createElement('div');
@@ -164,13 +163,13 @@ const createMarker = (item: any, map: mapboxgl.Map, lngLat: [number, number], ty
         .setPopup(
             new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(
                 `
-        <a href="/property/${item.id}" class="block group/popup cursor-pointer no-underline">
+        <a href="/${type === 'property' ? 'property' : 'vehicle'}/${item.id}" class="block group/popup cursor-pointer no-underline">
           <div class="p-0 w-48 overflow-hidden rounded-xl bg-card border border-border shadow-xl hover:border-primary transition-all duration-300">
             <div class="h-24 w-full bg-cover bg-center transition-transform duration-500 group-hover/popup:scale-110" style="background-image: url('${imageUrl}')"></div>
             <div class="p-3">
               <h3 class="font-bold text-sm truncate text-foreground group-hover/popup:text-primary transition-colors">${item.title}</h3>
               <p class="text-[10px] text-muted-foreground mb-1 font-medium uppercase truncate">${locationStr}</p>
-              <p class="font-bold text-primary text-base">ETB ${item.price.toLocaleString()}<span class="text-[10px] font-normal text-muted-foreground ml-1">${type === 'property' ? '/mo' : ''}</span></p>
+              <p class="font-bold text-primary text-base">${t('common.etb')} ${item.price.toLocaleString()}<span class="text-[10px] font-normal text-muted-foreground ml-1">${type === 'property' ? t('common.perMo') : ''}</span></p>
             </div>
           </div>
         </a>

@@ -29,6 +29,7 @@ import { useInteractionStore } from '@/store/useInteractionStore';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ethiopiaLocations } from '@/lib/ethiopiaLocations';
 import FiltersFull from '../search/components/FiltersFull';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function PropertyListingsPage() {
     return (
@@ -50,6 +51,7 @@ function ListingContent() {
         setSearchType
     } = useGlobalStore();
     const searchParams = useSearchParams();
+    const { t } = useTranslation();
 
     const { properties, isLoading, total, totalPages, fetchProperties, clearProperties } = usePropertyStore();
     const { currentUser } = useUserStore();
@@ -62,7 +64,7 @@ function ListingContent() {
     const [hasSyncedUrl, setHasSyncedUrl] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
 
-    const displayLocation = [filters.subCity, filters.city, filters.region].filter(Boolean).filter(v => v !== 'any').join(", ") || "Location";
+    const displayLocation = [filters.subCity, filters.city, filters.region].filter(Boolean).filter(v => v !== 'any').join(", ") || t("listings.location");
 
     const updateLocation = (key: 'region' | 'city' | 'subCity', value: string) => {
         const updates: Partial<typeof filters> = { [key]: value };
@@ -223,10 +225,11 @@ function ListingContent() {
             <div className="bg-[#005a41] py-12 lg:py-16 shadow-inner text-center md:text-left">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-4">
-                        Browse <span className="text-white/80">Listings</span>
+                        {t("listings.browseListings").split(" ")[0]}{" "}
+                        <span className="text-white/80">{t("listings.browseListings").split(" ").slice(1).join(" ")}</span>
                     </h1>
                     <p className="text-xl text-white/90 max-w-2xl">
-                        Find your dream home or vehicle in Ethiopia with HomeCar.
+                        {t("listings.heroSubtitle")}
                     </p>
                 </div>
             </div>
@@ -243,10 +246,10 @@ function ListingContent() {
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                         <TabsList className="bg-muted/50 p-1">
                             <TabsTrigger value="property" className="px-8 flex items-center gap-2">
-                                Homes
+                                {t("listings.homes")}
                             </TabsTrigger>
                             <TabsTrigger value="vehicle" className="px-8 flex items-center gap-2">
-                                Cars
+                                {t("listings.cars")}
                             </TabsTrigger>
                         </TabsList>
 
@@ -270,13 +273,13 @@ function ListingContent() {
                                 <PopoverContent className="w-[320px] p-6 rounded-2xl shadow-xl border-border" align="end" sideOffset={8}>
                                     <div className="space-y-6">
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Region</Label>
+                                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("listings.region")}</Label>
                                             <Select value={filters.region || 'any'} onValueChange={(v) => updateLocation('region', v)}>
                                                 <SelectTrigger className="h-11 bg-muted/40 border-none rounded-xl focus:ring-1 focus:ring-primary shadow-none">
-                                                    <SelectValue placeholder="All Regions" />
+                                                    <SelectValue placeholder={t("listings.allRegions")} />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl border-border shadow-2xl">
-                                                    <SelectItem value="any">All Regions</SelectItem>
+                                                    <SelectItem value="any">{t("listings.allRegions")}</SelectItem>
                                                     {Object.keys(ethiopiaLocations).map(r => (
                                                         <SelectItem key={r} value={r}>{r}</SelectItem>
                                                     ))}
@@ -286,13 +289,13 @@ function ListingContent() {
 
                                         {filters.region && filters.region !== 'any' && (
                                             <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">City</Label>
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("listings.city")}</Label>
                                                 <Select value={filters.city || 'any'} onValueChange={(v) => updateLocation('city', v)}>
                                                     <SelectTrigger className="h-11 bg-muted/40 border-none rounded-xl focus:ring-1 focus:ring-primary shadow-none">
-                                                        <SelectValue placeholder="All Cities" />
+                                                        <SelectValue placeholder={t("listings.allCities")} />
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl border-border shadow-2xl">
-                                                        <SelectItem value="any">All Cities</SelectItem>
+                                                        <SelectItem value="any">{t("listings.allCities")}</SelectItem>
                                                         {Object.keys(ethiopiaLocations[filters.region]).map(c => (
                                                             <SelectItem key={c} value={c}>{c}</SelectItem>
                                                         ))}
@@ -303,13 +306,13 @@ function ListingContent() {
 
                                         {filters.city && filters.city !== 'any' && filters.region && ethiopiaLocations[filters.region]?.[filters.city] && (
                                             <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Sub City</Label>
+                                                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">{t("listings.subCity")}</Label>
                                                 <Select value={filters.subCity || 'any'} onValueChange={(v) => updateLocation('subCity', v)}>
                                                     <SelectTrigger className="h-11 bg-muted/40 border-none rounded-xl focus:ring-1 focus:ring-primary shadow-none">
-                                                        <SelectValue placeholder="Select Sub City" />
+                                                        <SelectValue placeholder={t("listings.allSubCities")} />
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl border-border shadow-2xl">
-                                                        <SelectItem value="any">All Sub Cities</SelectItem>
+                                                        <SelectItem value="any">{t("listings.allSubCities")}</SelectItem>
                                                         {Object.keys(ethiopiaLocations[filters.region][filters.city]).map(sc => (
                                                             <SelectItem key={sc} value={sc}>{sc}</SelectItem>
                                                         ))}
@@ -329,12 +332,12 @@ function ListingContent() {
                                 }}
                             >
                                 <SelectTrigger className="w-[120px] h-10 rounded-full bg-background border-border">
-                                    <SelectValue placeholder="All" />
+                                    <SelectValue placeholder={t("listings.all")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="any">All</SelectItem>
-                                    <SelectItem value="rent">For Rent</SelectItem>
-                                    <SelectItem value="buy">For Sale</SelectItem>
+                                    <SelectItem value="any">{t("listings.all")}</SelectItem>
+                                    <SelectItem value="rent">{t("listings.forRent")}</SelectItem>
+                                    <SelectItem value="buy">{t("listings.forSale")}</SelectItem>
                                 </SelectContent>
                             </Select>
 
@@ -359,11 +362,11 @@ function ListingContent() {
                         <div className={showFilters ? 'lg:col-span-3' : 'lg:col-span-4'}>
                             <div className="flex justify-between items-center mb-6 px-1">
                                 <p className="text-muted-foreground font-medium">
-                                    Showing <span className="text-foreground font-bold">{properties.length}</span> of <span className="text-foreground font-bold">{total}</span> {searchType}s
-                                    <span className="ml-2 text-xs">(Page {currentPage} of {totalPages})</span>
+                                    {t("listings.showing")} <span className="text-foreground font-bold">{properties.length}</span> {t("listings.of")} <span className="text-foreground font-bold">{total}</span> {searchType === 'property' ? t("listings.homes").toLowerCase() : t("listings.cars").toLowerCase()}
+                                    <span className="ml-2 text-xs">({t("listings.page")} {currentPage} / {totalPages})</span>
                                 </p>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xs text-muted-foreground hidden sm:inline">Sort By</span>
+                                    <span className="text-xs text-muted-foreground hidden sm:inline">{t("listings.sortBy")}</span>
                                     <Select value={sortBy} onValueChange={(v) => {
                                         setSortBy(v);
                                         setCurrentPage(1);
@@ -372,9 +375,9 @@ function ListingContent() {
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="newest">Newest First</SelectItem>
-                                            <SelectItem value="price-low">Price: Low to High</SelectItem>
-                                            <SelectItem value="price-high">Price: High to Low</SelectItem>
+                                            <SelectItem value="newest">{t("listings.newestFirst")}</SelectItem>
+                                            <SelectItem value="price-low">{t("listings.priceLowToHigh")}</SelectItem>
+                                            <SelectItem value="price-high">{t("listings.priceHighToLow")}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -384,25 +387,17 @@ function ListingContent() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {[1, 2, 3, 4, 5, 6].map(i => (
                                         <div key={i} className="bg-card border rounded-2xl overflow-hidden shadow-sm animate-pulse flex flex-col h-full">
-                                            {/* Image Area - Fixed to match h-56 of real cards */}
                                             <div className="h-56 bg-muted/30 w-full" />
-                                            {/* Content Area */}
                                             <div className="p-5 flex flex-col flex-1 space-y-4">
                                                 <div className="space-y-2">
-                                                    {/* Title bar */}
                                                     <div className="h-5 bg-muted/30 rounded-md w-3/4" />
-                                                    {/* Subtitle/Location bar */}
                                                     <div className="h-3 bg-muted/20 rounded-md w-1/2" />
                                                 </div>
-                                                
-                                                {/* Specs bar (Beds/Baths or Mileage/Fuel) */}
                                                 <div className="flex gap-4">
                                                     <div className="h-3 bg-muted/20 rounded-md w-12" />
                                                     <div className="h-3 bg-muted/20 rounded-md w-12" />
                                                     <div className="h-3 bg-muted/20 rounded-md w-12" />
                                                 </div>
-                                                
-                                                {/* Footer (Price + Button) */}
                                                 <div className="mt-auto pt-4 flex justify-between items-center border-t border-muted/10">
                                                     <div className="h-7 bg-primary/10 rounded-md w-1/3" />
                                                     <div className="h-8 bg-muted/20 rounded-lg w-20" />
@@ -416,9 +411,9 @@ function ListingContent() {
                                     <div className="bg-muted w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                         <Search className="w-8 h-8 text-muted-foreground" />
                                     </div>
-                                    <h3 className="text-xl font-bold mb-2">No items match your filters</h3>
-                                    <p className="text-muted-foreground mb-6">Try adjusting your filters or resetting them to find what you're looking for.</p>
-                                    <Button onClick={resetFilters} variant="default">Reset All Filters</Button>
+                                    <h3 className="text-xl font-bold mb-2">{t("listings.noItemsMatch")}</h3>
+                                    <p className="text-muted-foreground mb-6">{t("listings.noItemsDesc")}</p>
+                                    <Button onClick={resetFilters} variant="default">{t("listings.resetAllFilters")}</Button>
                                 </div>
                             ) : (
                                 <>
@@ -441,7 +436,7 @@ function ListingContent() {
                                                 disabled={currentPage === 1}
                                                 className="rounded-xl px-6"
                                             >
-                                                Previous
+                                                {t("listings.previous")}
                                             </Button>
                                             
                                             <div className="flex items-center gap-2 font-medium">
@@ -459,7 +454,7 @@ function ListingContent() {
                                                 disabled={currentPage === totalPages}
                                                 className="rounded-xl px-6"
                                             >
-                                                Next
+                                                {t("listings.next")}
                                             </Button>
                                         </div>
                                     )}

@@ -14,6 +14,7 @@ import {
     Home,
     Info
 } from 'lucide-react';
+import { useTranslation } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ import { useTransactionStore } from '@/store/useTransactionStore';
 import { format, differenceInDays, isBefore, isWithinInterval, addDays } from 'date-fns';
 
 export default function OwnerLeaseDetailsPage() {
+    const { t } = useTranslation();
     const params = useParams();
     const id = params?.id as string;
 
@@ -44,7 +46,7 @@ export default function OwnerLeaseDetailsPage() {
     const lease = leases.find(l => l.id === id);
     const property = lease ? (lease.property || properties.find(p => p.id === lease.propertyId)) : null;
 
-    const tenantName = lease ? (lease as any).customer?.name || "Unknown Tenant" : "Unknown Tenant";
+    const tenantName = lease ? (lease as any).customer?.name || t('common.unknownTenant') : t('common.unknownTenant');
 
     const handleMessageTenant = async () => {
         if (lease?.customerId) {
@@ -62,10 +64,10 @@ export default function OwnerLeaseDetailsPage() {
                     <div className="bg-red-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Info className="h-8 w-8 text-red-500" />
                     </div>
-                    <h2 className="text-2xl font-bold mb-2">Lease Not Found</h2>
-                    <p className="text-muted-foreground mb-6">The lease agreement you're looking for doesn't exist or has expired.</p>
+                    <h2 className="text-2xl font-bold mb-2">{t('leaseDetail.notFound')}</h2>
+                    <p className="text-muted-foreground mb-6">{t('leaseDetail.notFoundDesc')}</p>
                     <Link href="/dashboard/owner?tab=leases">
-                        <Button className="w-full bg-[#005a41] hover:bg-[#004a35]">Back to My Leases</Button>
+                        <Button className="w-full bg-[#005a41] hover:bg-[#004a35]">{t('leaseDetail.backToLeases')}</Button>
                     </Link>
                 </Card>
             </div>
@@ -85,7 +87,7 @@ export default function OwnerLeaseDetailsPage() {
                                 </Button>
                             </Link>
                             <div>
-                                <h1 className="text-xl font-bold text-foreground">Lease Agreement</h1>
+                                <h1 className="text-xl font-bold text-foreground">{t('leaseDetail.title')}</h1>
 
                             </div>
                         </div>
@@ -98,10 +100,10 @@ export default function OwnerLeaseDetailsPage() {
                                         lease.status === 'COMPLETED' ? "bg-blue-100 text-blue-700" : 
                                         "bg-red-100 text-red-700"
                             )}>
-                                {lease.status === 'ACTIVE' ? 'Active Agreement' : 
-                                 lease.status === 'PENDING' ? 'Agreement Pending' : 
-                                 lease.status === 'CANCELLATION_PENDING' ? 'Cancellation Pending...' :
-                                 lease.status}
+                                {lease.status === 'ACTIVE' ? t('leaseDetail.activeAgreement') : 
+                                 lease.status === 'PENDING' ? t('leaseDetail.pendingAgreement') : 
+                                 lease.status === 'CANCELLATION_PENDING' ? t('leaseDetail.cancellationPending') :
+                                 t(`common.${lease.status.toLowerCase()}` as any) || lease.status}
                             </Badge>
                            
                         </div>
@@ -133,8 +135,8 @@ export default function OwnerLeaseDetailsPage() {
                                             </p>
                                         </div>
                                         <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 text-white min-w-[140px]">
-                                            <p className="text-[10px] uppercase font-bold text-white/60 tracking-widest mb-1">{lease.recurringAmount ? 'Monthly Income' : 'Full Payment Amount'}</p>
-                                            <p className="text-2xl font-black">ETB {(lease.recurringAmount || lease.totalPrice || 0).toLocaleString()}</p>
+                                            <p className="text-[10px] uppercase font-bold text-white/60 tracking-widest mb-1">{lease.recurringAmount ? t('leaseDetail.monthlyIncome') : t('leaseDetail.fullPayment')}</p>
+                                            <p className="text-2xl font-black">{t('common.etb')} {(lease.recurringAmount || lease.totalPrice || 0).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -142,21 +144,21 @@ export default function OwnerLeaseDetailsPage() {
                             <CardContent className="p-8">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                                     <div className="space-y-1">
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Property Type</p>
+                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('leaseDetail.propertyType')}</p>
                                         <p className="font-bold text-foreground capitalize flex items-center">
                                             {property.assetType === 'HOME' ? <Home className="h-3.5 w-3.5 mr-2 text-[#005a41]" /> : <ShieldCheck className="h-3.5 w-3.5 mr-2 text-[#005a41]" />}
-                                            {property.propertyType || (property.assetType === 'HOME' ? 'Home' : 'Vehicle')}
+                                            {property.propertyType ? (t(`property.types.${property.propertyType.toLowerCase()}` as any) || property.propertyType) : (property.assetType === 'HOME' ? t('listings.homes') : t('listings.cars'))}
                                         </p>
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Current Tenant</p>
+                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('leaseDetail.currentTenant')}</p>
                                         <p className="font-bold text-foreground">{tenantName}</p>
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Lease Status</p>
+                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('leaseDetail.status')}</p>
                                         <div className="flex items-center">
                                             <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest">
-                                                Active
+                                                {t('common.active')}
                                             </Badge>
                                         </div>
                                     </div>
@@ -180,14 +182,14 @@ export default function OwnerLeaseDetailsPage() {
                                             <div className="flex items-center justify-between">
                                                 <CardTitle className="text-lg font-bold flex items-center gap-2">
                                                     <Clock className="h-5 w-5 text-[#005a41]" />
-                                                    Lease Lifecycle
+                                                    {t('leaseDetail.lifecycle')}
                                                 </CardTitle>
                                                 <Badge variant="outline" className="text-[10px] font-bold uppercase">
-                                                    TERM: {(() => {
+                                                    {t('leaseDetail.term')}: {(() => {
                                                         const start = new Date(lease.startDate);
                                                         const end = new Date(lease.endDate);
                                                         const days = differenceInDays(end, start);
-                                                        return `${Math.floor(days / 30)} MONTHS (${days} DAYS)`;
+                                                        return `${Math.floor(days / 30)} ${t('leaseDetail.months')} (${days} ${t('leaseDetail.days')})`;
                                                     })()}
                                                 </Badge>
                                             </div>
@@ -197,19 +199,19 @@ export default function OwnerLeaseDetailsPage() {
                                                 <div className="space-y-2">
                                                     <div className="flex justify-between items-end mb-2">
                                                         <div className="space-y-1">
-                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground">Term Progress</p>
-                                                            <p className="text-2xl font-black text-foreground">{leaseProgressValue.toFixed(0)}% <span className="text-sm font-medium text-muted-foreground">Elapsed</span></p>
+                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground">{t('leaseDetail.progress')}</p>
+                                                            <p className="text-2xl font-black text-foreground">{leaseProgressValue.toFixed(0)}% <span className="text-sm font-medium text-muted-foreground">{t('leaseDetail.elapsed')}</span></p>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground">Remaining</p>
-                                                            <p className="text-lg font-bold text-[#005a41]">{Math.max(0, Math.floor((totalDays - elapsedDays) / 30))} Months</p>
+                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground">{t('leaseDetail.remaining')}</p>
+                                                            <p className="text-lg font-bold text-[#005a41]">{Math.max(0, Math.floor((totalDays - elapsedDays) / 30))} {t('leaseDetail.months')}</p>
                                                         </div>
                                                     </div>
                                                     <Progress value={leaseProgressValue} className="h-4 bg-muted border border-border rounded-full" />
                                                     <div className="flex justify-between items-center text-[10px] font-black uppercase text-muted-foreground tracking-tighter pt-1">
-                                                        <span>Start: {format(startDate, 'MMM dd, yyyy')}</span>
-                                                        <span className="text-[#005a41] italic font-bold tracking-widest underline decoration-[#005a41]/20 underline-offset-4 decoration-2">Today: {format(new Date(), 'MMM dd, yyyy')}</span>
-                                                        <span>End: {format(endDate, 'MMM dd, yyyy')}</span>
+                                                        <span>{t('leaseDetail.start')}: {format(startDate, 'MMM dd, yyyy')}</span>
+                                                        <span className="text-[#005a41] italic font-bold tracking-widest underline decoration-[#005a41]/20 underline-offset-4 decoration-2">{t('leaseDetail.today')}: {format(new Date(), 'MMM dd, yyyy')}</span>
+                                                        <span>{t('leaseDetail.end')}: {format(endDate, 'MMM dd, yyyy')}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -221,7 +223,7 @@ export default function OwnerLeaseDetailsPage() {
                                         <CardHeader className="border-b border-border bg-muted/5">
                                             <CardTitle className="text-lg font-bold flex items-center gap-2">
                                                 <DollarSign className="h-5 w-5 text-[#005a41]" />
-                                                {lease.recurringAmount ? 'Revenue Collection Record' : 'Lease Payment Settlement'}
+                                                {lease.recurringAmount ? t('leaseDetail.revenueRecord') : t('leaseDetail.settlementRecord')}
                                             </CardTitle>
                                         </CardHeader>
                                         <CardContent className="p-0">
@@ -229,11 +231,11 @@ export default function OwnerLeaseDetailsPage() {
                                                 <table className="w-full text-left">
                                                     <thead>
                                                         <tr className="border-b border-border/50 bg-muted/20">
-                                                            <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Billing Period</th>
-                                                            <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Settlement Date</th>
-                                                            <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Gross Amount</th>
-                                                            <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Collection Status</th>
-                                                            <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">Receipt</th>
+                                                            <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('leaseDetail.billingPeriod')}</th>
+                                                            <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('leaseDetail.settlementDate')}</th>
+                                                            <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('leaseDetail.grossAmount')}</th>
+                                                            <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('leaseDetail.collectionStatus')}</th>
+                                                            <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('leaseDetail.receipt')}</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-border/50">
@@ -258,22 +260,22 @@ export default function OwnerLeaseDetailsPage() {
                                                                     <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
                                                                         {isPaid ? format(new Date(paymentRecord.createdAt), 'MMM dd, yyyy') : '—'}
                                                                     </td>
-                                                                    <td className="px-6 py-4 text-sm font-black text-foreground">ETB {(lease.recurringAmount || lease.totalPrice).toLocaleString()}</td>
+                                                                    <td className="px-6 py-4 text-sm font-black text-foreground">{t('common.etb')} {(lease.recurringAmount || lease.totalPrice).toLocaleString()}</td>
                                                                     <td className="px-6 py-4">
                                                                         {isPaid ? (
-                                                                            <Badge className="bg-green-100 text-green-700 border-none px-2 py-0.5 text-[8px] font-bold">RECEIVED</Badge>
+                                                                            <Badge className="bg-green-100 text-green-700 border-none px-2 py-0.5 text-[8px] font-bold">{t('leaseDetail.received')}</Badge>
                                                                         ) : isMonthPast ? (
-                                                                            <Badge className="bg-red-50 text-red-700 border-red-100 px-2 py-0.5 text-[8px] font-bold">OVERDUE</Badge>
+                                                                            <Badge className="bg-red-50 text-red-700 border-red-100 px-2 py-0.5 text-[8px] font-bold">{t('leaseDetail.overdue')}</Badge>
                                                                         ) : isCurrentMonth ? (
-                                                                            <Badge className="bg-[#005a41] text-white border-none px-2 py-0.5 text-[8px] font-bold animate-pulse">UPCOMING</Badge>
+                                                                            <Badge className="bg-[#005a41] text-white border-none px-2 py-0.5 text-[8px] font-bold animate-pulse">{t('leaseDetail.upcoming')}</Badge>
                                                                         ) : (
-                                                                            <Badge variant="outline" className="text-[8px] font-bold opacity-50">PENDING</Badge>
+                                                                            <Badge variant="outline" className="text-[8px] font-bold opacity-50">{t('leaseDetail.pending')}</Badge>
                                                                         )}
                                                                     </td>
                                                                     <td className="px-6 py-4">
                                                                         {isPaid ? (
                                                                             <Link href={`/dashboard/customer/documents/receipt/${paymentRecord.id}`}>
-                                                                                <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold text-primary border-primary hover:bg-primary hover:text-white uppercase transition-colors">View Receipt</Button>
+                                                                                <Button variant="outline" size="sm" className="h-8 text-[10px] font-bold text-primary border-primary hover:bg-primary hover:text-white uppercase transition-colors">{t('leaseDetail.viewReceipt')}</Button>
                                                                             </Link>
                                                                         ) : (
                                                                             <span className="text-[10px] text-muted-foreground font-bold">—</span>
@@ -300,9 +302,9 @@ export default function OwnerLeaseDetailsPage() {
                             <CardHeader className="bg-[#005a41] text-white p-6">
                                 <CardTitle className="text-lg font-bold flex items-center gap-2">
                                     <Users className="h-5 w-5" />
-                                    Active Tenant
+                                    {t('leaseDetail.activeTenant')}
                                 </CardTitle>
-                                <CardDescription className="text-white/70 text-xs">Primary contact for this property</CardDescription>
+                                <CardDescription className="text-white/70 text-xs">{t('leaseDetail.primaryContact')}</CardDescription>
                             </CardHeader>
                             <CardContent className="p-6">
                                 <div className="flex items-center gap-4 mb-6">
@@ -311,7 +313,7 @@ export default function OwnerLeaseDetailsPage() {
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-foreground">{tenantName}</h4>
-                                        <p className="text-xs text-muted-foreground">Certified HomeCar Tenant</p>
+                                        <p className="text-xs text-muted-foreground">{t('leaseDetail.certifiedTenant')}</p>
                                     </div>
                                 </div>
                                 <div className="space-y-4">
@@ -320,11 +322,11 @@ export default function OwnerLeaseDetailsPage() {
                                         className="w-full bg-[#005a41] hover:bg-[#004a35] text-white font-bold h-11 rounded-xl shadow-md active:scale-95 transition-all"
                                     >
                                         <MessageSquare className="h-4 w-4 mr-2" />
-                                        Message Tenant
+                                        {t('leaseDetail.messageTenant')}
                                     </Button>
                                     <Link href={`/profile/${lease.customerId}`} className="w-full block">
                                         <Button variant="outline" className="w-full text-foreground font-bold h-11 border-border rounded-xl">
-                                            View Tenant Profile
+                                            {t('leaseDetail.viewProfile')}
                                         </Button>
                                     </Link>
                                 </div>

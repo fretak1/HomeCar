@@ -4,10 +4,12 @@ import { usePropertyStore } from "@/store/usePropertyStore";
 import { useGlobalStore } from "@/store/useGlobalStore";
 import { useFavoriteStore } from "@/store/useFavoriteStore";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTranslation } from "@/contexts/LanguageContext";
 import Card from "./Card";
 
 const Listings = () => {
     const { user } = useAuth();
+    const { t } = useTranslation();
     const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
     const {  filters, searchType, isFiltersFullOpen } = useGlobalStore();
     const { properties, isLoading, error, page, totalPages, fetchProperties } = usePropertyStore();
@@ -22,9 +24,6 @@ const Listings = () => {
     };
 
     const handlePageChange = (newPage: number) => {
-        // Find the current search params and update the page
-        // In a real app, this should probably come from the parent or a search context
-        // But for now we can trigger a re-fetch with the current filters and new page
         fetchProperties({ ...filters, page: newPage, assetType: searchType === 'property' ? 'HOME' : 'CAR' });
     };
 
@@ -48,7 +47,7 @@ const Listings = () => {
                 <h3 className="font-semibold text-foreground flex items-center gap-2">
                     <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-md text-sm">{items.length}</span>
                     <span className="text-muted-foreground font-medium">
-                        {searchType === 'property' ? 'Properties' : 'Vehicles'} Found {filters.location ? `in ${String(filters.location)}` : ""}
+                        {searchType === 'property' ? t("listings.propertiesFound") : t("listings.vehiclesFound")} {filters.location ? `${t("listings.inLocation")} ${String(filters.location)}` : ""}
                     </span>
                 </h3>
             </div>
@@ -56,8 +55,8 @@ const Listings = () => {
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                 {items.length === 0 ? (
                     <div className="text-center py-20">
-                        <h3 className="text-lg font-medium text-muted-foreground">No results found</h3>
-                        <p className="text-sm text-gray-400 mt-1">Try adjusting your filters</p>
+                        <h3 className="text-lg font-medium text-muted-foreground">{t("listings.noResultsFound")}</h3>
+                        <p className="text-sm text-gray-400 mt-1">{t("listings.tryAdjusting")}</p>
                     </div>
                 ) : (
                     <>
@@ -85,12 +84,12 @@ const Listings = () => {
                                     disabled={page === 1}
                                     className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
                                 >
-                                    Previous
+                                    {t("listings.previous")}
                                 </button>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-sm text-muted-foreground">Page</span>
+                                    <span className="text-sm text-muted-foreground">{t("listings.page")}</span>
                                     <span className="text-sm font-bold text-foreground">{page}</span>
-                                    <span className="text-sm text-muted-foreground">of</span>
+                                    <span className="text-sm text-muted-foreground">{t("listings.of")}</span>
                                     <span className="text-sm font-bold text-foreground">{totalPages}</span>
                                 </div>
                                 <button
@@ -98,7 +97,7 @@ const Listings = () => {
                                     disabled={page === totalPages}
                                     className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
                                 >
-                                    Next
+                                    {t("listings.next")}
                                 </button>
                             </div>
                         )}

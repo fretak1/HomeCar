@@ -109,7 +109,7 @@ export function Navbar() {
               { name: t('nav.home'), href: '/' },
               { name: t('nav.searchOnMap'), href: '/search' },
               { name: t('nav.properties'), href: '/listings' },
-              { name: getDashboardLabel(), href: '/dashboard' },
+              { name: getDashboardLabel(), href: currentUser ? `/dashboard/${currentUser.role.toLowerCase()}` : '/dashboard' },
             ].filter((item) => {
               // Hide all links while auth state is loading to prevent role-based glitch
               if (userLoading) return false;
@@ -219,7 +219,7 @@ export function Navbar() {
                       )}
                     </div>
                     <div className="p-2 border-t border-border bg-gray-50/50">
-                      <Button variant="ghost" size="sm" className="w-full text-[11px] font-bold text-muted-foreground" onClick={() => router.push('/dashboard')}>
+                      <Button variant="ghost" size="sm" className="w-full text-[11px] font-bold text-muted-foreground" onClick={() => router.push(currentUser ? `/dashboard/${currentUser.role.toLowerCase()}` : '/dashboard')}>
                         {t('nav.seeAllInDashboard')}
                       </Button>
                     </div>

@@ -200,9 +200,9 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
     const onError = (errors: any) => {
         const firstErrorKey = Object.keys(errors)[0];
         if (firstErrorKey) {
-            toast.error(errors[firstErrorKey].message || `Please fill out the ${firstErrorKey} field.`);
+            toast.error(errors[firstErrorKey].message || t(`lease.${firstErrorKey}Required` as any));
         } else {
-            toast.error('Please complete all required fields.');
+            toast.error(t('lease.completeRequired'));
         }
     };
 
@@ -221,7 +221,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                             <FormField
                                 control={form.control}
                                 name="ownerId"
-                                rules={{ required: role === 'agent' ? 'Please select an owner' : false }}
+                                rules={{ required: role === 'agent' ? t('lease.ownerRequired') : false }}
                                 render={({ field }) => (
                                     <FormItem className="flex flex-col">
                                         <Popover open={ownerSearchOpen} onOpenChange={setOwnerSearchOpen}>
@@ -299,7 +299,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                         <FormField
                             control={form.control}
                             name="tenantId"
-                            rules={{ required: 'Please select a customer for this lease' }}
+                            rules={{ required: t('lease.tenantRequired') }}
                             render={({ field }) => (
                                 <FormItem>
                                     <Select onValueChange={field.onChange} value={field.value}>
@@ -336,7 +336,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                     <FormField
                         control={form.control}
                         name="propertyId"
-                        rules={{ required: 'Please select a property' }}
+                        rules={{ required: t('lease.propertyRequired') }}
                         render={({ field }) => (
                             <FormItem>
                                 <Select
@@ -390,7 +390,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                         <FormField
                             control={form.control}
                             name="startDate"
-                            rules={{ required: 'Start date is required' }}
+                            rules={{ required: t('lease.startDateRequired') }}
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>{t('lease.startDate')}</FormLabel>
@@ -408,7 +408,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                         <FormField
                             control={form.control}
                             name="endDate"
-                            rules={{ required: 'End date is required' }}
+                            rules={{ required: t('lease.endDateRequired') }}
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>{t('lease.endDate')}</FormLabel>
@@ -463,7 +463,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                             <FormField
                                 control={form.control}
                                 name="totalPrice"
-                                rules={{ required: 'Total price is required' }}
+                                rules={{ required: t('lease.totalPriceRequired') }}
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>{t('lease.totalValue')}</FormLabel>
@@ -484,7 +484,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                                 <FormField
                                     control={form.control}
                                     name="recurringAmount"
-                                    rules={{ required: 'Monthly amount is required' }}
+                                    rules={{ required: t('lease.recurringAmountRequired') }}
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>{t('lease.monthlyAmount')}</FormLabel>

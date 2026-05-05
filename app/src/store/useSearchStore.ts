@@ -69,10 +69,17 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   isLoading: false,
 
   setFilters: (newFilters) => {
+    if (__DEV__) console.log('[SearchStore] setFilters called with:', newFilters);
     const currentFilters = get().filters;
-    // Reset page to 1 if any filter other than page changes
     const shouldResetPage = Object.keys(newFilters).some(key => key !== 'page');
+    
+    // Clear results if assetType changes to show loading state properly
+    const results = newFilters.assetType && newFilters.assetType !== currentFilters.assetType 
+      ? [] 
+      : get().results;
+
     set({ 
+      results,
       filters: { 
         ...currentFilters, 
         ...newFilters,
@@ -90,6 +97,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
     const { filters } = get();
     set({ isLoading: true });
     try {
+      if (__DEV__) console.log('[Search] Executing search with filters:', filters);
       const params: any = {};
       if (filters.query) params.search = filters.query;
       if (filters.assetType !== 'any') params.assetType = filters.assetType;
@@ -100,6 +108,8 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       if (filters.region !== 'any') params.region = filters.region;
       if (filters.city !== 'any') params.city = filters.city;
       if (filters.subCity !== 'any') params.subCity = filters.subCity;
+
+      if (__DEV__) console.log('[Search] Final params:', params);
 
       if (filters.assetType === 'HOME') {
         if (filters.propertyType !== 'any') params.propertyType = filters.propertyType;
@@ -120,7 +130,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       }
 
       params.page = filters.page || 1;
-      params.limit = 10; // Fixed limit per page for mobile
+      params.limit = 10;
 
       const response = await apiClient.get('/api/properties', { params });
       const propertiesResult = Array.isArray(response.data)
@@ -129,13 +139,19 @@ export const useSearchStore = create<SearchState>((set, get) => ({
       
       const totalPages = response.data?.totalPages || 1;
       
+      if (__DEV__) console.log(`[Search] Found ${propertiesResult.length} results`);
+
       set({ 
         results: propertiesResult, 
         totalPages,
         isLoading: false 
       });
-    } catch (err) {
-      set({ isLoading: false });
+    } catch (err: any) {
+      if (__DEV__) console.error('[Search] Error executing search:', err.message);
+      set({ 
+        results: [], 
+        isLoading: false 
+      });
     }
   },
 

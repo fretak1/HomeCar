@@ -17,7 +17,7 @@ export default function UserDashboardPage() {
 
         if (currentUser) {
             if (currentUser.role === 'CUSTOMER') {
-                router.replace('/');
+                router.replace('/dashboard/customer');
             } else {
                 const role = currentUser.role.toLowerCase();
                 router.replace(`/dashboard/${role}`);

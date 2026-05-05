@@ -194,7 +194,7 @@ export default function OwnerDashboardPage() {
                                                 "text-lg font-bold mb-1",
                                                 property.rejectionReason ? "text-rose-900" : "text-amber-900"
                                             )}>
-                                                {property.rejectionReason ? 'Property Verification Rejected' : 'Property Verification Pending'}
+                                                {property.rejectionReason ? t('ownerDashboard.verificationRejected') : t('ownerDashboard.verificationPending')}
                                             </h3>
                                             <p className={cn(
                                                 "text-sm max-w-2xl font-medium",
@@ -202,8 +202,8 @@ export default function OwnerDashboardPage() {
                                             )}>
                                                 <span className="font-bold underline">{property.title}</span>: {
                                                     property.rejectionReason 
-                                                    ? `Rejected due to: ${property.rejectionReason}`
-                                                    : 'Our administrators are currently reviewing your property documents. This usually takes 24-48 hours.'
+                                                    ? `${t('common.rejected')}: ${property.rejectionReason}`
+                                                    : t('ownerDashboard.reviewingDocs')
                                                 }
                                             </p>
                                         </div>
@@ -214,7 +214,7 @@ export default function OwnerDashboardPage() {
                                                 property.rejectionReason ? "bg-rose-600 hover:bg-rose-700 text-white" : "bg-amber-600 hover:bg-amber-700 text-white"
                                             )}
                                         >
-                                            {property.rejectionReason ? 'Fix Documents' : 'Update Details'}
+                                            {property.rejectionReason ? t('ownerDashboard.fixDocuments') : t('ownerDashboard.updateDetails')}
                                         </Button>
                                     </div>
                                 </CardContent>
@@ -257,7 +257,7 @@ export default function OwnerDashboardPage() {
                             {propError ? (
                                 <div className="col-span-full py-10 px-4 bg-rose-50 border border-rose-100 rounded-2xl text-center">
                                     <AlertCircle className="h-8 w-8 text-rose-500 mx-auto mb-2" />
-                                    <p className="text-rose-600 font-medium font-bold">{t('common.error' as any) || 'Error loading properties'}</p>
+                                    <p className="text-rose-600 font-medium font-bold">{t('ownerDashboard.errorLoadingProperties')}</p>
                                     <p className="text-rose-500 text-sm">{propError}</p>
                                     <Button
                                         variant="outline"
@@ -317,7 +317,7 @@ export default function OwnerDashboardPage() {
                                         leases.map((lease: any) => {
                                             const property = lease.property || properties.find((p: any) => p.id === lease.propertyId);
                                             if (!property) return null;
-                                            const tenantName = lease.customer?.name || "Unknown Tenant";
+                                            const tenantName = lease.customer?.name || t('common.unknownTenant');
 
                                             return (
                                                 <Card key={lease.id} className="border-border">
@@ -471,7 +471,7 @@ export default function OwnerDashboardPage() {
                                                                                                             {format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd')}
                                                                                                         </h5>
                                                                                                         {isCurrentMonth && (
-                                                                                                            <Badge className="bg-[#005a41] text-white text-[8px] h-4 px-1 border-none shadow-sm">{t('common.processing').toUpperCase()}</Badge>
+                                                                                                            <Badge className="bg-[#005a41] text-white text-[8px] h-4 px-1 border-none shadow-sm">{t('common.current').toUpperCase()}</Badge>
                                                                                                         )}
                                                                                                     </div>
                                                                                                     <p className="text-2xl font-black text-foreground">
@@ -604,7 +604,7 @@ export default function OwnerDashboardPage() {
                                                             <img src={app.propertyImage} alt={app.propertyTitle} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300'; }} />
                                                             <div className="absolute top-2 left-2">
                                                                 <Badge className="bg-white/90 backdrop-blur-sm text-black text-[10px] uppercase font-bold px-2 py-0.5 border-none shadow-sm capitalize">
-                                                                    {app.listingType}
+                                                                    {app.listingType === 'rent' ? t('common.rent') : t('common.buy')}
                                                                 </Badge>
                                                             </div>
                                                         </div>
@@ -659,12 +659,12 @@ export default function OwnerDashboardPage() {
                                                                 if (customerId) {
                                                                     router.push(`/profile/${customerId}`);
                                                                 } else {
-                                                                    toast.error("Customer profile not found");
+                                                                    toast.error(t('common.customerProfileNotFound'));
                                                                 }
                                                             }}
                                                         >
                                                             <User className="h-3.5 w-3.5 mr-2" />
-                                                            {t('common.seeProfile' as any) || 'See Profile'}
+                                                            {t('common.seeProfile')}
                                                         </Button>
                                                         {app.status === 'pending' && (
                                                             <>
@@ -676,7 +676,7 @@ export default function OwnerDashboardPage() {
                                                                         updateApplicationStatus(app.id, 'accepted');
                                                                     }}
                                                                 >
-                                                                    <Check className="h-3.5 w-3.5 mr-1" /> {t('common.accept' as any) || 'Accept'}
+                                                                    <Check className="h-3.5 w-3.5 mr-1" /> {t('common.accept')}
                                                                 </Button>
                                                                 <Button
                                                                     size="sm"
@@ -687,7 +687,7 @@ export default function OwnerDashboardPage() {
                                                                         updateApplicationStatus(app.id, 'rejected');
                                                                     }}
                                                                 >
-                                                                    <X className="h-3.5 w-3.5 mr-1" /> {t('common.reject' as any) || 'Reject'}
+                                                                    <X className="h-3.5 w-3.5 mr-1" /> {t('common.reject')}
                                                                 </Button>
                                                             </>
                                                         )}
@@ -739,7 +739,7 @@ export default function OwnerDashboardPage() {
                                     maintenanceRequests.map((request) => {
                                         const handleUpdateStatus = (id: string, status: 'inProgress' | 'completed') => {
                                             updateRequestStatus(id, status);
-                                            toast.success(t('ownerDashboard.statusUpdated' as any) || `Status updated to ${status === 'inProgress' ? 'In Progress' : 'Completed'}`);
+                                            toast.success(`${t('ownerDashboard.statusUpdated')}: ${t(`ownerDashboard.maintenanceStatus.${status}` as any)}`);
                                         };
 
                                         return (
@@ -768,7 +768,7 @@ export default function OwnerDashboardPage() {
                                                                                 request.status === 'completed' ? "bg-green-100 text-green-700" :
                                                                                     request.status === 'inProgress' ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"
                                                                             )}>
-                                                                                {request.status.replace(/([A-Z])/g, ' $1').trim()}
+                                                                                {t(`ownerDashboard.maintenanceStatus.${request.status}` as any) || request.status}
                                                                             </Badge>
                                                                             <span className="text-xs text-muted-foreground flex items-center font-bold uppercase tracking-tighter">
                                                                                 <Calendar className="h-3 w-3 mr-1" />
@@ -801,7 +801,7 @@ export default function OwnerDashboardPage() {
                                                                                 className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold"
                                                                             >
                                                                                 <Clock className="h-3.5 w-3.5 mr-1.5" />
-                                                                                {t('ownerDashboard.startProgress' as any) || 'Start Progress'}
+                                                                                {t('ownerDashboard.startProgress')}
                                                                             </Button>
                                                                         )}
 
@@ -816,7 +816,7 @@ export default function OwnerDashboardPage() {
                                                                                 <DialogHeader>
                                                                                     <DialogTitle className="text-xl font-bold flex items-center gap-2">
                                                                                         <Wrench className="h-5 w-5 text-[#005a41]" />
-                                                                                        {t('ownerDashboard.requestDetails' as any) || 'Request Details'}
+                                                                                        {t('ownerDashboard.requestDetails')}
                                                                                     </DialogTitle>
                                                                                     <DialogDescription>
                                                                                         Reference ID: {request.id}
@@ -834,32 +834,32 @@ export default function OwnerDashboardPage() {
                                                                                     )}
                                                                                     <div className="grid grid-cols-2 gap-4">
                                                                                         <div>
-                                                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Status</p>
+                                                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">{t('common.status')}</p>
                                                                                             <Badge className={cn(
                                                                                                 "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 border-none",
                                                                                                 request.status === 'completed' ? "bg-green-100 text-green-700" :
                                                                                                     request.status === 'inProgress' ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"
                                                                                             )}>
-                                                                                                {request.status.replace(/([A-Z])/g, ' $1').trim()}
+                                                                                                {t(`ownerDashboard.maintenanceStatus.${request.status}` as any) || request.status}
                                                                                             </Badge>
                                                                                         </div>
                                                                                         <div>
-                                                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Date Reported</p>
+                                                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">{t('ownerDashboard.dateReported')}</p>
                                                                                             <p className="text-xs font-semibold">{request.date}</p>
                                                                                         </div>
                                                                                     </div>
                                                                                     <div className="grid grid-cols-2 gap-4">
                                                                                         <div>
-                                                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Property</p>
+                                                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">{t('common.property')}</p>
                                                                                             <p className="text-xs font-semibold truncate">{request.propertyTitle}</p>
                                                                                         </div>
                                                                                         <div>
-                                                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Category</p>
+                                                                                            <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">{t('common.category')}</p>
                                                                                             <p className="text-xs font-bold text-[#005a41]">{request.category}</p>
                                                                                         </div>
                                                                                     </div>
                                                                                     <div>
-                                                                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Description</p>
+                                                                                        <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">{t('common.description')}</p>
                                                                                         <p className="text-xs text-foreground/80 leading-relaxed bg-muted/30 p-3 rounded-lg border border-border/50">
                                                                                             {request.description}
                                                                                         </p>
@@ -900,7 +900,7 @@ export default function OwnerDashboardPage() {
                                         </div>
                                         <div>
                                             <p className="text-[10px] text-[#005a41] font-black uppercase tracking-widest leading-none">{t('ownerDashboard.totalRevenue')}</p>
-                                            <p className="text-xl font-black text-foreground">ETB {totalRevenue.toLocaleString()}</p>
+                                            <p className="text-xl font-black text-foreground">{t('common.etb')} {totalRevenue.toLocaleString()}</p>
                                         </div>
                                     </div>
                                 </Card>
@@ -916,14 +916,14 @@ export default function OwnerDashboardPage() {
                                         <div className="flex items-center gap-2">
                                             <Select value={transactionDateFilter} onValueChange={setTransactionDateFilter}>
                                                 <SelectTrigger className="h-9 w-[130px] text-xs font-bold rounded-xl border-border bg-white shadow-sm hover:shadow-md transition-all">
-                                                    <SelectValue placeholder={t('common.dateRange' as any) || 'Date Range'} />
+                                                    <SelectValue placeholder={t('common.dateRange')} />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl border-border">
-                                                    <SelectItem value="all">{t('common.allTime' as any) || 'All Time'}</SelectItem>
-                                                    <SelectItem value="today">{t('common.today' as any) || 'Today'}</SelectItem>
-                                                    <SelectItem value="yesterday">{t('common.yesterday' as any) || 'Yesterday'}</SelectItem>
-                                                    <SelectItem value="this-month">{t('common.thisMonth' as any) || 'This Month'}</SelectItem>
-                                                    <SelectItem value="this-year">{t('common.thisYear' as any) || 'This Year'}</SelectItem>
+                                                    <SelectItem value="all">{t('common.allTime')}</SelectItem>
+                                                    <SelectItem value="today">{t('common.today')}</SelectItem>
+                                                    <SelectItem value="yesterday">{t('common.yesterday')}</SelectItem>
+                                                    <SelectItem value="this-month">{t('common.thisMonth')}</SelectItem>
+                                                    <SelectItem value="this-year">{t('common.thisYear')}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <Select value={transactionStatus} onValueChange={setTransactionStatus}>
@@ -931,10 +931,10 @@ export default function OwnerDashboardPage() {
                                                     <SelectValue placeholder={t('common.status')} />
                                                 </SelectTrigger>
                                                 <SelectContent className="rounded-xl border-border">
-                                                    <SelectItem value="all">{t('common.allStatus' as any) || 'All Status'}</SelectItem>
-                                                    <SelectItem value="completed">{t('common.completed' as any) || 'Completed'}</SelectItem>
-                                                    <SelectItem value="pending">{t('common.pending' as any) || 'Pending'}</SelectItem>
-                                                    <SelectItem value="failed">{t('common.failed' as any) || 'Failed'}</SelectItem>
+                                                    <SelectItem value="all">{t('common.allStatus')}</SelectItem>
+                                                    <SelectItem value="completed">{t('common.completed')}</SelectItem>
+                                                    <SelectItem value="pending">{t('common.pending')}</SelectItem>
+                                                    <SelectItem value="failed">{t('common.failed')}</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -945,12 +945,12 @@ export default function OwnerDashboardPage() {
                                         <table className="w-full">
                                             <thead>
                                                 <tr className="border-b border-border/50 bg-muted/20">
-                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('ownerDashboard.transactionId' as any) || 'Transaction ID'}</th>
-                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.details' as any) || 'Details'}</th>
-                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.date' as any) || 'Date'}</th>
-                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.amount' as any) || 'Amount'}</th>
+                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.transactionId')}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.details')}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.date')}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.amount')}</th>
                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.status')}</th>
-                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.action' as any) || 'Action'}</th>
+                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.action')}</th>
                                                </tr>
                                             </thead>
                                             <tbody className="divide-y divide-border/50">
@@ -1010,10 +1010,10 @@ export default function OwnerDashboardPage() {
                                                                     </div>
                                                                     <div>
                                                                         <p className="text-sm font-black text-foreground group-hover:text-[#005a41] transition-colors">
-                                                                            {transaction.type === 'RENT' ? 'Rent Income' : 'Property Sale'}
+                                                                            {transaction.type === 'RENT' ? t('ownerDashboard.rentIncome') : t('ownerDashboard.propertySale')}
                                                                         </p>
                                                                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-tighter">
-                                                                            {transaction.property?.title || 'Rent Payment'}
+                                                                            {transaction.property?.title || t('ownerDashboard.rentIncome')}
                                                                         </p>
                                                                     </div>
                                                                 </div>
@@ -1023,7 +1023,7 @@ export default function OwnerDashboardPage() {
                                                             </td>
                                                             <td className="px-6 py-5 whitespace-nowrap">
                                                                 <span className="text-sm font-black text-foreground">
-                                                                    ETB {transaction.amount.toLocaleString()}
+                                                                    {t('common.etb')} {transaction.amount.toLocaleString()}
                                                                 </span>
                                                             </td>
                                                             <td className="px-6 py-5 whitespace-nowrap">
@@ -1033,7 +1033,7 @@ export default function OwnerDashboardPage() {
                                                                         transaction.status === 'FAILED' ? 'bg-red-100 text-red-700' :
                                                                             'bg-amber-100 text-amber-700'
                                                                 )}>
-                                                                    {transaction.status}
+                                                                    {t(`common.${transaction.status.toLowerCase()}` as any) || transaction.status}
                                                                 </Badge>
                                                             </td>
                                                             <td className="px-6 py-5 whitespace-nowrap text-right">
@@ -1069,11 +1069,11 @@ export default function OwnerDashboardPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent className="rounded-2xl border-border/50 shadow-xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold">{t('common.areYouSure' as any) || 'Are you absolutely sure?'}</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold">{t('common.areYouSure')}</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">
-                            {t('ownerDashboard.deleteWarning' as any) || 'This action cannot be undone. This will permanently delete'}
+                            {t('ownerDashboard.deleteWarning')}
                             <span className="font-semibold text-foreground"> "{itemToDelete?.title}" </span>
-                            {t('ownerDashboard.deleteWarningSuffix' as any) || 'and remove it from our servers.'}
+                            {t('ownerDashboard.deleteWarningSuffix')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="gap-2 sm:gap-0">
@@ -1082,13 +1082,13 @@ export default function OwnerDashboardPage() {
                             onClick={async () => {
                                 if (itemToDelete) {
                                     await deleteProperty(itemToDelete.id);
-                                    toast.success('Listing deleted successfully');
+                                    toast.success(t('ownerDashboard.deleteSuccess'));
                                 }
                                 setIsDeleteDialogOpen(false);
                             }}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
                         >
-                            {t('ownerDashboard.deleteListing' as any) || 'Delete Listing'}
+                            {t('ownerDashboard.deleteListing')}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

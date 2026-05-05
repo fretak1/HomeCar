@@ -1,6 +1,6 @@
 'use client';
 
-import { cn, formatEnumString } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { X, Fuel, Settings2, Filter } from "lucide-react";
 import { AmenityIcons, PropertyTypeIcons } from "@/lib/constants";
@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useGlobalStore, Filters } from "@/store/useGlobalStore";
+import { useTranslation } from "@/contexts/LanguageContext";
+
 
 const CAR_BRANDS_AND_MODELS: Record<string, string[]> = {
     'Audi': ['A3', 'A4', 'A6', 'Q3', 'Q5', 'Q7', 'e-tron'],
@@ -35,6 +37,7 @@ const CAR_BRANDS_AND_MODELS: Record<string, string[]> = {
 
 const FiltersFull = () => {
     const { filters, setFilters, searchType, toggleFiltersFullOpen } = useGlobalStore();
+    const { t } = useTranslation();
 
     const updateFilter = (newFilters: Partial<Filters>) => {
         setFilters(newFilters);
@@ -45,7 +48,7 @@ const FiltersFull = () => {
             <div className="flex items-center justify-between mb-6">
                 <h3 className="font-semibold text-lg flex items-center gap-2 text-foreground">
                     <Filter className="w-5 h-5 text-primary" />
-                    Filters
+                    {t("listings.filters")}
                 </h3>
                 <Button variant="ghost" size="icon" className="md:hidden" onClick={toggleFiltersFullOpen}>
                     <X className="w-5 h-5" />
@@ -54,14 +57,12 @@ const FiltersFull = () => {
 
             <div className="flex flex-col space-y-8 pr-2">
 
-                
-
                 {/* Content Header */}
                 <div className="flex items-center justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
                         <div className="w-1 h-4 bg-primary rounded-full"></div>
                         <Label className="text-[10px] font-black uppercase text-muted-foreground/70 tracking-widest">
-                            {searchType === 'property' ? 'Property' : 'Vehicle'} Details
+                            {searchType === 'property' ? t("listings.propertyDetails") : t("listings.vehicleDetails")}
                         </Label>
                     </div>
                 </div>
@@ -69,13 +70,13 @@ const FiltersFull = () => {
                 {/* Price Range */}
                 <div className="space-y-4">
                     <div className="flex justify-between items-center text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                        <span>Price Range</span>
+                        <span>{t("listings.priceRange")}</span>
                         <span className="text-primary normal-case">ETB</span>
                     </div>
 
                     <div className="flex flex-col gap-5">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground/70 ml-1 tracking-widest">Minimum Price</Label>
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground/70 ml-1 tracking-widest">{t("listings.minimumPrice")}</Label>
                             <Select
                                 value={filters.priceRange[0]?.toString() || "any"}
                                 onValueChange={(v) => {
@@ -84,10 +85,10 @@ const FiltersFull = () => {
                                 }}
                             >
                                 <SelectTrigger className="rounded-xl h-12 bg-muted/20 border-border/50 hover:bg-muted/30 transition-colors">
-                                    <SelectValue placeholder="No Minimum" />
+                                    <SelectValue placeholder={t("listings.noMinimum")} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl shadow-2xl">
-                                    <SelectItem value="any">No Minimum</SelectItem>
+                                    <SelectItem value="any">{t("listings.noMinimum")}</SelectItem>
                                     {(searchType === 'property' 
                                         ? [500, 1000, 2500, 5000, 10000, 15000, 20000, 25000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000, 50000000] 
                                         : [10000, 15000, 20000, 25000, 50000, 100000, 250000, 500000, 1000000, 2500000, 5000000, 10000000, 25000000, 50000000]
@@ -99,7 +100,7 @@ const FiltersFull = () => {
                         </div>
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground/70 ml-1 tracking-widest">Maximum Price</Label>
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground/70 ml-1 tracking-widest">{t("listings.maximumPrice")}</Label>
                             <Select
                                 value={filters.priceRange[1]?.toString() || "any"}
                                 onValueChange={(v) => {
@@ -108,10 +109,10 @@ const FiltersFull = () => {
                                 }}
                             >
                                 <SelectTrigger className="rounded-xl h-12 bg-muted/20 border-border/50 hover:bg-muted/30 transition-colors">
-                                    <SelectValue placeholder="No Maximum" />
+                                    <SelectValue placeholder={t("listings.noMaximum")} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl shadow-2xl">
-                                    <SelectItem value="any">No Maximum</SelectItem>
+                                    <SelectItem value="any">{t("listings.noMaximum")}</SelectItem>
                                     {(searchType === 'property' 
                                         ? [1000, 5000, 10000, 15000, 20000, 25000, 50000, 100000, 500000, 1000000, 5000000, 10000000, 25000000, 50000000, 100000000] 
                                         : [10000, 15000, 20000, 25000, 100000, 500000, 1000000, 2500000, 5000000, 10000000, 25000000, 50000000, 100000000]
@@ -135,32 +136,33 @@ const FiltersFull = () => {
                                     onClick={() => updateFilter({ propertyType: type })}
                                 >
                                     <Icon className="w-4 h-4 mb-1" />
-                                    <span>{type}</span>
+                                    <span>{t(`property.types.${type.toLowerCase()}`)}</span>
                                 </FilterButton>
                             ))}
                         </div>
+                        
 
                         {/* Beds & Baths Selects */}
                         <div className="grid grid-cols-2 gap-3">
                             <Select value={filters.beds} onValueChange={v => updateFilter({ beds: v })}>
-                                <SelectTrigger className="rounded-xl h-10"><SelectValue placeholder="Beds" /></SelectTrigger>
+                                <SelectTrigger className="rounded-xl h-10"><SelectValue placeholder={t("listings.anyBeds")} /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="any">Any Beds</SelectItem>
-                                    {['1', '2', '3', '4+'].map(v => <SelectItem key={v} value={v}>{v}+ Bed</SelectItem>)}
+                                    <SelectItem value="any">{t("listings.anyBeds")}</SelectItem>
+                                    {['1', '2', '3', '4+'].map(v => <SelectItem key={v} value={v}>{v}+ {t("listings.bed")}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <Select value={filters.baths} onValueChange={v => updateFilter({ baths: v })}>
-                                <SelectTrigger className="rounded-xl h-10"><SelectValue placeholder="Baths" /></SelectTrigger>
+                                <SelectTrigger className="rounded-xl h-10"><SelectValue placeholder={t("listings.anyBaths")} /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="any">Any Baths</SelectItem>
-                                    {['1', '2', '3+'].map(v => <SelectItem key={v} value={v}>{v}+ Bath</SelectItem>)}
+                                    <SelectItem value="any">{t("listings.anyBaths")}</SelectItem>
+                                    {['1', '2', '3+'].map(v => <SelectItem key={v} value={v}>{v}+ {t("listings.bath")}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
 
                         {/* Amenities */}
                         <div className="space-y-4">
-                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Amenities & Features</Label>
+                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("listings.amenitiesFeatures")}</Label>
                             <div className="flex flex-wrap gap-2">
                                 {Object.entries(AmenityIcons)
                                     .filter(([amenity]) => ['wifi', 'parking', 'pool', 'ac', 'kitchen', 'furnished', 'heating'].includes(amenity))
@@ -182,7 +184,7 @@ const FiltersFull = () => {
                                             }}
                                         >
                                             <Icon className="w-3 h-3" />
-                                            {formatEnumString(amenity)}
+                                            {t(`listings.amenities.${amenity}`)}
                                         </button>
                                     ))}
                             </div>
@@ -196,15 +198,15 @@ const FiltersFull = () => {
                                 <SelectTrigger className="rounded-xl h-12">
                                     <div className="flex items-center gap-3">
                                         <Fuel className="w-4 h-4 text-muted-foreground" />
-                                        <SelectValue placeholder="Fuel Technology" />
+                                        <SelectValue placeholder={t("listings.fuelTechnology")} />
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="any">Any Technology</SelectItem>
-                                    <SelectItem value="Petrol">Petrol</SelectItem>
-                                    <SelectItem value="Diesel">Diesel</SelectItem>
-                                    <SelectItem value="Electric">Electric</SelectItem>
-                                    <SelectItem value="Hybrid">Hybrid</SelectItem>
+                                    <SelectItem value="any">{t("listings.anyTechnology")}</SelectItem>
+                                    <SelectItem value="Petrol">{t("listings.petrol")}</SelectItem>
+                                    <SelectItem value="Diesel">{t("listings.diesel")}</SelectItem>
+                                    <SelectItem value="Electric">{t("listings.electric")}</SelectItem>
+                                    <SelectItem value="Hybrid">{t("listings.hybrid")}</SelectItem>
                                 </SelectContent>
                             </Select>
 
@@ -212,13 +214,13 @@ const FiltersFull = () => {
                                 <SelectTrigger className="rounded-xl h-12">
                                     <div className="flex items-center gap-3">
                                         <Settings2 className="w-4 h-4 text-muted-foreground" />
-                                        <SelectValue placeholder="Transmission" />
+                                        <SelectValue placeholder={t("listings.transmission")} />
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="any">Any Transmission</SelectItem>
-                                    <SelectItem value="Automatic">Automatic</SelectItem>
-                                    <SelectItem value="Manual">Manual</SelectItem>
+                                    <SelectItem value="any">{t("listings.anyTransmission")}</SelectItem>
+                                    <SelectItem value="Automatic">{t("listings.automatic")}</SelectItem>
+                                    <SelectItem value="Manual">{t("listings.manual")}</SelectItem>
                                 </SelectContent>
                             </Select>
 
@@ -231,11 +233,11 @@ const FiltersFull = () => {
                                 <SelectTrigger className="rounded-xl h-12">
                                     <div className="flex items-center gap-3">
                                         <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center text-[8px] font-bold">B</div>
-                                        <SelectValue placeholder="Vehicle Brand" />
+                                        <SelectValue placeholder={t("listings.vehicleBrand")} />
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="any">All Brands</SelectItem>
+                                    <SelectItem value="any">{t("listings.allBrands")}</SelectItem>
                                     {Object.keys(CAR_BRANDS_AND_MODELS).sort().map(brand => (
                                         <SelectItem key={brand} value={brand}>{brand}</SelectItem>
                                     ))}
@@ -247,11 +249,11 @@ const FiltersFull = () => {
                                     <SelectTrigger className="rounded-xl h-12">
                                         <div className="flex items-center gap-3">
                                             <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center text-[8px] font-bold">M</div>
-                                            <SelectValue placeholder="Vehicle Model" />
+                                            <SelectValue placeholder={t("listings.vehicleModel")} />
                                         </div>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="any">All Models</SelectItem>
+                                        <SelectItem value="any">{t("listings.allModels")}</SelectItem>
                                         {CAR_BRANDS_AND_MODELS[filters.brand].map(model => (
                                             <SelectItem key={model} value={model}>{model}</SelectItem>
                                         ))}
@@ -261,7 +263,7 @@ const FiltersFull = () => {
                         </div>
 
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground/70 ml-1 tracking-widest">Production Year</Label>
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground/70 ml-1 tracking-widest">{t("listings.productionYear")}</Label>
                             <div className="flex flex-col gap-3">
                                 <Select 
                                     value={filters.year[0]?.toString() || "any"} 
@@ -271,10 +273,10 @@ const FiltersFull = () => {
                                     }}
                                 >
                                     <SelectTrigger className="rounded-xl h-11 bg-muted/20 border-border/50">
-                                        <SelectValue placeholder="From Year" />
+                                        <SelectValue placeholder={t("listings.fromYear")} />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-[300px]">
-                                        <SelectItem value="any">From (Any)</SelectItem>
+                                        <SelectItem value="any">{t("listings.fromYear")}</SelectItem>
                                         {Array.from({ length: 2025 - 1990 + 1 }, (_, i) => (2025 - i).toString()).map(y => (
                                             <SelectItem key={y} value={y}>{y}</SelectItem>
                                         ))}
@@ -289,10 +291,10 @@ const FiltersFull = () => {
                                     }}
                                 >
                                     <SelectTrigger className="rounded-xl h-11 bg-muted/20 border-border/50">
-                                        <SelectValue placeholder="To Year" />
+                                        <SelectValue placeholder={t("listings.toYear")} />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-[300px]">
-                                        <SelectItem value="any">To (Any)</SelectItem>
+                                        <SelectItem value="any">{t("listings.toYear")}</SelectItem>
                                         {Array.from({ length: 2025 - 1990 + 1 }, (_, i) => (2025 - i).toString()).map(y => (
                                             <SelectItem key={y} value={y}>{y}</SelectItem>
                                         ))}
@@ -302,7 +304,7 @@ const FiltersFull = () => {
                         </div>
 
                         <div className="space-y-3">
-                            <Label className="text-[10px] font-black uppercase text-muted-foreground/70 ml-1 tracking-widest">Max Mileage (km)</Label>
+                            <Label className="text-[10px] font-black uppercase text-muted-foreground/70 ml-1 tracking-widest">{t("listings.maxMileage")}</Label>
                             <Select 
                                 value={filters.mileage?.toString() || "any"} 
                                 onValueChange={v => {
@@ -311,19 +313,19 @@ const FiltersFull = () => {
                                 }}
                             >
                                 <SelectTrigger className="rounded-xl h-12 bg-muted/20 border-border/50">
-                                    <SelectValue placeholder="Any Mileage" />
+                                    <SelectValue placeholder={t("listings.anyMileage")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="any">Any Mileage</SelectItem>
+                                    <SelectItem value="any">{t("listings.anyMileage")}</SelectItem>
                                     {[0, 5000, 10000, 25000, 50000, 75000, 100000, 150000, 200000, 500000].map(m => (
-                                        <SelectItem key={m} value={m.toString()}>Up to {m.toLocaleString()} km</SelectItem>
+                                        <SelectItem key={m} value={m.toString()}>{t("listings.upTo")} {m.toLocaleString()} km</SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
                         </div>
 
                         <div className="space-y-4">
-                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Vehicle Features</Label>
+                            <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{t("listings.vehicleFeatures")}</Label>
                             <div className="flex flex-wrap gap-2">
                                 {Object.entries(AmenityIcons)
                                     .filter(([amenity]) => ['bluetooth', 'ac', 'camera', 'leather', 'gps', 'sunroof', 'keyless'].includes(amenity))
@@ -345,7 +347,7 @@ const FiltersFull = () => {
                                             }}
                                         >
                                             <Icon className="w-3 h-3" />
-                                            {formatEnumString(amenity)}
+                                            {t(`listings.amenities.${amenity}`)}
                                         </button>
                                     ))}
                             </div>
@@ -380,7 +382,7 @@ const FiltersFull = () => {
                             });
                         }}
                     >
-                        Reset Filters
+                        {t("listings.resetFilters")}
                     </Button>
                 </div>
             </div>

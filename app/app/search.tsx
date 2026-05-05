@@ -82,6 +82,7 @@ export default function SearchScreen() {
   const { user } = useAuthStore();
   const currentYear = new Date().getFullYear();
   const selectedAssetType = filters.assetType === 'CAR' ? 'CAR' : 'HOME';
+  if (__DEV__) console.log('[SearchScreen] Render - filters.assetType:', filters.assetType, 'selectedAssetType:', selectedAssetType);
 
   useEffect(() => {
     const role = (user?.role || '').toString().toUpperCase();
@@ -212,38 +213,27 @@ export default function SearchScreen() {
   ) => options.find((option) => option.value === value)?.label ?? fallback;
 
   const handleAssetTypeChange = (assetType: 'HOME' | 'CAR') => {
-    if (assetType === 'HOME') {
-      setFilters({
-        assetType,
-        propertyType: filters.propertyType || 'any',
-        bedrooms: filters.bedrooms || 'any',
-        bathrooms: filters.bathrooms || 'any',
-        amenities: [],
-        brand: 'any',
-        model: 'any',
-        transmission: 'any',
-        fuelType: 'any',
-        yearMin: 'any',
-        yearMax: 'any',
-        mileageMax: 'any',
-      });
-      return;
-    }
-
-    setFilters({
+    if (__DEV__) console.log(`[Search] Changing asset type to: ${assetType}`);
+    
+    // Create new filters based on type
+    const newFilters: Partial<SearchFilters> = {
       assetType,
+      page: 1,
       amenities: [],
+      // Clear type-specific filters
       propertyType: 'any',
       bedrooms: 'any',
       bathrooms: 'any',
-      brand: filters.brand || 'any',
-      model: filters.model || 'any',
-      transmission: filters.transmission || 'any',
-      fuelType: filters.fuelType || 'any',
-      yearMin: filters.yearMin || 'any',
-      yearMax: filters.yearMax || 'any',
-      mileageMax: filters.mileageMax || 'any',
-    });
+      brand: 'any',
+      model: 'any',
+      transmission: 'any',
+      fuelType: 'any',
+      yearMin: 'any',
+      yearMax: 'any',
+      mileageMax: 'any',
+    };
+
+    setFilters(newFilters);
   };
 
   const handleReset = () => {
@@ -765,7 +755,7 @@ function TypeTab({
   onPress: () => void;
 }) {
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
       className={`flex-1 h-12 rounded-[18px] flex-row items-center justify-center ${
         active ? 'bg-white shadow-sm' : 'bg-transparent'
@@ -779,7 +769,7 @@ function TypeTab({
       >
         {label}
       </Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 

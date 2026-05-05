@@ -5,6 +5,7 @@ import { AddPropertyForm } from '@/components/forms/AddPropertyForm';
 import { usePropertyStore, Property } from '@/store/usePropertyStore';
 import { useUserStore } from '@/store/useUserStore';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function AddPropertyPage() {
     const router = useRouter();
@@ -14,6 +15,7 @@ export default function AddPropertyPage() {
     const currentUser = useUserStore((state) => state.currentUser);
     const [initialData, setInitialData] = useState<Property | null>(null);
     const [isFetching, setIsFetching] = useState(!!id);
+    const { t } = useTranslation();
 
     useEffect(() => {
         if (id) {
@@ -41,12 +43,12 @@ export default function AddPropertyPage() {
                     <div className="space-y-8">
                         <div className="mb-10 text-center md:text-left">
                             <h2 className="text-4xl font-black text-foreground mb-4 tracking-tight leading-tight">
-                                {initialData ? 'Edit' : 'Add New'} <span className="text-primary underline decoration-primary/20 underline-offset-8">Property</span>
+                                {initialData ? t('addProperty.edit') : t('addProperty.addNew')} <span className="text-primary underline decoration-primary/20 underline-offset-8">{t('addProperty.property')}</span>
                             </h2>
                             <p className="text-lg text-muted-foreground max-w-2xl">
                                 {initialData
-                                    ? 'Update your listing details and media to keep your property information accurate.'
-                                    : 'List your property or vehicle with detailed specs and high-quality info.'}
+                                    ? t('addProperty.editDesc')
+                                    : t('addProperty.addNewDesc')}
                             </p>
                         </div>
 

@@ -4,8 +4,10 @@ import { useRouter } from 'next/navigation';
 import { CreateLeaseForm } from '@/components/forms/CreateLeaseForm';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, FileText, ShieldCheck } from 'lucide-react';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 export default function CreateLeasePage() {
+    const { t } = useTranslation();
     const router = useRouter();
 
     const handleSuccess = () => {
@@ -32,7 +34,7 @@ export default function CreateLeasePage() {
                                 <ChevronLeft className="h-5 w-5 text-primary" />
                             </Button>
                             <div>
-                                <h1 className="text-xl font-bold text-foreground">Create New Lease</h1>
+                                <h1 className="text-xl font-bold text-foreground">{t('leaseDetail.createNewLease')}</h1>
 
                             </div>
                         </div>
@@ -52,7 +54,7 @@ export default function CreateLeasePage() {
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-8">
-                    <h2 className="text-2xl font-black text-foreground mb-2">Lease Agreement Details</h2>
+                    <h2 className="text-2xl font-black text-foreground mb-2">{t('leaseDetail.agreementDetails')}</h2>
 
                 </div>
 

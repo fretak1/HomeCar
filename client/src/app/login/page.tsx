@@ -33,11 +33,8 @@ export default function LoginPage() {
             toast.success(t('auth.login.success'));
             
             // Redirect based on role
-            if (user?.role === 'ADMIN' || user?.role === 'AGENT' || user?.role === 'OWNER') {
-                router.replace('/dashboard');
-            } else {
-                router.replace('/');
-            }
+            // Redirect to dashboard (central router handles specific role redirect)
+            router.replace('/dashboard');
         } catch (error: any) {
             console.error('Login error:', error);
             if (error.message.includes('not verified')) {

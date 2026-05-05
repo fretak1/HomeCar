@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Heart, Maximize, Bath, Bed, Calendar, Gauge, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from "@/contexts/LanguageContext";
 
 interface CardProps {
     item: any; // Type union or any to handle both
@@ -16,6 +17,7 @@ interface CardProps {
 
 const Card = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, itemLink, type }: CardProps) => {
     const router = useRouter();
+    const { t } = useTranslation();
     if (!item) return null;
     const isProperty = type === 'property';
 
@@ -41,7 +43,7 @@ const Card = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, itemLink
                 {/* Badges */}
                 <div className="absolute top-3 left-3 flex gap-2">
                     <Badge variant="outline" className="bg-black/50 text-white border-none backdrop-blur-sm">
-                        {item.status || 'Available'}
+                        {item.status ? t(`property.status.${item.status.toLowerCase()}`) : t('property.status.available')}
                     </Badge>
                 </div>
 
@@ -79,7 +81,7 @@ const Card = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, itemLink
                                 ETB {item.price.toLocaleString()}
                             </span>
                             <span className="text-[10px] text-muted-foreground uppercase font-black tracking-widest leading-none">
-                                {isProperty ? 'per month' : 'total price'}
+                                {isProperty ? t('listings.perMonth') : t('listings.totalPrice')}
                             </span>
                         </div>
                     </div>
@@ -91,15 +93,15 @@ const Card = ({ item, isFavorite, onFavoriteToggle, showFavoriteButton, itemLink
                         <>
                             <div className="flex items-center gap-1.5">
                                 <Bed className="w-4 h-4" />
-                                <span>{item.bedrooms} Bed</span>
+                                <span>{item.bedrooms} {item.bedrooms > 1 ? t('listings.beds') : t('listings.bed')}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <Bath className="w-4 h-4" />
-                                <span>{item.bathrooms} Bath</span>
+                                <span>{item.bathrooms} {item.bathrooms > 1 ? t('listings.baths') : t('listings.bath')}</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <Maximize className="w-4 h-4" />
-                                <span>{item.area} sqft</span>
+                                <span>{item.area} {t('listings.sqft')}</span>
                             </div>
                         </>
                     ) : (

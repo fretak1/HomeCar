@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useChatStore } from '@/store/useChatStore';
 import { useUserStore } from '@/store/useUserStore';
 import ChatLoading from './loading';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 function getInitials(name?: string) {
     if (!name) return '??';
@@ -42,6 +43,7 @@ function ChatPageInner() {
         fetchMessages,
         sendMessage,
     } = useChatStore();
+    const { t } = useTranslation();
 
     const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
     const [messageText, setMessageText] = useState('');
@@ -123,7 +125,7 @@ function ChatPageInner() {
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="Search conversations..."
+                                    placeholder={t('chat.searchConversations')}
                                     className="pl-10 bg-input-background"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
@@ -135,9 +137,9 @@ function ChatPageInner() {
                             {filteredConversations.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-48 text-center px-4">
                                     <MessageSquare className="h-10 w-10 text-muted-foreground mb-3" />
-                                    <p className="text-muted-foreground text-sm">No conversations yet</p>
+                                    <p className="text-muted-foreground text-sm">{t('chat.noConversationsYet')}</p>
                                     <p className="text-muted-foreground text-xs mt-1">
-                                        Apply to a property and get accepted to start chatting
+                                        {t('chat.applyToProperty')}
                                     </p>
                                 </div>
                             ) : (
@@ -224,7 +226,7 @@ function ChatPageInner() {
                                     ) : messages.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center h-full text-center">
                                             <MessageSquare className="h-10 w-10 text-muted-foreground mb-3" />
-                                            <p className="text-muted-foreground">No messages yet. Say hello!</p>
+                                            <p className="text-muted-foreground">{t('chat.noMessagesYet')}</p>
                                         </div>
                                     ) : (
                                         messages.map((message) => {
@@ -266,7 +268,7 @@ function ChatPageInner() {
                                 <div className="p-4 border-t border-border bg-card relative z-10 shadow-sm">
                                     <div className="flex items-center space-x-2">
                                         <Input
-                                            placeholder="Type a message..."
+                                            placeholder={t('chat.typeMessage')}
                                             value={messageText}
                                             onChange={(e) => setMessageText(e.target.value)}
                                             onKeyDown={(e) => {
@@ -290,9 +292,9 @@ function ChatPageInner() {
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full text-center">
                                 <MessageSquare className="h-16 w-16 text-muted-foreground mb-4" />
-                                <h3 className="text-lg font-medium text-foreground mb-2">Select a conversation</h3>
+                                <h3 className="text-lg font-medium text-foreground mb-2">{t('chat.selectConversation')}</h3>
                                 <p className="text-muted-foreground text-sm max-w-xs">
-                                    Choose a contact from the left to start messaging
+                                    {t('chat.chooseContact')}
                                 </p>
                             </div>
                         )}
