@@ -4,7 +4,6 @@ import { cn, formatEnumString } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { X, Fuel, Settings2, Filter } from "lucide-react";
 import { AmenityIcons, PropertyTypeIcons } from "@/lib/constants";
-import { Slider } from "@/components/ui/slider";
 import {
     Select,
     SelectContent,
@@ -14,7 +13,6 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useGlobalStore, Filters } from "@/store/useGlobalStore";
-import { ethiopiaLocations } from "@/lib/ethiopiaLocations";
 
 const CAR_BRANDS_AND_MODELS: Record<string, string[]> = {
     'Audi': ['A3', 'A4', 'A6', 'Q3', 'Q5', 'Q7', 'e-tron'],
@@ -40,17 +38,6 @@ const FiltersFull = () => {
 
     const updateFilter = (newFilters: Partial<Filters>) => {
         setFilters(newFilters);
-    };
-
-    const updateLocation = (key: 'region' | 'city' | 'subCity', value: string) => {
-        const updates: Partial<Filters> = { [key]: value };
-        if (key === 'region') {
-            updates.city = 'any';
-            updates.subCity = 'any';
-        } else if (key === 'city') {
-            updates.subCity = 'any';
-        }
-        setFilters(updates);
     };
 
     return (
@@ -414,10 +401,6 @@ const FilterButton = ({ active, onClick, children }: { active: boolean, onClick:
     </div>
 );
 
-const FilterIcon = ({ className }: { className?: string }) => (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-    </svg>
-)
+
 
 export default FiltersFull;

@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Filter, Grid, List, Home, ChevronDown, MapPin } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Filter, Home, ChevronDown, MapPin } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useGlobalStore } from "@/store/useGlobalStore";
 import { Label } from "@/components/ui/label";

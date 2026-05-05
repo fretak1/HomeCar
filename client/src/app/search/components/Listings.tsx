@@ -5,13 +5,21 @@ import { useGlobalStore } from "@/store/useGlobalStore";
 import { useFavoriteStore } from "@/store/useFavoriteStore";
 import { useAuth } from "@/contexts/AuthContext";
 import Card from "./Card";
-import CardCompact from "./CardCompact";
 
 const Listings = () => {
     const { user } = useAuth();
     const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
-    const { viewMode, filters, searchType, isFiltersFullOpen } = useGlobalStore();
+    const {  filters, searchType, isFiltersFullOpen } = useGlobalStore();
     const { properties, isLoading, error, page, totalPages, fetchProperties } = usePropertyStore();
+
+    const handleFavoriteToggle = async (id: string) => {
+        if (!user) return;
+        if (isFavorite(id)) {
+            await removeFavorite(id);
+        } else {
+            await addFavorite(id);
+        }
+    };
 
     const handlePageChange = (newPage: number) => {
         // Find the current search params and update the page

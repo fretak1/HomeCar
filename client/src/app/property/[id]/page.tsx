@@ -6,18 +6,15 @@ import Link from 'next/link';
 import { useTranslation } from '@/contexts/LanguageContext';
 import {
     Heart,
-    MessageSquare,
     MapPin,
     Star,
     Bed,
     Bath,
     Square,
     CheckCircle2,
-    ArrowLeft,
     Loader2,
     Calendar,
     Send,
-    MessageSquareText,
     User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,7 +39,6 @@ import { usePropertyStore, Property } from '@/store/usePropertyStore';
 import { useReviewStore } from '@/store/useReviewStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useApplicationStore } from '@/store/useApplicationStore';
-import { useChatStore } from '@/store/useChatStore';
 import { useFavoriteStore } from '@/store/useFavoriteStore';
 import { cn, formatLocation, getImageUrl } from '@/lib/utils';
 import { ReviewCard } from '@/components/ReviewCard';
@@ -567,7 +563,7 @@ export default function PropertyDetailPage() {
                 {/* Similar Properties - Hidden for restricted roles */}
                 {!(currentUser && ['ADMIN', 'OWNER', 'AGENT'].includes(currentUser.role)) && (
                     <div className="mt-16">
-                        <AIRecommendations type={property.assetType === 'HOME' ? 'property' : 'car'} title={t('property.similarProperties' as any) || 'Similar Listings'} />
+                        <AIRecommendations title={t('property.similarProperties' as any) || 'Similar Listings'} />
                     </div>
                 )}
             </div>

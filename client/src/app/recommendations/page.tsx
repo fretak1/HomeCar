@@ -5,7 +5,7 @@ import { PropertyCard } from '@/components/PropertyCard';
 import { CarCard } from '@/components/CarCard';
 import { useAIStore } from '@/store/useAIStore';
 import { useUserStore } from '@/store/useUserStore';
-import { Loader2, Sparkles, ArrowLeft } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { motion } from 'motion/react';
@@ -76,26 +76,4 @@ export default function RecommendationsPage() {
     );
 }
 
-function BotIcon(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M12 8V4H8" />
-            <rect width="16" height="12" x="4" y="8" rx="2" />
-            <path d="M2 14h2" />
-            <path d="M20 14h2" />
-            <path d="M15 13v2" />
-            <path d="M9 13v2" />
-        </svg>
-    );
-}
+
