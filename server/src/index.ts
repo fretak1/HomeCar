@@ -23,7 +23,7 @@ initSocket(httpServer);
 
 const PORT = process.env.PORT || 5000;
 const allowedOrigins = (process.env.CORS_ORIGINS ||
-    'http://localhost:3000, http://127.0.0.1:3000,http://localhost:58967,http://127.0.0.1:58967')
+    'https://home-car-1uua.vercel.app, http://localhost:3000, http://127.0.0.1:3000,http://localhost:58967,http://127.0.0.1:58967')
     .split(',')
     .map(origin => origin.trim())
     .filter(Boolean);
