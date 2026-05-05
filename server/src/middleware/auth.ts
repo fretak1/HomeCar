@@ -25,7 +25,7 @@ const hasBetterAuthCookie = (req: Request) => {
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
         const session = await auth.api.getSession({
-            headers: req.headers
+            headers: req.headers as any
         });
 
         if (!session) {
@@ -54,7 +54,7 @@ export const optionalAuthenticate = async (req: AuthRequest, res: Response, next
 
     try {
         const session = await auth.api.getSession({
-            headers: req.headers
+            headers: req.headers as any
         });
 
         if (session) {
