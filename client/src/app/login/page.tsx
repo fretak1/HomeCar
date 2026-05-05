@@ -29,11 +29,7 @@ export default function LoginPage() {
         e.preventDefault();
         try {
             await login(email, password);
-            const user = useUserStore.getState().currentUser;
             toast.success(t('auth.login.success'));
-            
-            // Redirect based on role
-            // Redirect to dashboard (central router handles specific role redirect)
             router.replace('/dashboard');
         } catch (error: any) {
             console.error('Login error:', error);
