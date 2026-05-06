@@ -171,18 +171,21 @@ export default function LeaseDetailsPage() {
                                     alt={property.title}
                                     className="w-full h-full object-cover"
                                 />
-                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-8">
-                                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                                        <div className="space-y-2">
-                                            <h2 className="text-3xl font-black text-white">{property.title}</h2>
-                                            <p className="text-white/80 flex items-center text-sm font-medium">
-                                                <MapPin className="h-4 w-4 mr-2 text-primary" />
+                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4 md:p-8">
+                                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                                        <div className="space-y-3">
+                                            <h2 className="text-2xl md:text-4xl font-black text-white tracking-tight leading-tight">{property.title}</h2>
+                                            <p className="text-white/90 flex items-center text-xs md:text-sm font-bold bg-white/10 backdrop-blur-sm w-fit px-3 py-1.5 rounded-full border border-white/10">
+                                                <MapPin className="h-3.5 w-3.5 mr-2 text-primary shadow-sm" />
                                                 {formatLocation(lease.property?.location)}
                                             </p>
                                         </div>
-                                        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 text-white min-w-[140px]">
-                                            <p className="text-[10px] uppercase font-bold text-white/60 tracking-widest mb-1">{t('customerDashboard.leaseDetails.monthlyBilling')}</p>
-                                            <p className="text-2xl font-black">{t('common.etb')} {property.price.toLocaleString()}</p>
+                                        <div className="bg-white backdrop-blur-xl rounded-2xl p-4 md:p-5 shadow-2xl shadow-black/20 text-[#005a41] min-w-[160px] transform hover:scale-105 transition-transform duration-300">
+                                            <p className="text-[10px] uppercase font-black text-[#005a41]/60 tracking-[0.2em] mb-1.5">{t('customerDashboard.leaseDetails.monthlyBilling')}</p>
+                                            <p className="text-xl md:text-3xl font-black flex items-baseline gap-1">
+                                                <span className="text-sm md:text-lg font-black uppercase opacity-70">{t('common.etb')}</span>
+                                                {property.price.toLocaleString()}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -332,85 +335,160 @@ export default function LeaseDetailsPage() {
 
                             </CardHeader>
                             <CardContent className="p-0">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="border-b border-border/50 bg-muted/20">
-                                                <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('common.billingPeriod')}</th>
-                                                <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('common.settlementDate')}</th>
-                                                <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('common.grossAmount')}</th>
-                                                <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('common.collectionStatus')}</th>
-                                                <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest text-right">{t('common.receipt')}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border/50">
-                                            {(() => {
-                                                const start = new Date(lease.startDate);
-                                                const end = new Date(lease.endDate);
-                                                const now = new Date();
-                                                const totalMonths = lease.recurringAmount ? Math.max(1, Math.floor(differenceInDays(end, start) / 30)) : 1;
+                                <div className="p-0">
+                                    {/* Desktop View */}
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="w-full text-left">
+                                            <thead>
+                                                <tr className="border-b border-border/50 bg-muted/20">
+                                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('common.billingPeriod')}</th>
+                                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('common.settlementDate')}</th>
+                                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('common.grossAmount')}</th>
+                                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest">{t('common.collectionStatus')}</th>
+                                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-muted-foreground tracking-widest text-right">{t('common.receipt')}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border/50">
+                                                {(() => {
+                                                    const start = new Date(lease.startDate);
+                                                    const end = new Date(lease.endDate);
+                                                    const now = new Date();
+                                                    const totalMonths = lease.recurringAmount ? Math.max(1, Math.floor(differenceInDays(end, start) / 30)) : 1;
 
-                                                return Array.from({ length: totalMonths }).map((_, i) => {
-                                                    const periodStart = lease.recurringAmount ? addDays(start, i * 30) : start;
-                                                    const periodEnd = lease.recurringAmount ? addDays(periodStart, 30) : end;
-                                                    const isMonthPast = isBefore(periodEnd, now);
-                                                    const isCurrentMonth = isWithinInterval(now, { start: periodStart, end: periodEnd });
-                                                    const monthLabel = format(periodStart, 'MMM-yyyy');
-                                                    const transaction = transactions.find(t =>
-                                                        t.leaseId === lease.id &&
-                                                        (t.status === 'COMPLETED' || t.status === 'PENDING') &&
-                                                        (t.metadata as any)?.month === monthLabel
-                                                    );
-                                                    const isPaid = transaction?.status === 'COMPLETED';
-                                                    const isPending = transaction?.status === 'PENDING';
+                                                    return Array.from({ length: totalMonths }).map((_, i) => {
+                                                        const periodStart = lease.recurringAmount ? addDays(start, i * 30) : start;
+                                                        const periodEnd = lease.recurringAmount ? addDays(periodStart, 30) : end;
+                                                        const isMonthPast = isBefore(periodEnd, now);
+                                                        const isCurrentMonth = isWithinInterval(now, { start: periodStart, end: periodEnd });
+                                                        const monthLabel = format(periodStart, 'MMM-yyyy');
+                                                        const transaction = transactions.find(t =>
+                                                            t.leaseId === lease.id &&
+                                                            (t.status === 'COMPLETED' || t.status === 'PENDING') &&
+                                                            (t.metadata as any)?.month === monthLabel
+                                                        );
+                                                        const isPaid = transaction?.status === 'COMPLETED';
+                                                        const isPending = transaction?.status === 'PENDING';
 
-                                                    return (
-                                                        <tr key={i} className={cn("hover:bg-muted/10 transition-colors", isCurrentMonth ? "bg-primary/5" : "")}>
-                                                            <td className="px-6 py-4">
-                                                                <p className="text-sm font-bold text-foreground">{format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd, yyyy')}</p>
-                                                                <p className="text-[10px] text-muted-foreground">{lease.recurringAmount ? t('customerDashboard.leaseDetails.fixedBillingCycle') : t('customerDashboard.leaseDetails.fullLeaseTerm')}</p>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
-                                                                {isPaid ? format(new Date(transaction.createdAt), 'MMM dd, yyyy') : '—'}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-sm font-black text-foreground">{t('common.etb')} {(lease.recurringAmount || lease.totalPrice).toLocaleString()}</td>
-                                                            <td className="px-6 py-4">
-                                                                {isPaid ? (
-                                                                    <Badge className="bg-green-50 text-green-700 border-green-100 px-2 py-0.5 text-[8px] font-bold">{t('common.collected').toUpperCase()}</Badge>
-                                                                ) : isPending ? (
-                                                                    <Badge className="bg-amber-50 text-amber-700 border-amber-100 px-2 py-0.5 text-[8px] font-bold">{t('common.pending').toUpperCase()}</Badge>
-                                                                ) : isCurrentMonth ? (
-                                                                    <Badge className="bg-primary text-white border-none px-2 py-0.5 text-[8px] font-bold animate-pulse">{t('customerDashboard.leaseDetails.payNow').toUpperCase()}</Badge>
-                                                                ) : isMonthPast ? (
-                                                                    <Badge variant="destructive" className="px-2 py-0.5 text-[8px] font-bold">{t('common.overdue').toUpperCase()}</Badge>
-                                                                ) : (
-                                                                    <Badge variant="outline" className="text-[8px] font-bold opacity-50">{t('common.upcoming').toUpperCase()}</Badge>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-right">
+                                                        return (
+                                                            <tr key={i} className={cn("hover:bg-muted/10 transition-colors", isCurrentMonth ? "bg-primary/5" : "")}>
+                                                                <td className="px-6 py-4">
+                                                                    <p className="text-sm font-bold text-foreground">{format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd, yyyy')}</p>
+                                                                    <p className="text-[10px] text-muted-foreground">{lease.recurringAmount ? t('customerDashboard.leaseDetails.fixedBillingCycle') : t('customerDashboard.leaseDetails.fullLeaseTerm')}</p>
+                                                                </td>
+                                                                <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
+                                                                    {isPaid ? format(new Date(transaction.createdAt), 'MMM dd, yyyy') : '—'}
+                                                                </td>
+                                                                <td className="px-6 py-4 text-sm font-black text-foreground">{t('common.etb')} {(lease.recurringAmount || lease.totalPrice).toLocaleString()}</td>
+                                                                <td className="px-6 py-4">
+                                                                    {isPaid ? (
+                                                                        <Badge className="bg-green-50 text-green-700 border-green-100 px-2 py-0.5 text-[8px] font-bold">{t('common.collected').toUpperCase()}</Badge>
+                                                                    ) : isPending ? (
+                                                                        <Badge className="bg-amber-50 text-amber-700 border-amber-100 px-2 py-0.5 text-[8px] font-bold">{t('common.pending').toUpperCase()}</Badge>
+                                                                    ) : isCurrentMonth ? (
+                                                                        <Badge className="bg-primary text-white border-none px-2 py-0.5 text-[8px] font-bold animate-pulse">{t('customerDashboard.leaseDetails.payNow').toUpperCase()}</Badge>
+                                                                    ) : isMonthPast ? (
+                                                                        <Badge variant="destructive" className="px-2 py-0.5 text-[8px] font-bold">{t('common.overdue').toUpperCase()}</Badge>
+                                                                    ) : (
+                                                                        <Badge variant="outline" className="text-[8px] font-bold opacity-50">{t('common.upcoming').toUpperCase()}</Badge>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-6 py-4 text-right">
+                                                                    {isPaid ? (
+                                                                        <Link href={`/dashboard/customer/documents/receipt/${transaction.id}`}>
+                                                                            <Button variant="outline" size="sm" className="h-7 text-[10px] font-bold text-primary border-primary hover:bg-primary hover:text-white transition-colors duration-200 uppercase">{t('customerDashboard.leaseDetails.view')}</Button>
+                                                                        </Link>
+                                                                    ) : (isCurrentMonth || isMonthPast) && !isPending && lease.status === 'ACTIVE' ? (
+                                                                        <Button 
+                                                                            size="sm" 
+                                                                            className="h-7 text-[10px] font-bold bg-primary hover:bg-primary/90 text-white uppercase shadow-sm active:scale-95 transition-all"
+                                                                            onClick={() => handleRentPayment(lease, periodStart)}
+                                                                            disabled={isPaymentLoading}
+                                                                        >
+                                                                            {isPaymentLoading ? <Loader2 className="h-3 w-3 animate-spin"/> : t('customerDashboard.leaseDetails.payNow')}
+                                                                        </Button>
+                                                                    ) : (
+                                                                        <span className="text-[10px] text-muted-foreground font-bold">—</span>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    });
+                                                })()}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Mobile View */}
+                                    <div className="md:hidden divide-y divide-border/50">
+                                        {(() => {
+                                            const start = new Date(lease.startDate);
+                                            const end = new Date(lease.endDate);
+                                            const now = new Date();
+                                            const totalMonths = lease.recurringAmount ? Math.max(1, Math.floor(differenceInDays(end, start) / 30)) : 1;
+
+                                            return Array.from({ length: totalMonths }).map((_, i) => {
+                                                const periodStart = lease.recurringAmount ? addDays(start, i * 30) : start;
+                                                const periodEnd = lease.recurringAmount ? addDays(periodStart, 30) : end;
+                                                const isMonthPast = isBefore(periodEnd, now);
+                                                const isCurrentMonth = isWithinInterval(now, { start: periodStart, end: periodEnd });
+                                                const monthLabel = format(periodStart, 'MMM-yyyy');
+                                                const transaction = transactions.find(t =>
+                                                    t.leaseId === lease.id &&
+                                                    (t.status === 'COMPLETED' || t.status === 'PENDING') &&
+                                                    (t.metadata as any)?.month === monthLabel
+                                                );
+                                                const isPaid = transaction?.status === 'COMPLETED';
+                                                const isPending = transaction?.status === 'PENDING';
+
+                                                return (
+                                                    <div key={i} className={cn("p-5 space-y-4", isCurrentMonth ? "bg-primary/5" : "")}>
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <p className="text-sm font-black text-foreground">{format(periodStart, 'MMM dd')} - {format(periodEnd, 'MMM dd')}</p>
+                                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{format(periodEnd, 'yyyy')}</p>
+                                                            </div>
+                                                            {isPaid ? (
+                                                                <Badge className="bg-green-100 text-green-700 border-none px-2 py-1 text-[8px] font-black uppercase tracking-widest">{t('common.collected')}</Badge>
+                                                            ) : isPending ? (
+                                                                <Badge className="bg-amber-100 text-amber-700 border-none px-2 py-1 text-[8px] font-black uppercase tracking-widest">{t('common.pending')}</Badge>
+                                                            ) : isCurrentMonth ? (
+                                                                <Badge className="bg-primary text-white border-none px-2 py-1 text-[8px] font-black uppercase tracking-widest animate-pulse">{t('customerDashboard.leaseDetails.payNow')}</Badge>
+                                                            ) : isMonthPast ? (
+                                                                <Badge variant="destructive" className="px-2 py-1 text-[8px] font-black uppercase tracking-widest">{t('common.overdue')}</Badge>
+                                                            ) : (
+                                                                <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest opacity-50">{t('common.upcoming')}</Badge>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="flex justify-between items-end">
+                                                            <div>
+                                                                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">{t('common.grossAmount')}</p>
+                                                                <p className="text-xl font-black text-[#005a41]">{t('common.etb')} {(lease.recurringAmount || lease.totalPrice).toLocaleString()}</p>
+                                                            </div>
+                                                            <div className="text-right">
                                                                 {isPaid ? (
                                                                     <Link href={`/dashboard/customer/documents/receipt/${transaction.id}`}>
-                                                                        <Button variant="outline" size="sm" className="h-7 text-[10px] font-bold text-primary border-primary hover:bg-primary hover:text-white transition-colors duration-200 uppercase">{t('customerDashboard.leaseDetails.view')}</Button>
+                                                                        <Button variant="outline" size="sm" className="h-9 px-4 rounded-xl text-[10px] font-black border-primary/20 text-primary uppercase">{t('customerDashboard.leaseDetails.viewReceipt')}</Button>
                                                                     </Link>
                                                                 ) : (isCurrentMonth || isMonthPast) && !isPending && lease.status === 'ACTIVE' ? (
                                                                     <Button 
                                                                         size="sm" 
-                                                                        className="h-7 text-[10px] font-bold bg-primary hover:bg-primary/90 text-white uppercase shadow-sm active:scale-95 transition-all"
+                                                                        className="h-9 px-6 rounded-xl text-[10px] font-black bg-primary hover:bg-primary/90 text-white uppercase shadow-lg shadow-primary/20 active:scale-95 transition-all"
                                                                         onClick={() => handleRentPayment(lease, periodStart)}
                                                                         disabled={isPaymentLoading}
                                                                     >
                                                                         {isPaymentLoading ? <Loader2 className="h-3 w-3 animate-spin"/> : t('customerDashboard.leaseDetails.payNow')}
                                                                     </Button>
                                                                 ) : (
-                                                                    <span className="text-[10px] text-muted-foreground font-bold">—</span>
+                                                                    <p className="text-[10px] font-black text-muted-foreground/30 uppercase italic">{t('common.upcoming')}</p>
                                                                 )}
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                });
-                                            })()}
-                                        </tbody>
-                                    </table>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            });
+                                        })()}
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

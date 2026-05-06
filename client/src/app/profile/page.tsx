@@ -136,28 +136,31 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-12">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-foreground">{t('profile.title')}</h1>
-                <p className="text-muted-foreground mt-2">{t('profile.subtitle')}</p>
+        <div className="max-w-4xl mx-auto px-4 py-8 md:py-16">
+            <div className="mb-10 text-center md:text-left">
+                <h1 className="text-4xl md:text-6xl font-black text-foreground tracking-tight mb-3 bg-clip-text text-transparent bg-gradient-to-r from-[#005a41] to-[#00a878]">
+                    {t('profile.title')}
+                </h1>
+                <p className="text-lg md:text-xl text-muted-foreground font-medium max-w-2xl">{t('profile.subtitle')}</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {/* Profile Overview Card */}
-                <Card className="md:col-span-1 border-border shadow-sm h-fit">
-                    <CardContent className="pt-8 pb-6 text-center">
+                <Card className="md:col-span-1 border-border/50 shadow-xl shadow-black/5 h-fit overflow-hidden rounded-3xl">
+                    <div className="h-24 bg-gradient-to-br from-[#005a41] to-[#008a65]" />
+                    <CardContent className="pt-0 pb-8 text-center -mt-12">
                         <div
                             className="relative inline-block group cursor-pointer"
                             onClick={() => document.getElementById('avatar-upload')?.click()}
                         >
-                            <Avatar className="h-32 w-32 border-4 border-primary mx-auto shadow-xl ring-4 ring-primary/5 group-hover:opacity-90 transition-all duration-300">
+                            <Avatar className="h-32 w-32 md:h-40 md:w-40 border-4 border-white mx-auto shadow-2xl ring-1 ring-black/5 group-hover:scale-105 transition-all duration-500">
                                 <AvatarImage src={previewUrl} alt={formData.name} className="object-cover" />
-                                <AvatarFallback className="bg-primary/5 text-primary text-3xl font-black">
+                                <AvatarFallback className="bg-primary/5 text-primary text-4xl font-black">
                                     {getUserInitials(formData.name)}
                                 </AvatarFallback>
                             </Avatar>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 bg-black/40 backdrop-blur-[2px] rounded-full">
-                                <span className="text-[10px] font-bold text-white uppercase tracking-wider text-center px-4 leading-tight">
+                            <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 bg-black/60 backdrop-blur-sm rounded-full">
+                                <span className="text-[10px] font-black text-white uppercase tracking-[0.2em] text-center px-4 leading-tight">
                                     {t('profile.uploadProfile')}
                                 </span>
                             </div>
@@ -169,9 +172,9 @@ export default function ProfilePage() {
                                 onChange={handleFileUpload}
                             />
                         </div>
-                        <div className="mt-6">
-                            <h2 className="text-xl font-bold text-foreground">{currentUser.name}</h2>
-                            <p className="text-sm font-medium text-muted-foreground uppercase tracking-widest mt-1">
+                        <div className="mt-6 px-4">
+                            <h2 className="text-2xl font-black text-foreground tracking-tight">{currentUser.name}</h2>
+                            <p className="text-xs font-black text-[#005a41] uppercase tracking-[0.2em] mt-2 py-1 px-3 bg-[#005a41]/5 rounded-full inline-block">
                                 {t(`common.${currentUser.role.toLowerCase()}` as any)}
                             </p>
                         </div>
@@ -179,11 +182,16 @@ export default function ProfilePage() {
                 </Card>
 
                 {/* Edit Profile Form */}
-                <Card className="md:col-span-2 border-border shadow-md overflow-hidden">
-                    <CardHeader className="bg-primary/[0.03] border-b border-primary/5">
-                        <CardTitle className="text-primary tracking-tight">{t('profile.personalInfo')}</CardTitle>
+                <Card className="md:col-span-2 border-border/50 shadow-2xl shadow-black/5 overflow-hidden rounded-3xl">
+                    <CardHeader className="bg-muted/30 border-b border-border/50 py-8 px-6 md:px-8">
+                        <CardTitle className="text-2xl font-black text-foreground tracking-tight flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-xl">
+                                <User className="h-5 w-5 text-primary" />
+                            </div>
+                            {t('profile.personalInfo')}
+                        </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-6 md:p-8">
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="space-y-2">
                                 <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.fullName')}</Label>
@@ -418,16 +426,16 @@ export default function ProfilePage() {
                                 </div>
                             </div>
 
-                            <div className="flex justify-end pt-4">
+                            <div className="flex justify-end pt-8">
                                 <Button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="bg-primary hover:bg-primary/90 text-white font-bold h-11 px-8 rounded-xl shadow-md transition-all active:scale-95 gap-2"
+                                    className="bg-[#005a41] hover:bg-[#004a35] text-white font-black h-14 px-10 rounded-2xl shadow-xl shadow-[#005a41]/20 transition-all active:scale-95 gap-3 text-sm uppercase tracking-widest"
                                 >
                                     {isLoading ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <Loader2 className="h-5 w-5 animate-spin" />
                                     ) : (
-                                        <Save className="h-4 w-4" />
+                                        <Save className="h-5 w-5" />
                                     )}
                                     {t('profile.saveChanges')}
                                 </Button>

@@ -49,15 +49,16 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
         !disabled && "hover:shadow-xl",
         disabled && "opacity-80 grayscale-[0.5]"
       )}>
-        <div className="relative overflow-hidden">
+        <div className="relative overflow-hidden aspect-[4/3] md:aspect-video">
           <img
             src={getListingMainImage(property)}
             alt={property.title}
             className={cn(
-              "w-full h-56 object-cover transition-transform duration-300",
+              "w-full h-full object-cover transition-transform duration-700 ease-out",
               !disabled && "group-hover:scale-110"
             )}
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
 
           {/* Top Left Corner (Listing Type: Rent / Buy) */}
@@ -124,11 +125,11 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
         </div>
 
         <CardContent className="p-5">
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="text-lg text-foreground line-clamp-1">{property.title}</h3>
-            <div className="flex items-center space-x-1">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span className="text-sm text-foreground">{property.rating}</span>
+          <div className="flex justify-between items-start mb-2 gap-2">
+            <h3 className="text-base md:text-lg font-bold text-foreground line-clamp-1 group-hover:text-primary transition-colors">{property.title}</h3>
+            <div className="flex items-center space-x-1 shrink-0 bg-yellow-400/10 px-2 py-0.5 rounded-full">
+              <Star className="h-3 w-3 md:h-4 w-4 fill-yellow-400 text-yellow-400" />
+              <span className="text-xs md:text-sm font-bold text-yellow-700">{property.rating}</span>
             </div>
           </div>
 
@@ -168,29 +169,29 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
             )}
           </div>
 
-          <div className="flex justify-between items-center mt-auto pt-2">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-auto pt-4 gap-3 border-t border-border/50">
             <div className="flex flex-col items-start leading-tight">
-              <div className="flex items-baseline gap-1 text-primary whitespace-nowrap">
-                <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">ETB</span>
-                <span className="text-xl font-bold">{property.price.toLocaleString()}</span>
+              <div className="flex items-baseline gap-1 text-[#005a41] whitespace-nowrap">
+                <span className="text-[10px] font-black uppercase tracking-wider opacity-80">ETB</span>
+                <span className="text-xl md:text-2xl font-black tracking-tight">{property.price.toLocaleString()}</span>
                 {property.listingType.includes('For rent') && (
-                  <span className="text-xs text-muted-foreground">/mo</span>
+                  <span className="text-xs font-bold text-muted-foreground">/mo</span>
                 )}
               </div>
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex gap-2 w-full sm:w-auto">
               {onEdit && (
                 <Button
                   variant="outline"
                   disabled={disabled}
-                  className="h-8 text-xs text-[#005a41] border-[#005a41]/20 hover:bg-[#005a41] hover:text-white transition-all duration-200 px-2.5"
+                  className="flex-1 sm:flex-none h-9 text-xs font-bold text-[#005a41] border-[#005a41]/20 hover:bg-[#005a41] hover:text-white transition-all duration-300 px-4 rounded-xl shadow-sm active:scale-95"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     if (!disabled) onEdit(property);
                   }}
                 >
-                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
                   Edit
                 </Button>
               )}
@@ -198,14 +199,14 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
                 <Button
                   variant="outline"
                   disabled={disabled}
-                  className="h-8 text-xs text-rose-500 border-rose-200 hover:bg-rose-500 hover:text-white transition-all duration-200 px-2.5"
+                  className="flex-1 sm:flex-none h-9 text-xs font-bold text-rose-600 border-rose-200 hover:bg-rose-600 hover:text-white transition-all duration-300 px-4 rounded-xl shadow-sm active:scale-95"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     if (!disabled) onDelete(property);
                   }}
                 >
-                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                   Delete
                 </Button>
               )}

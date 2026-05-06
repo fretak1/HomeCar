@@ -15,7 +15,8 @@ import {
   FileText,
   Wrench,
   CheckCircle2,
-  Brain
+  Brain,
+  Menu
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from './common/Logo';
@@ -30,6 +31,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -38,6 +46,7 @@ export function Navbar() {
   const { currentUser, logout, isLoading: userLoading } = useUserStore();
   const { notifications, unreadCount, fetchNotifications, markAllAsRead, connectSocket, disconnectSocket } = useNotificationStore();
   const [displayNotifications, setDisplayNotifications] = useState<any[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -93,16 +102,18 @@ export function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-border shadow-sm">
+    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center">
-            {userLoading ? (
-              <Skeleton className="h-10 w-28 rounded-lg" />
-            ) : (
-              <Logo className="h-10 w-auto" priority />
-            )}
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/" className="flex items-center">
+              {userLoading ? (
+                <Skeleton className="h-10 w-28 rounded-lg" />
+              ) : (
+                <Logo className="h-10 w-auto" priority />
+              )}
+            </Link>
+          </div>
 
           <div className="hidden md:flex items-center space-x-12 h-full">
             {[
@@ -138,20 +149,14 @@ export function Navbar() {
           </div>
 
           <div className="flex items-center space-x-3">
-            <div className="block">
+            <div className="hidden md:block">
               {userLoading ? (
                 <Skeleton className="h-9 w-24 rounded-full" />
               ) : (
                 <LanguageSwitcher compact />
               )}
             </div>
-            {userLoading ? null : !(currentUser && ['ADMIN', 'OWNER', 'AGENT'].includes(currentUser.role)) && (
-              <Link href="/listings" className="md:hidden">
-                <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10">
-                  <Search className="h-5 w-5" />
-                </Button>
-              </Link>
-            )}
+
 
             {userLoading ? (
               <div className="flex items-center space-x-3">
@@ -162,7 +167,7 @@ export function Navbar() {
               <div className="flex items-center space-x-3">
                 {currentUser && ['OWNER', 'AGENT', 'CUSTOMER'].includes(currentUser.role) && (
                   <Link href="/chat">
-                    <Button variant="ghost" className="relative h-10 w-fit px-3 text-muted-foreground hover:bg-primary/5 rounded-xl transition-all active:scale-95 group flex items-center gap-2">
+                    <Button variant="ghost" className="relative h-9 sm:h-10 w-fit px-2 sm:px-3 text-muted-foreground hover:bg-primary/5 rounded-xl transition-all active:scale-95 group flex items-center gap-2">
                       <MessageSquare className="h-5 w-5 group-hover:text-primary transition-colors" />
                       <span className="text-[13px] font-bold group-hover:text-primary hidden sm:block">{t('nav.messages')}</span>
                     </Button>
@@ -170,10 +175,10 @@ export function Navbar() {
                 )}
                 <DropdownMenu onOpenChange={handleOpenChange}>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="relative h-10 w-10 text-muted-foreground hover:bg-primary/5 rounded-full transition-all active:scale-95 group">
+                    <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-10 sm:w-10 text-muted-foreground hover:bg-primary/5 rounded-full transition-all active:scale-95 group">
                       <Bell className="h-5 w-5 group-hover:text-primary transition-colors" />
                       {unreadCount > 0 && (
-                        <span className="absolute top-2 right-2 h-4 w-4 bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-white flex items-center justify-center">
+                        <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 h-4 w-4 bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-white flex items-center justify-center">
                           {unreadCount > 9 ? '9+' : unreadCount}
                         </span>
                       )}
@@ -236,7 +241,7 @@ export function Navbar() {
                           {getUserInitials(currentUser.name)}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex flex-col items-start">
+                      <div className="hidden sm:flex flex-col items-start">
                         <span className="text-xs font-bold text-foreground leading-none">{currentUser.name}</span>
                       </div>
                     </Button>
@@ -280,15 +285,116 @@ export function Navbar() {
                 </DropdownMenu>
               </div>
             ) : (
-              <>
+              <div className="hidden md:flex items-center space-x-3">
                 <Link href="/login">
-                  <Button variant="outline" size="sm" className="rounded-lg font-bold border-border">{t('nav.signIn')}</Button>
+                  <Button variant="outline" className="text-[13px] font-bold text-foreground hover:bg-[#14b8a6] hover:text-white px-6 rounded-xl transition-all active:scale-95 border-gray-200 hover:border-[#14b8a6]">
+                    {t('nav.signIn')}
+                  </Button>
                 </Link>
                 <Link href="/signup">
-                  <Button size="sm" className="bg-primary hover:bg-primary/90 shadow-sm text-white rounded-lg font-bold">{t('nav.signUp')}</Button>
+                  <Button className="bg-[#005a41] hover:bg-[#004a35] text-white text-[13px] font-bold px-6 rounded-xl transition-all active:scale-95">
+                    {t('nav.signUp')}
+                  </Button>
                 </Link>
-              </>
+              </div>
             )}
+
+            {/* Mobile Menu Button */}
+            <div className="md:hidden">
+              <Sheet open={isOpen} onOpenChange={setIsOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="text-foreground">
+                    <Menu className="h-6 w-6" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[300px] sm:w-[400px] border-r-border">
+                  <SheetHeader className="text-left pb-6 border-b border-border flex flex-row items-center justify-between">
+                    <SheetTitle>
+                      <Logo className="h-8 w-auto" />
+                    </SheetTitle>
+                    <div className="pr-8">
+                      <LanguageSwitcher compact />
+                    </div>
+                  </SheetHeader>
+                  <div className="flex flex-col py-6 pl-4 space-y-4">
+                    {[
+                      { name: t('nav.home'), href: '/', icon: <User className="h-4 w-4" /> },
+                      { name: t('nav.searchOnMap'), href: '/search', icon: <Search className="h-4 w-4" /> },
+                      { name: t('nav.properties'), href: '/listings', icon: <FileText className="h-4 w-4" /> },
+                      { name: getDashboardLabel(), href: currentUser ? `/dashboard/${currentUser.role.toLowerCase()}` : '/dashboard', icon: <Wrench className="h-4 w-4" /> },
+                    ].filter((item) => {
+                      if (userLoading) return false;
+                      if (item.href === '/dashboard' && !currentUser) return false;
+                      const isRestrictedRole = currentUser && ['ADMIN', 'OWNER', 'AGENT'].includes(currentUser.role);
+                      if (isRestrictedRole && item.href !== '/dashboard' && item.href !== `/dashboard/${currentUser.role.toLowerCase()}`) {
+                        return false;
+                      }
+                      return true;
+                    }).map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className={`text-lg font-bold py-2 flex items-center gap-3 transition-colors ${
+                          isActive(item.href) ? 'text-primary' : 'text-foreground/70'
+                        }`}
+                      >
+                        {item.name}
+                      </Link>
+                    ))}
+                    
+                    {currentUser && (
+                      <>
+                        <div className="pt-4 border-t border-border mt-4">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4">{t('nav.account')}</p>
+                          <div className="flex flex-col gap-2">
+                            <Link 
+                              href="/profile" 
+                              onClick={() => setIsOpen(false)}
+                              className="flex items-center gap-3 py-2 text-lg font-bold text-foreground/70 hover:text-primary transition-colors"
+                            >
+                              <User className="h-5 w-5" />
+                              {t('nav.myProfile')}
+                            </Link>
+                            <Link 
+                              href="/dashboard/ai-insights" 
+                              onClick={() => setIsOpen(false)}
+                              className="flex items-center gap-3 py-2 text-lg font-bold text-foreground/70 hover:text-primary transition-colors"
+                            >
+                              <Brain className="h-5 w-5" />
+                              {t('nav.aiInsights')}
+                            </Link>
+                            <Button 
+                              variant="ghost" 
+                              className="justify-start px-0 text-lg font-bold text-rose-600 hover:text-rose-700 hover:bg-transparent h-auto py-2"
+                              onClick={async () => {
+                                setIsOpen(false);
+                                await logout();
+                                router.push('/');
+                              }}
+                            >
+                              <span className="mr-3">↩</span>
+                              {t('nav.logout')}
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {!currentUser && (
+                      <div className="pt-6 flex flex-col gap-3">
+                         <Link href="/login" onClick={() => setIsOpen(false)} className="w-full">
+                          <Button variant="outline" className="w-full justify-center font-bold border-gray-200 rounded-xl py-6 hover:bg-[#14b8a6] hover:text-white hover:border-[#14b8a6]">{t('nav.signIn')}</Button>
+                        </Link>
+                        <Link href="/signup" onClick={() => setIsOpen(false)} className="w-full">
+                          <Button className="w-full justify-center font-bold bg-[#005a41] hover:bg-[#004a35] text-white rounded-xl py-6">{t('nav.signUp')}</Button>
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
         </div>
       </div>

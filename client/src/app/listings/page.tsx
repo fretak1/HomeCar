@@ -354,7 +354,7 @@ function ListingContent() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                         {showFilters && (
-                            <div className="lg:col-span-1 border rounded-2xl shadow-sm h-[calc(100vh-140px)] sticky top-24 overflow-hidden">
+                            <div className="lg:col-span-1 border rounded-2xl shadow-sm h-fit lg:h-[calc(100vh-140px)] lg:sticky lg:top-24 overflow-hidden z-20 bg-background">
                                 <FiltersFull />
                             </div>
                         )}

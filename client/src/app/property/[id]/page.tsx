@@ -28,12 +28,9 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { DollarSign, CheckCircle } from 'lucide-react';
+
 import { toast } from 'sonner';
 import { usePropertyStore, Property } from '@/store/usePropertyStore';
 import { useReviewStore } from '@/store/useReviewStore';
@@ -45,7 +42,6 @@ import { ReviewCard } from '@/components/ReviewCard';
 import { ReviewForm } from '@/components/ReviewForm';
 import { MapView } from '@/components/MapView';
 import { AIRecommendations } from '@/components/AIRecommendations';
-import { usePaymentStore } from '@/store/usePaymentStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
 import { useInteractionStore } from '@/store/useInteractionStore';
 
@@ -68,11 +64,7 @@ export default function PropertyDetailPage() {
     const [selectedImage, setSelectedImage] = useState(0);
     const [applicationMessage, setApplicationMessage] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const { initializePayment, isLoading: isPaymentLoading } = usePaymentStore();
-
-    // Email confirmation state
-    const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
-    const [emailToConfirm, setEmailToConfirm] = useState(currentUser?.email || '');
+    const [initialLoading, setInitialLoading] = useState(true);
 
     const favorite = id ? isFavorite(id) : false;
 
@@ -80,7 +72,9 @@ export default function PropertyDetailPage() {
         e.preventDefault();
         e.stopPropagation();
         if (!currentUser || !id) {
-            toast.error(t('customerDashboard.pleaseLogin'));
+            toast.error(t('customerDashboard.pleaseLogin'), {
+                style: { backgroundColor: '#ef4444', color: 'white', border: 'none' }
+            });
             return;
         }
 
@@ -88,14 +82,20 @@ export default function PropertyDetailPage() {
             await removeFavorite(id);
             toast.success("Removed from favorites");
         } else {
-            await addFavorite(id);
+            await favorite ? removeFavorite(id) : addFavorite(id);
             toast.success("Added to favorites");
         }
     };
 
     useEffect(() => {
         if (id) {
-            fetchPropertyById(id).then(setProperty);
+            setInitialLoading(true);
+            fetchPropertyById(id).then((res) => {
+                setProperty(res);
+                setInitialLoading(false);
+            }).catch(() => {
+                setInitialLoading(false);
+            });
             fetchReviews(id);
         }
     }, [id, fetchPropertyById, fetchReviews]);
@@ -128,50 +128,23 @@ export default function PropertyDetailPage() {
         }
     };
 
-    const handlePayment = async () => {
-        if (!property || !currentUser || !id) return;
-
-        setEmailToConfirm(currentUser.email || '');
-        setIsEmailDialogOpen(true);
-    };
-
-    const processPaymentWithEmail = async () => {
-        if (!property || !currentUser || !id) return;
-
-        if (!property.owner?.chapaSubaccountId) {
-            toast.error("Owner has not set up their payout account yet. Please contact them.");
+    const handleOpenApplication = () => {
+        if (!currentUser) {
+            toast.error(t('customerDashboard.pleaseLogin'), {
+                style: {
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    border: 'none'
+                }
+            });
             return;
         }
-
-        const txRef = `TX-${id.substring(0, 5)}-${currentUser.id.substring(0, 5)}-${Date.now()}`;
-
-        try {
-            const data = await initializePayment({
-                amount: property.price,
-                email: emailToConfirm,
-                firstName: currentUser.name.split(' ')[0],
-                lastName: currentUser.name.split(' ')[1] || '',
-                txRef: txRef,
-                callbackUrl: `${window.location.origin}/api/payments/webhook`,
-                subaccountId: property.owner.chapaSubaccountId,
-                propertyId: id,
-                payerId: currentUser.id,
-                payeeId: property.owner.id,
-            });
-
-            if (data?.checkout_url) {
-                window.location.href = data.checkout_url;
-            } else {
-                toast.error("Failed to get payment link. Please try again.");
-            }
-        } catch (err) {
-            toast.error("Payment initialization failed.");
-        } finally {
-            setIsEmailDialogOpen(false);
-        }
+        setIsDialogOpen(true);
     };
 
-    if (isPropertyLoading && !property) {
+
+
+    if ((isPropertyLoading || initialLoading) && !property) {
         return <PropertyDetailSkeleton />;
     }
 
@@ -206,7 +179,7 @@ export default function PropertyDetailPage() {
                             <img
                                 src={getImageUrl(property.images[selectedImage])}
                                 alt={property.title}
-                                className="w-full h-[500px] object-cover"
+                                className="w-full h-[300px] md:h-[500px] object-cover"
                             />
                             {currentUser?.role !== 'ADMIN' && (
                                 <div className="absolute top-4 right-4 flex space-x-2">
@@ -263,39 +236,38 @@ export default function PropertyDetailPage() {
                                         return t.includes('rent') || t.includes('lease') || t.includes('buy') || t.includes('sale');
                                     }) && (
                                             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                                                <DialogTrigger asChild>
-                                                    <Button
-                                                        className="w-full bg-primary hover:bg-primary/90 cursor-pointer"
-                                                        size="lg"
-                                                        disabled={
-                                                            currentUser?.role?.toUpperCase() === 'OWNER' ||
-                                                            currentUser?.role?.toUpperCase() === 'AGENT' ||
-                                                            currentUser?.role?.toUpperCase() === 'ADMIN' ||
-                                                            property.status === 'RENTED' ||
-                                                            property.status === 'SOLD' ||
-                                                            property.status === 'UNAVAILABLE' ||
-                                                            applications.some(app => app.propertyId === id && app.customerId === currentUser?.id)
-                                                        }
-                                                    >
-                                                        <Calendar className="h-5 w-5 mr-2" />
-                                                        {currentUser?.role?.toUpperCase() === 'ADMIN'
-                                                            ? 'Admins cannot apply'
-                                                            : currentUser?.role?.toUpperCase() === 'OWNER'
-                                                            ? 'Owners cannot apply'
-                                                            : currentUser?.role?.toUpperCase() === 'AGENT'
-                                                            ? 'Agents cannot apply'
-                                                            : property.status === 'RENTED' 
-                                                            ? t('property.alreadyRented') 
-                                                            : property.status === 'SOLD'
-                                                            ? t('property.alreadySold')
-                                                            : property.status === 'UNAVAILABLE'
-                                                            ? t('property.currentlyUnavailable')
-                                                            : applications.some(app => app.propertyId === id && app.customerId === currentUser?.id)
-                                                            ? t('property.alreadyApplied')
-                                                            : t('property.applyFor').replace('{type}', listingTypes[0] || '')
-                                                        }
-                                                    </Button>
-                                                </DialogTrigger>
+                                                <Button
+                                                    className="w-full bg-[#005a41] hover:bg-[#004a35] text-white rounded-xl shadow-none cursor-pointer transition-all active:scale-95"
+                                                    size="lg"
+                                                    onClick={handleOpenApplication}
+                                                    disabled={
+                                                        currentUser?.role?.toUpperCase() === 'OWNER' ||
+                                                        currentUser?.role?.toUpperCase() === 'AGENT' ||
+                                                        currentUser?.role?.toUpperCase() === 'ADMIN' ||
+                                                        property.status === 'RENTED' ||
+                                                        property.status === 'SOLD' ||
+                                                        property.status === 'UNAVAILABLE' ||
+                                                        applications.some(app => app.propertyId === id && app.customerId === currentUser?.id)
+                                                    }
+                                                >
+                                                    <Calendar className="h-5 w-5 mr-2" />
+                                                    {currentUser?.role?.toUpperCase() === 'ADMIN'
+                                                        ? 'Admins cannot apply'
+                                                        : currentUser?.role?.toUpperCase() === 'OWNER'
+                                                        ? 'Owners cannot apply'
+                                                        : currentUser?.role?.toUpperCase() === 'AGENT'
+                                                        ? 'Agents cannot apply'
+                                                        : property.status === 'RENTED' 
+                                                        ? t('property.alreadyRented') 
+                                                        : property.status === 'SOLD'
+                                                        ? t('property.alreadySold')
+                                                        : property.status === 'UNAVAILABLE'
+                                                        ? t('property.currentlyUnavailable')
+                                                        : applications.some(app => app.propertyId === id && app.customerId === currentUser?.id)
+                                                        ? t('property.alreadyApplied')
+                                                        : t('property.applyFor').replace('{type}', listingTypes[0] || '')
+                                                    }
+                                                </Button>
                                                 <DialogContent className="sm:max-w-[425px]">
                                                     <DialogHeader>
                                                         <DialogTitle className="flex items-center gap-2">
@@ -331,23 +303,7 @@ export default function PropertyDetailPage() {
                                             </Dialog>
                                         )}
 
-                                    {/* Pay and Secure Button - Visible only if application is accepted and not already paid */}
-                                    {currentUser?.role === 'CUSTOMER' &&
-                                        applications.some(app => app.propertyId === id && app.status === 'accepted') &&
-                                        !transactions.some(tx => tx.propertyId === id && tx.status?.toUpperCase() === 'COMPLETED') && (
-                                            <Button
-                                                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl shadow-lg transition-all active:scale-95 disabled:bg-muted disabled:text-muted-foreground"
-                                                onClick={handlePayment}
-                                                disabled={isPaymentLoading || property.status === 'RENTED' || property.status === 'SOLD' || property.status === 'UNAVAILABLE'}
-                                            >
-                                                {isPaymentLoading ? (
-                                                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                                                ) : (
-                                                    <CheckCircle2 className="h-5 w-5 mr-2" />
-                                                )}
-                                                {t('property.payAndSecure')}
-                                            </Button>
-                                        )}
+
                                 </div>
 
                                 <div className="border-t border-border pt-4">
@@ -371,10 +327,12 @@ export default function PropertyDetailPage() {
                                     <Button
                                         disabled={!property.owner?.id}
                                         variant="outline"
-                                        className="w-full cursor-pointer hover:bg-primary/5 border-primary/20 text-primary font-bold"
+                                        className="w-full cursor-pointer hover:bg-[#005a41]/5 border-[#005a41]/20 text-[#005a41] font-bold rounded-xl shadow-none transition-all active:scale-95"
                                         onClick={() => {
                                             if (!currentUser) {
-                                                toast.error("Please log in to view agent/owner profiles.");
+                                                toast.error(t('customerDashboard.pleaseLogin'), {
+                                                    style: { backgroundColor: '#ef4444', color: 'white', border: 'none' }
+                                                });
                                                 return;
                                             }
                                             if (property.owner?.id) {
@@ -543,7 +501,7 @@ export default function PropertyDetailPage() {
 
                         <Card className="border-border">
                             <CardContent className="p-6">
-                                <h3 className="mb-4 text-lg font-bold text-foreground">{t('ownerDashboard.tabs.overview' as any) || 'Available For'}</h3>
+                                <h3 className="mb-4 text-lg font-bold text-foreground">{t('property.availableFor') || 'Available For'}</h3>
                                 <div className="space-y-2">
                                     {listingTypes.map((type) => (
                                         <Badge
@@ -568,54 +526,6 @@ export default function PropertyDetailPage() {
                 )}
             </div>
 
-            {/* Email Confirmation Dialog */}
-            <Dialog open={isEmailDialogOpen} onOpenChange={setIsEmailDialogOpen}>
-                <DialogContent className="sm:max-w-md rounded-2xl border-border bg-card">
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                            <CheckCircle className="h-5 w-5 text-primary" />
-                            {t('property.confirmPaymentEmail')}
-                        </DialogTitle>
-                        <DialogDescription className="text-muted-foreground">
-                            {t('property.chapaEmailWarning').replace('{title}', property?.title || '')}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="payment-email" className="text-sm font-medium">{t('customerDashboard.emailAddress')}</Label>
-                            <Input
-                                id="payment-email"
-                                type="email"
-                                placeholder="name@example.com"
-                                value={emailToConfirm}
-                                onChange={(e) => setEmailToConfirm(e.target.value)}
-                                className="rounded-xl border-border h-11"
-                            />
-                        </div>
-                    </div>
-                    <div className="flex gap-3 justify-end">
-                        <Button
-                            variant="ghost"
-                            onClick={() => setIsEmailDialogOpen(false)}
-                            className="rounded-xl hover:bg-muted font-medium"
-                        >
-                            {t('common.cancel')}
-                        </Button>
-                        <Button
-                            disabled={!emailToConfirm.includes('@') || isPaymentLoading}
-                            onClick={processPaymentWithEmail}
-                            className="rounded-xl bg-primary hover:bg-primary/90 text-white font-bold px-6"
-                        >
-                            {isPaymentLoading ? (
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            ) : (
-                                <DollarSign className="h-4 w-4 mr-2" />
-                            )}
-                            {t('property.initializePayment')}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }

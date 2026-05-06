@@ -29,9 +29,25 @@ const Listings = () => {
 
     if (isLoading) {
         return (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full p-4">
+            <div className={
+                `grid gap-6 p-4 ${isFiltersFullOpen ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2'}` 
+            }>
                 {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div key={i} className="h-[300px] bg-muted/20 animate-pulse rounded-xl" />
+                    <div key={i} className="border border-border rounded-xl overflow-hidden bg-card">
+                        <div className="h-48 bg-muted/50 animate-pulse" />
+                        <div className="p-5 space-y-4">
+                            <div className="flex justify-between items-start">
+                                <div className="h-6 w-3/4 bg-muted/50 animate-pulse rounded" />
+                                <div className="h-6 w-8 bg-muted/50 animate-pulse rounded" />
+                            </div>
+                            <div className="h-4 w-1/2 bg-muted/50 animate-pulse rounded" />
+                            <div className="h-4 w-2/3 bg-muted/50 animate-pulse rounded" />
+                            <div className="flex justify-between items-center pt-2">
+                                <div className="h-7 w-28 bg-muted/50 animate-pulse rounded" />
+                                <div className="h-8 w-20 bg-muted/50 animate-pulse rounded-lg" />
+                            </div>
+                        </div>
+                    </div>
                 ))}
             </div>
         );
@@ -39,7 +55,7 @@ const Listings = () => {
 
     if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
-    const items = properties;
+    const items = properties.filter((item: any) => item.isVerified === true && item.status === 'AVAILABLE');
 
     return (
         <div className="w-full h-full flex flex-col">
@@ -52,7 +68,7 @@ const Listings = () => {
                 </h3>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 pb-12 custom-scrollbar">
                 {items.length === 0 ? (
                     <div className="text-center py-20">
                         <h3 className="text-lg font-medium text-muted-foreground">{t("listings.noResultsFound")}</h3>

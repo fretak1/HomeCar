@@ -156,14 +156,14 @@ export default function OwnerDashboardPage() {
         <div className="min-h-screen bg-white">
             <div className="bg-primary py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-4xl mb-2 text-white font-bold">{t('ownerDashboard.title')}</h1>
-                            <p className="text-xl text-white/90">{t('ownerDashboard.subtitle')}</p>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="text-center md:text-left">
+                            <h1 className="text-3xl md:text-5xl mb-2 text-white font-black tracking-tight">{t('ownerDashboard.title')}</h1>
+                            <p className="text-lg md:text-xl text-white/80 font-medium">{t('ownerDashboard.subtitle')}</p>
                         </div>
-                        <Link href="/dashboard/add-property">
-                            <Button className="bg-white text-[#005a41] hover:bg-white/90">
-                                <Plus className="mr-2 h-4 w-4" /> {t('ownerDashboard.addProperty')}
+                        <Link href="/dashboard/add-property" className="w-full md:w-auto">
+                            <Button className="w-full md:w-auto bg-white text-[#005a41] hover:bg-white/90 font-black px-8 py-7 rounded-2xl shadow-2xl shadow-black/20 transition-all active:scale-95">
+                                <Plus className="mr-2 h-6 w-6" /> {t('ownerDashboard.addProperty')}
                             </Button>
                         </Link>
                     </div>
@@ -226,17 +226,17 @@ export default function OwnerDashboardPage() {
                 {isLoading && !hasCompletedInitialLoad
                     ? <StatCardsSkeleton count={4} />
                     : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
                             {stats.map((stat, i) => (
-                                <Card key={i} className="border-border">
-                                    <CardContent className="p-6">
+                                <Card key={i} className="border-border shadow-sm hover:shadow-md transition-all duration-300">
+                                    <CardContent className="p-5 md:p-6">
                                         <div className="flex items-center gap-4">
-                                            <div className="p-3 rounded-xl text-[#005a41]">
-                                                <stat.icon className="h-6 w-6" />
+                                            <div className="p-3 md:p-4 rounded-2xl bg-[#005a41]/5 text-[#005a41] shrink-0">
+                                                <stat.icon className="h-5 w-5 md:h-7 md:w-7" />
                                             </div>
-                                            <div>
-                                                <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
-                                                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                                            <div className="min-w-0">
+                                                <p className="text-[10px] md:text-xs text-muted-foreground font-black uppercase tracking-[0.15em] mb-1 truncate">{stat.label}</p>
+                                                <p className="text-xl md:text-2xl font-black text-foreground truncate leading-none">{stat.value}</p>
                                             </div>
                                         </div>
                                     </CardContent>
@@ -320,34 +320,34 @@ export default function OwnerDashboardPage() {
                                             const tenantName = lease.customer?.name || t('common.unknownTenant');
 
                                             return (
-                                                <Card key={lease.id} className="border-border">
-                                                    <CardContent className="p-6">
-                                                        <div className="flex items-start justify-between">
+                                                <Card key={lease.id} className="border-border/50 shadow-sm hover:shadow-md transition-all rounded-2xl overflow-hidden">
+                                                    <CardContent className="p-5 md:p-6">
+                                                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                                                             <div className="flex space-x-4">
                                                                 <img
                                                                     src={getListingMainImage(property)}
                                                                     alt={property.title}
-                                                                    className="w-24 h-24 rounded-lg object-cover"
+                                                                    className="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover shadow-sm"
                                                                 />
-                                                                <div>
-                                                                    <h3 className="mb-1 text-foreground font-bold">{property.title}</h3>
-                                                                    <p className="text-sm text-muted-foreground mb-1">
+                                                                <div className="space-y-1">
+                                                                    <h3 className="text-lg font-black text-foreground tracking-tight leading-tight">{property.title}</h3>
+                                                                    <p className="text-xs text-muted-foreground font-medium mb-2">
                                                                         {formatLocation(property.location || property)}
                                                                     </p>
-                                                                    <p className="text-xs font-semibold text-[#005a41] mb-2 flex items-center">
-                                                                        <User2 className="h-3 w-3 mr-1" />
-                                                                        {t('common.tenant')}: {tenantName}
+                                                                    <p className="text-xs font-black text-[#005a41] flex items-center bg-[#005a41]/5 px-2 py-1 rounded-lg w-fit">
+                                                                        <User2 className="h-3.5 w-3.5 mr-1.5 opacity-70" />
+                                                                        <span className="opacity-60 font-bold uppercase text-[9px] mr-1">{t('common.tenant')}:</span> {tenantName}
                                                                     </p>
-                                                                    <div className="flex items-center space-x-4 text-sm">
-                                                                        <div className="flex items-center text-muted-foreground">
-                                                                            <Calendar className="h-4 w-4 mr-1" />
-                                                                            <span>{t('common.started')}: {format(new Date(lease.startDate), 'MMM dd, yyyy')}</span>
+                                                                    <div className="flex flex-wrap items-center gap-3 mt-3">
+                                                                        <div className="flex items-center text-[10px] font-black text-muted-foreground uppercase tracking-widest bg-muted/50 px-2 py-1 rounded-md">
+                                                                            <Calendar className="h-3 w-3 mr-1.5 opacity-50" />
+                                                                            {t('common.started')}: {format(new Date(lease.startDate), 'MMM dd')}
                                                                         </div>
                                                                         <Badge className={cn(
-                                                                            "border-none",
+                                                                            "border-none px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg",
                                                                             lease.status === 'ACTIVE' ? "bg-green-100 text-green-700" :
                                                                                 lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" : 
-                                                                                lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700 font-bold" :
+                                                                                lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700" :
                                                                                 "bg-gray-100 text-gray-700"
                                                                         )}>
                                                                             {lease.status === 'CANCELLATION_PENDING' ? t('common.cancellationPending') : (t(`common.${lease.status.toLowerCase()}` as any) || lease.status)}
@@ -355,53 +355,46 @@ export default function OwnerDashboardPage() {
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            <div className="flex items-center justify-between mt-4 md:mt-0 p-4 bg-muted/5 border border-border/10 rounded-xl md:bg-transparent md:border-none md:p-0">
-                                                                <div className="text-left md:text-right w-full">
-                                                                    <p className="text-sm text-muted-foreground mb-1">{lease.recurringAmount ? t('ownerDashboard.monthlyPayment') : t('ownerDashboard.totalPayment')}</p>
-                                                                    <p className="text-2xl font-black text-[#005a41] mb-2">{t('common.etb')} {(lease.recurringAmount || lease.totalPrice || property.price).toLocaleString()}</p>
-                                                                    <div className="flex flex-wrap md:justify-end gap-2">
-                                                                        <Link href={`/dashboard/owner/lease/${lease.id}`}>
-                                                                            <Button variant="outline" size="sm" className="h-9 px-4 rounded-xl border-border bg-white hover:bg-muted/10">
-                                                                                <FileText className="h-4 w-4 mr-2 text-[#005a41]" />
-                                                                                {t('common.viewDetail')}
-                                                                            </Button>
-                                                                        </Link>
-                                                                        {(lease.status === 'ACTIVE' || (lease.status === 'CANCELLATION_PENDING' && !lease.ownerCancelled)) && (
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                className={cn(
-                                                                                    "h-9 px-4 rounded-xl transition-all duration-300 shadow-sm",
-                                                                                    lease.status === 'CANCELLATION_PENDING' 
-                                                                                        ? "text-orange-600 border-orange-200 hover:bg-orange-50" 
-                                                                                        : "border-rose-200 text-rose-600 hover:bg-rose-50"
-                                                                                )}
-                                                                                onClick={() => requestLeaseCancellation(lease.id, 'owner')}
-                                                                                disabled={isLoading}
-                                                                            >
-                                                                                <X className="h-4 w-4 mr-2" />
-                                                                                {lease.status === 'CANCELLATION_PENDING' ? t('ownerDashboard.confirmCancellation') : t('ownerDashboard.cancelLease')}
-                                                                            </Button>
-                                                                        )}
-                                                                        {lease.status === 'CANCELLATION_PENDING' && lease.ownerCancelled && (
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                disabled
-                                                                                className="h-9 px-4 rounded-xl text-amber-600 border-amber-200 bg-amber-50/50 font-bold"
-                                                                            >
-                                                                                <Clock className="h-4 w-4 mr-2" />
-                                                                                {t('ownerDashboard.requested')}
-                                                                            </Button>
-                                                                        )}
-                                                                        {lease.status === 'PENDING' && !lease.ownerAccepted && (
-                                                                            <Button size="sm" onClick={() => acceptLease(lease.id, 'owner')} className="h-9 px-4 rounded-xl bg-[#005a41] hover:bg-[#004a35] text-white">
-                                                                                <CheckCircle className="h-4 w-4 mr-2" />
-                                                                                {t('ownerDashboard.acceptLease')}
-                                                                            </Button>
-                                                                        )}
 
-                                                                    </div>
+                                                            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-12 p-5 bg-muted/20 sm:bg-transparent rounded-2xl border border-border/50 sm:border-none">
+                                                                <div className="text-center sm:text-right">
+                                                                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em] mb-1">{lease.recurringAmount ? t('ownerDashboard.monthlyPayment') : t('ownerDashboard.totalPayment')}</p>
+                                                                    <p className="text-2xl font-black text-[#005a41] flex items-baseline gap-1 justify-center sm:justify-end">
+                                                                        <span className="text-xs opacity-60 uppercase font-black">{t('common.etb')}</span>
+                                                                        {(lease.recurringAmount || lease.totalPrice || property.price).toLocaleString()}
+                                                                    </p>
+                                                                </div>
+                                                                
+                                                                <div className="flex flex-wrap justify-center sm:justify-end gap-2 w-full sm:w-auto">
+                                                                    <Link href={`/dashboard/owner/lease/${lease.id}`} className="flex-1 sm:flex-none">
+                                                                        <Button variant="outline" size="sm" className="w-full h-10 px-6 rounded-xl border-border bg-white hover:bg-muted font-black text-[10px] uppercase tracking-widest transition-all">
+                                                                            <FileText className="h-4 w-4 mr-2 text-[#005a41] opacity-70" />
+                                                                            {t('common.viewDetail')}
+                                                                        </Button>
+                                                                    </Link>
+                                                                    {(lease.status === 'ACTIVE' || (lease.status === 'CANCELLATION_PENDING' && !lease.ownerCancelled)) && (
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className={cn(
+                                                                                "flex-1 sm:flex-none h-10 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm",
+                                                                                lease.status === 'CANCELLATION_PENDING' 
+                                                                                    ? "text-orange-600 border-orange-200 hover:bg-orange-50" 
+                                                                                    : "border-rose-200 text-rose-600 hover:bg-rose-50"
+                                                                            )}
+                                                                            onClick={() => requestLeaseCancellation(lease.id, 'owner')}
+                                                                            disabled={isLoading}
+                                                                        >
+                                                                            <X className="h-4 w-4 mr-2" />
+                                                                            {lease.status === 'CANCELLATION_PENDING' ? t('ownerDashboard.confirmCancellation') : t('ownerDashboard.cancelLease')}
+                                                                        </Button>
+                                                                    )}
+                                                                    {lease.status === 'PENDING' && !lease.ownerAccepted && (
+                                                                        <Button size="sm" onClick={() => acceptLease(lease.id, 'owner')} className="flex-1 sm:flex-none h-10 px-6 rounded-xl bg-[#005a41] hover:bg-[#004a35] text-white font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-[#005a41]/20">
+                                                                            <CheckCircle className="h-4 w-4 mr-2" />
+                                                                            {t('ownerDashboard.acceptLease')}
+                                                                        </Button>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -597,35 +590,37 @@ export default function OwnerDashboardPage() {
                                     applications.map((app) => (
                                         <Card key={app.id} className="border-border hover:shadow-xl transition-all duration-300 overflow-hidden group border-l-4 border-l-[#005a41] cursor-pointer" onClick={() => router.push(`/property/${app.propertyId}`)}>
                                             <CardContent className="p-0">
-                                                <div className="flex flex-col xl:flex-row relative min-h-[160px]">
+                                                <div className="flex flex-col md:flex-row relative">
                                                     {/* Property Image & Basic Info */}
-                                                    <div className="flex flex-col sm:flex-row p-6 flex-1 gap-6 border-b xl:border-b-0 border-border">
+                                                    <div className="flex flex-col sm:flex-row p-5 md:p-6 flex-1 gap-5 md:gap-6">
                                                         <div className="relative w-full sm:w-32 h-32 rounded-xl overflow-hidden shadow-inner flex-shrink-0">
                                                             <img src={app.propertyImage} alt={app.propertyTitle} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300'; }} />
                                                             <div className="absolute top-2 left-2">
-                                                                <Badge className="bg-white/90 backdrop-blur-sm text-black text-[10px] uppercase font-bold px-2 py-0.5 border-none shadow-sm capitalize">
+                                                                <Badge className="bg-white/90 backdrop-blur-sm text-black text-[10px] uppercase font-black px-2 py-0.5 border-none shadow-sm capitalize">
                                                                     {app.listingType === 'rent' ? t('common.rent') : t('common.buy')}
                                                                 </Badge>
                                                             </div>
                                                         </div>
 
-                                                        <div className="flex-1 space-y-3 pb-8 md:pb-0">
-                                                            <div className="flex justify-between items-start">
+                                                        <div className="flex-1 space-y-4">
+                                                            <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0">
                                                                 <div>
-                                                                    <h3 className="text-xl font-bold text-foreground group-hover:text-[#005a41] transition-colors mb-1">
+                                                                    <h3 className="text-xl font-black text-foreground group-hover:text-[#005a41] transition-colors mb-1 tracking-tight">
                                                                         {app.propertyTitle}
                                                                     </h3>
-                                                                    <p className="text-sm text-muted-foreground flex items-center">
-                                                                        <User2 className="h-3 w-3 mr-1.5" />
-                                                                        {app.customer?.name || t('common.unknownApplicant')}
-                                                                    </p>
-                                                                    <p className="text-[10px] text-muted-foreground font-medium flex items-center mt-1">
-                                                                        <Clock className="h-3 w-3 mr-1" />
-                                                                        {app.date}
-                                                                    </p>
+                                                                    <div className="flex flex-wrap items-center gap-3">
+                                                                        <p className="text-sm font-bold text-muted-foreground flex items-center">
+                                                                            <User2 className="h-3.5 w-3.5 mr-1.5 text-primary/60" />
+                                                                            {app.customer?.name || t('common.unknownApplicant')}
+                                                                        </p>
+                                                                        <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest flex items-center bg-muted/50 px-2 py-0.5 rounded-md">
+                                                                            <Clock className="h-3 w-3 mr-1.5" />
+                                                                            {app.date}
+                                                                        </p>
+                                                                    </div>
                                                                 </div>
                                                                 <Badge className={cn(
-                                                                    "text-[10px] font-bold uppercase tracking-widest px-3 py-1 border-none shadow-sm",
+                                                                    "text-[10px] font-black uppercase tracking-[0.15em] px-3 py-1.5 border-none shadow-sm h-fit",
                                                                     app.status === 'accepted' ? "bg-green-100 text-green-700" :
                                                                     app.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"
                                                                 )}>
@@ -633,77 +628,81 @@ export default function OwnerDashboardPage() {
                                                                 </Badge>
                                                             </div>
 
-                                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                                                                <div className="bg-muted/30 p-2.5 rounded-lg border border-border/50">
-                                                                    <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight mb-1">{app.listingType === 'rent' ? t('common.rent') : t('common.price')}</p>
-                                                                    <p className="text-sm font-bold text-foreground">{t('common.etb')} {app.price != null ? app.price.toLocaleString() : t('common.na')}{app.listingType === 'rent' ? t('common.perMo') : ''}</p>
+                                                            <div className="flex flex-wrap gap-4 items-center">
+                                                                <div className="bg-muted/40 px-3 py-2 rounded-xl border border-border/50">
+                                                                    <p className="text-[9px] uppercase font-black text-muted-foreground tracking-widest mb-0.5">{app.listingType === 'rent' ? t('common.rent') : t('common.price')}</p>
+                                                                    <p className="text-sm font-black text-[#005a41] flex items-baseline gap-1">
+                                                                        <span className="text-[10px] font-black uppercase opacity-60">{t('common.etb')}</span>
+                                                                        {app.price != null ? app.price.toLocaleString() : t('common.na')}
+                                                                        {app.listingType === 'rent' && <span className="text-[10px] font-bold opacity-60">/{t('common.mo')}</span>}
+                                                                    </p>
                                                                 </div>
+                                                                {app.message && (
+                                                                    <div className="flex-1 min-w-[200px] p-3 bg-[#005a41]/5 border-l-4 border-[#005a41] rounded-r-xl">
+                                                                        <p className="text-xs text-muted-foreground font-medium italic line-clamp-2">"{app.message}"</p>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            {app.message && (
-                                                                <div className="mt-3 p-3 bg-muted/10 border-l-2 border-[#005a41]/40 rounded-r-lg">
-                                                                    <p className="text-xs text-muted-foreground italic line-clamp-2">"{app.message}"</p>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
 
-                                                    {/* Absolute positioned Action Buttons - Bottom Right */}
-                                                    <div className="absolute bottom-4 right-4 flex gap-2">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs h-9 px-4 rounded-lg bg-white/80 backdrop-blur-sm shadow-sm"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                const customerId = app.customerId || app.customer?.id;
-                                                                if (customerId) {
-                                                                    router.push(`/profile/${customerId}`);
-                                                                } else {
-                                                                    toast.error(t('common.customerProfileNotFound'));
-                                                                }
-                                                            }}
-                                                        >
-                                                            <User className="h-3.5 w-3.5 mr-2" />
-                                                            {t('common.seeProfile')}
-                                                        </Button>
-                                                        {app.status === 'pending' && (
-                                                            <>
-                                                                <Button
-                                                                    size="sm"
-                                                                    className="bg-[#005a41] hover:bg-[#004a35] text-white shadow-lg shadow-[#005a41]/20 font-bold text-xs h-9 px-4 rounded-lg transition-all hover:scale-105 active:scale-95"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        updateApplicationStatus(app.id, 'accepted');
-                                                                    }}
-                                                                >
-                                                                    <Check className="h-3.5 w-3.5 mr-1" /> {t('common.accept')}
-                                                                </Button>
+                                                            {/* Action Buttons Container */}
+                                                            <div className="flex flex-wrap gap-2 pt-2 sm:pt-0">
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    className="border-rose-200 text-rose-600 hover:bg-rose-50 shadow-sm font-bold text-xs h-9 px-4 rounded-lg transition-all hover:scale-105 active:scale-95 bg-white"
+                                                                    className="border-primary/20 text-primary hover:bg-primary/5 font-black text-[10px] h-9 px-4 rounded-xl bg-white shadow-sm uppercase tracking-widest"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        updateApplicationStatus(app.id, 'rejected');
+                                                                        const customerId = app.customerId || app.customer?.id;
+                                                                        if (customerId) {
+                                                                            router.push(`/profile/${customerId}`);
+                                                                        } else {
+                                                                            toast.error(t('common.customerProfileNotFound'));
+                                                                        }
                                                                     }}
                                                                 >
-                                                                    <X className="h-3.5 w-3.5 mr-1" /> {t('common.reject')}
+                                                                    <User className="h-3.5 w-3.5 mr-2" />
+                                                                    {t('common.seeProfile')}
                                                                 </Button>
-                                                            </>
-                                                        )}
-                                                        {app.status !== 'pending' && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-9 px-4 rounded-lg text-xs font-bold text-muted-foreground hover:bg-muted/50 transition-all"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    updateApplicationStatus(app.id, 'pending');
-                                                                }}
-                                                            >
-                                                                {t('common.reset')}
-                                                            </Button>
-                                                        )}
+                                                                {app.status === 'pending' && (
+                                                                    <>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            className="bg-[#005a41] hover:bg-[#004a35] text-white shadow-lg shadow-[#005a41]/20 font-black text-[10px] h-9 px-6 rounded-xl transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateApplicationStatus(app.id, 'accepted');
+                                                                            }}
+                                                                        >
+                                                                            <Check className="h-3.5 w-3.5 mr-2" /> {t('common.accept')}
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            className="border-rose-200 text-rose-600 hover:bg-rose-50 shadow-sm font-black text-[10px] h-9 px-6 rounded-xl transition-all hover:scale-105 active:scale-95 bg-white uppercase tracking-widest"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                updateApplicationStatus(app.id, 'rejected');
+                                                                            }}
+                                                                        >
+                                                                            <X className="h-3.5 w-3.5 mr-2" /> {t('common.reject')}
+                                                                        </Button>
+                                                                    </>
+                                                                )}
+                                                                {app.status !== 'pending' && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-9 px-4 rounded-xl text-[10px] font-black text-muted-foreground hover:bg-muted/50 transition-all uppercase tracking-widest"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            updateApplicationStatus(app.id, 'pending');
+                                                                        }}
+                                                                    >
+                                                                        {t('common.reset')}
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </CardContent>
@@ -942,32 +941,27 @@ export default function OwnerDashboardPage() {
                                 </CardHeader>
                                 <CardContent className="p-0">
                                     <div className="overflow-x-auto">
-                                        <table className="w-full">
+                                        {/* Desktop Table View */}
+                                        <table className="w-full hidden md:table">
                                             <thead>
                                                 <tr className="border-b border-border/50 bg-muted/20">
                                                     <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.transactionId')}</th>
-                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.details')}</th>
-                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.date')}</th>
-                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.amount')}</th>
-                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.status')}</th>
-                                                   <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.action')}</th>
-                                               </tr>
+                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.details')}</th>
+                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.date')}</th>
+                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.amount')}</th>
+                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.status')}</th>
+                                                    <th className="px-6 py-4 text-left text-[10px] font-black text-muted-foreground uppercase tracking-widest">{t('common.action')}</th>
+                                                </tr>
                                             </thead>
                                             <tbody className="divide-y divide-border/50">
                                                 {(() => {
                                                     const filteredTransactions = ownerTransactions.filter(t => {
                                                         const tDate = new Date(t.createdAt);
-                                                        
                                                         let matchesDate = true;
-                                                        if (transactionDateFilter === 'today') {
-                                                            matchesDate = isToday(tDate);
-                                                        } else if (transactionDateFilter === 'yesterday') {
-                                                            matchesDate = isYesterday(tDate);
-                                                        } else if (transactionDateFilter === 'this-month') {
-                                                            matchesDate = isThisMonth(tDate);
-                                                        } else if (transactionDateFilter === 'this-year') {
-                                                            matchesDate = isThisYear(tDate);
-                                                        }
+                                                        if (transactionDateFilter === 'today') matchesDate = isToday(tDate);
+                                                        else if (transactionDateFilter === 'yesterday') matchesDate = isYesterday(tDate);
+                                                        else if (transactionDateFilter === 'this-month') matchesDate = isThisMonth(tDate);
+                                                        else if (transactionDateFilter === 'this-year') matchesDate = isThisYear(tDate);
                                                         const matchesStatus = transactionStatus === 'all' || t.status === transactionStatus.toUpperCase();
                                                         return matchesDate && matchesStatus;
                                                     });
@@ -985,7 +979,6 @@ export default function OwnerDashboardPage() {
                                                                             <Search className="h-8 w-8 opacity-20 text-muted-foreground" />
                                                                         </div>
                                                                         <p className="text-sm font-bold">{t('ownerDashboard.noTransactions')}</p>
-                                                                        <Button variant="ghost" size="sm" onClick={() => { setTransactionDateFilter('all'); setTransactionStatus('all'); }} className="text-[#005a41] hover:bg-transparent hover:underline text-xs font-bold uppercase tracking-widest">{t('ownerDashboard.clearFilters')}</Button>
                                                                     </div>
                                                                 </td>
                                                             </tr>
@@ -1039,11 +1032,7 @@ export default function OwnerDashboardPage() {
                                                             <td className="px-6 py-5 whitespace-nowrap text-right">
                                                                 {transaction.status === 'COMPLETED' && (
                                                                     <Link href={`/dashboard/owner/documents/receipt/${transaction.id}`}>
-                                                                        <Button 
-                                                                            variant="outline" 
-                                                                            size="sm" 
-                                                                            className="h-8 px-4 rounded-xl border-border hover:bg-[#005a41] hover:text-white font-black text-[10px] uppercase tracking-widest transition-all duration-300 shadow-sm hover:shadow-lg active:scale-95"
-                                                                        >
+                                                                        <Button variant="outline" size="sm" className="h-8 px-4 rounded-xl border-border hover:bg-[#005a41] hover:text-white font-black text-[10px] uppercase tracking-widest transition-all">
                                                                             <FileText className="h-3.5 w-3.5 mr-2 opacity-60" />
                                                                             {t('ownerDashboard.viewReceipt')}
                                                                         </Button>
@@ -1055,6 +1044,88 @@ export default function OwnerDashboardPage() {
                                                 })()}
                                             </tbody>
                                         </table>
+
+                                        {/* Mobile Card View */}
+                                        <div className="md:hidden divide-y divide-border/50">
+                                            {(() => {
+                                                const filteredTransactions = ownerTransactions.filter(t => {
+                                                    const tDate = new Date(t.createdAt);
+                                                    let matchesDate = true;
+                                                    if (transactionDateFilter === 'today') matchesDate = isToday(tDate);
+                                                    else if (transactionDateFilter === 'yesterday') matchesDate = isYesterday(tDate);
+                                                    else if (transactionDateFilter === 'this-month') matchesDate = isThisMonth(tDate);
+                                                    else if (transactionDateFilter === 'this-year') matchesDate = isThisYear(tDate);
+                                                    const matchesStatus = transactionStatus === 'all' || t.status === transactionStatus.toUpperCase();
+                                                    return matchesDate && matchesStatus;
+                                                });
+
+                                                if (isTransactionLoading && !hasCompletedInitialLoad) {
+                                                    return Array.from({ length: 3 }).map((_, i) => (
+                                                        <div key={i} className="p-4 space-y-3">
+                                                            <TableRowSkeleton cols={1} />
+                                                        </div>
+                                                    ));
+                                                }
+
+                                                if (filteredTransactions.length === 0) {
+                                                    return (
+                                                        <div className="px-6 py-12 text-center text-muted-foreground">
+                                                            <p className="text-sm font-bold">{t('ownerDashboard.noTransactions')}</p>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return filteredTransactions.map((transaction) => (
+                                                    <div key={transaction.id} className="p-5 space-y-4 active:bg-muted/5 transition-colors">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="flex gap-3">
+                                                                <div className={cn(
+                                                                    "p-2.5 rounded-xl shrink-0",
+                                                                    transaction.status === 'COMPLETED' ? 'bg-green-50 text-green-600' :
+                                                                        transaction.status === 'PENDING' ? 'bg-yellow-50 text-yellow-600' : 'bg-red-50 text-red-600'
+                                                                )}>
+                                                                    {transaction.type === 'RENT' ? <Clock className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-sm font-black text-foreground leading-tight">
+                                                                        {transaction.type === 'RENT' ? t('ownerDashboard.rentIncome') : t('ownerDashboard.propertySale')}
+                                                                    </p>
+                                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight truncate max-w-[150px]">
+                                                                        {transaction.property?.title || t('ownerDashboard.rentIncome')}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <Badge className={cn(
+                                                                "px-2 py-0.5 border-none text-[8px] font-black uppercase tracking-widest shadow-sm",
+                                                                transaction.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                                                    transaction.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                                                                        'bg-amber-100 text-amber-700'
+                                                            )}>
+                                                                {t(`common.${transaction.status.toLowerCase()}` as any) || transaction.status}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="flex items-center justify-between bg-muted/20 p-3 rounded-xl border border-border/50">
+                                                            <div>
+                                                                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">{t('common.amount')}</p>
+                                                                <p className="text-sm font-black text-foreground">ETB {transaction.amount.toLocaleString()}</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-0.5">{t('common.date')}</p>
+                                                                <p className="text-xs font-bold text-foreground/70">{format(new Date(transaction.createdAt), 'MMM dd, yyyy')}</p>
+                                                            </div>
+                                                        </div>
+                                                        {transaction.status === 'COMPLETED' && (
+                                                            <Link href={`/dashboard/owner/documents/receipt/${transaction.id}`} className="block w-full">
+                                                                <Button variant="outline" size="sm" className="w-full h-10 rounded-xl border-border bg-white font-black text-[10px] uppercase tracking-widest shadow-sm">
+                                                                    <FileText className="h-3.5 w-3.5 mr-2 opacity-60" />
+                                                                    {t('ownerDashboard.viewReceipt')}
+                                                                </Button>
+                                                            </Link>
+                                                        )}
+                                                    </div>
+                                                ));
+                                            })()}
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>

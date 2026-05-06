@@ -24,24 +24,46 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
     children,
     className
 }) => {
+    const listRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const activeElement = listRef.current?.querySelector('[data-state="active"]');
+        if (activeElement) {
+            activeElement.scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'center'
+            });
+        }
+    }, [activeTab]);
+
     return (
         <TabsPrimitive.Root
             value={activeTab}
             onValueChange={onTabChange}
             className={cn("w-full", className)}
         >
-            <div className="mb-8">
+            <div className="mb-8 relative group">
+                {/* Scroll Indicator Gradients - subtle indicators for horizontal scroll */}
+                <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none opacity-0 md:group-hover:opacity-100 transition-opacity" />
+                <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none opacity-0 md:group-hover:opacity-100 transition-opacity" />
+                
                 <TabsPrimitive.List
-                    className="flex items-center gap-2 p-1.5 bg-white border border-border shadow-sm rounded-[24px] w-full max-w-fit overflow-x-auto no-scrollbar"
+                    ref={listRef}
+                    className={cn(
+                        "flex items-center gap-1.5 p-1.5 bg-white border border-border shadow-sm rounded-[24px] w-full md:max-w-fit overflow-x-auto no-scrollbar snap-x snap-mandatory scroll-smooth",
+                        "scrollbar-hide" // For some browsers
+                    )}
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                     {tabs.map((tab) => (
                         <TabsPrimitive.Trigger
                             key={tab.value}
                             value={tab.value}
                             className={cn(
-                                "px-6 py-2.5 text-sm font-medium transition-all rounded-[20px] whitespace-nowrap",
-                                "text-muted-foreground hover:text-foreground",
-                                "data-[state=active]:bg-[#005a41] data-[state=active]:text-white data-[state=active]:shadow-md"
+                                "px-5 md:px-6 py-2.5 text-xs md:text-sm font-bold transition-all rounded-[20px] whitespace-nowrap snap-center",
+                                "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                                "data-[state=active]:bg-[#005a41] data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-[#005a41]/20"
                             )}
                         >
                             {tab.label}
@@ -55,3 +77,4 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({
 };
 
 export default DashboardTabs;
+

@@ -118,7 +118,7 @@ export default function Home() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 1, ease: "easeOut" }}
                     >
-                        <h1 className="text-5xl md:text-7xl mb-6 text-white font-extrabold tracking-tight leading-tight">
+                        <h1 className="text-4xl md:text-7xl mb-6 text-white font-extrabold tracking-tight leading-tight">
                             {t('home.heroTitle')}
                         </h1>
                         <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto font-medium lead-relaxed">

@@ -276,15 +276,15 @@ export default function HomeClient() {
             </div>
 
             {/* CTA Section */}
-            <div className="bg-[#005a41] py-20">
+            <div className="bg-[#005a41] py-8">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         whileInView={{ opacity: 1, scale: 1 }}
                         transition={{ duration: 0.6 }}
                     >
-                        <h2 className="text-4xl mb-4 text-white font-bold">{t('home.ctaTitle')}</h2>
-                        <p className="text-xl text-white/90 mb-8">
+                        <h2 className="text-3xl mb-3 text-white font-bold">{t('home.ctaTitle')}</h2>
+                        <p className="text-lg text-white/90 mb-6">
                             {t('home.ctaSubtitle')}
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -302,7 +302,7 @@ export default function HomeClient() {
                     </motion.div>
                 </div>
                 {/* Trust Marquee inside CTA */}
-                <div className="mt-16 border-t border-white/10 pt-10 overflow-hidden">
+                <div className="mt-6 border-t border-white/10 pt-6 overflow-hidden">
                     <div className="relative flex overflow-x-hidden">
                         <motion.div
                             className="flex whitespace-nowrap"

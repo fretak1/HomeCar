@@ -526,35 +526,33 @@ export default function AdminDashboardPage() {
         <div className="min-h-screen bg-white">
             <div className="bg-[#005a41] py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-4xl mb-2 text-white font-bold tracking-tight">{t('adminDashboard.title')}</h1>
-                            <p className="text-lg text-white/80 font-medium">{t('adminDashboard.subtitle')}</p>
-                        </div>
+                    <div className="text-center md:text-left">
+                        <h1 className="text-3xl md:text-5xl mb-2 text-white font-black tracking-tight">{t('adminDashboard.title')}</h1>
+                        <p className="text-lg md:text-xl text-white/80 font-medium">{t('adminDashboard.subtitle')}</p>
                     </div>
                 </div>
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Admin Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
                     {isLoading
                         ? Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
                         : stats.map((stat, i) => (
                             <Card key={i} className="border-border/50 shadow-sm hover:shadow-md transition-shadow">
-                                <CardContent className="p-6">
+                                <CardContent className="p-4 md:p-6">
                                     <div className="flex justify-between items-start mb-4">
-                                        <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">{stat.label}</p>
-                                        <div className="p-2 rounded-lg">
-                                            <stat.icon className="h-5 w-5" />
+                                        <p className="text-[10px] md:text-xs text-muted-foreground font-bold uppercase tracking-wider">{stat.label}</p>
+                                        <div className="p-1.5 md:p-2 rounded-lg bg-muted/10">
+                                            <stat.icon className="h-4 w-4 md:h-5 md:w-5" />
                                         </div>
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="text-3xl font-black tracking-tight text-foreground">{stat.value}</p>
-                                        <div className={`flex items-center text-xs font-bold ${stat.isUp ? 'text-green-500' : 'text-red-500'}`}>
-                                            {stat.isUp ? <TrendingUp className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
+                                        <p className="text-xl md:text-3xl font-black tracking-tight text-foreground truncate">{stat.value}</p>
+                                        <div className={`flex items-center text-[9px] md:text-xs font-bold ${stat.isUp ? 'text-green-500' : 'text-red-500'}`}>
+                                            {stat.isUp ? <TrendingUp className="w-2.5 h-2.5 md:w-3 md:h-3 mr-1" /> : <ArrowDownRight className="w-2.5 h-2.5 md:w-3 md:h-3 mr-1" />}
                                             <span className="mr-1">{stat.trend}</span>
-                                            <span className="text-muted-foreground font-medium">{t('adminDashboard.stats.vsLastMonth')}</span>
+                                            <span className="text-muted-foreground font-medium truncate">{t('adminDashboard.stats.vsLastMonth')}</span>
                                         </div>
                                     </div>
                                 </CardContent>

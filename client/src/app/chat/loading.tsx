@@ -3,11 +3,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function ChatLoading() {
     return (
         <div className="h-[calc(100vh-73px)] w-full bg-background flex flex-col">
-            <div className="flex-1 w-full bg-card border-t border-border overflow-hidden flex">
-                <div className="flex w-full h-full">
+            <div className="flex-1 w-full bg-card border-t border-border overflow-hidden flex relative">
+                <div className="flex w-full h-full relative">
 
                     {/* Contacts Sidebar Skeleton */}
-                    <div className="w-96 border-r border-border flex flex-col">
+                    <div className="w-full md:w-80 lg:w-96 border-r border-border flex flex-col bg-background">
                         <div className="p-4 border-b border-border">
                             <Skeleton className="h-10 w-full rounded-md" />
                         </div>
@@ -28,7 +28,7 @@ export default function ChatLoading() {
                     </div>
 
                     {/* Chat Area Skeleton */}
-                    <div className="flex-1 flex flex-col min-h-0">
+                    <div className="hidden md:flex flex-1 flex-col min-h-0 bg-card">
                         {/* Header */}
                         <div className="p-4 border-b border-border flex items-center space-x-3">
                             <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />

@@ -105,17 +105,17 @@ export default function AgentDashboardPage() {
         <div className="min-h-screen bg-white">
             <div className="bg-primary py-12">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-4xl mb-2 text-white font-bold">{t('agentDashboard.title')}</h1>
-                            <p className="text-xl text-white/90">{t('agentDashboard.subtitle')}</p>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="text-center md:text-left">
+                            <h1 className="text-3xl md:text-5xl mb-2 text-white font-black tracking-tight">{t('agentDashboard.title')}</h1>
+                            <p className="text-lg md:text-xl text-white/80 font-medium">{t('agentDashboard.subtitle')}</p>
                         </div>
-                        <Link href={currentUser?.verified ? "/dashboard/add-property" : "#"}>
+                        <Link href={currentUser?.verified ? "/dashboard/add-property" : "#"} className="w-full md:w-auto">
                             <Button
                                 disabled={!currentUser?.verified}
-                                className="bg-white text-[#005a41] hover:bg-white/90 font-bold px-6 py-6 rounded-xl shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full md:w-auto bg-white text-[#005a41] hover:bg-white/90 font-bold px-8 py-7 rounded-2xl shadow-2xl shadow-black/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
                             >
-                                <Plus className="mr-2 h-5 w-5" /> {t('agentDashboard.addListing')}
+                                <Plus className="mr-2 h-6 w-6" /> {t('agentDashboard.addListing')}
                             </Button>
                         </Link>
                     </div>
@@ -247,17 +247,17 @@ export default function AgentDashboardPage() {
                 {isLoading && !hasCompletedInitialLoad ? (
                     <StatCardsSkeleton count={3} />
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-8">
                         {(stats as any[]).map((stat: any, i: number) => (
-                            <Card key={i} className="border-border">
-                                <CardContent className="p-6">
+                            <Card key={i} className="border-border shadow-sm hover:shadow-md transition-all duration-300">
+                                <CardContent className="p-5 md:p-6">
                                     <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-[#005a41]/10 rounded-xl text-[#005a41]">
-                                            <stat.icon className="h-6 w-6" />
+                                        <div className="p-3 md:p-4 bg-[#005a41]/5 rounded-2xl text-[#005a41] shrink-0">
+                                            <stat.icon className="h-5 w-5 md:h-7 md:w-7" />
                                         </div>
                                         <div>
-                                            <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
-                                            <p className="text-2xl font-bold text-foreground">{stat.value}</p>
+                                            <p className="text-[10px] md:text-xs text-muted-foreground font-black uppercase tracking-[0.15em] mb-1">{stat.label}</p>
+                                            <p className="text-2xl md:text-3xl font-black text-foreground leading-none">{stat.value}</p>
                                         </div>
                                     </div>
                                 </CardContent>
@@ -339,35 +339,37 @@ export default function AgentDashboardPage() {
                                     (applications as any[]).map((app: any) => (
                                         <Card key={app.id} className="border-border hover:shadow-xl transition-all duration-300 overflow-hidden group border-l-4 border-l-[#005a41] cursor-pointer" onClick={() => router.push(`/property/${app.propertyId}`)}>
                                             <CardContent className="p-0">
-                                                <div className="flex flex-col xl:flex-row relative min-h-[160px]">
+                                                <div className="flex flex-col md:flex-row relative">
                                                     {/* Property Image & Basic Info */}
-                                                    <div className="flex flex-col sm:flex-row p-6 flex-1 gap-6 border-b xl:border-b-0 border-border">
+                                                    <div className="flex flex-col sm:flex-row p-5 md:p-6 flex-1 gap-5 md:gap-6">
                                                         <div className="relative w-full sm:w-32 h-32 rounded-xl overflow-hidden shadow-inner flex-shrink-0">
                                                             <img src={(app as any).propertyImage || (app as any).property?.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300'} alt={app.propertyTitle} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onError={(e) => { (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?q=80&w=300'; }} />
                                                             <div className="absolute top-2 left-2">
-                                                                <Badge className="bg-white/90 backdrop-blur-sm text-black text-[10px] uppercase font-bold px-2 py-0.5 border-none shadow-sm capitalize">
+                                                                <Badge className="bg-white/90 backdrop-blur-sm text-black text-[10px] uppercase font-black px-2 py-0.5 border-none shadow-sm capitalize">
                                                                     {app.listingType === 'buy' ? t('common.buy') : t('common.rent')}
                                                                 </Badge>
                                                             </div>
                                                         </div>
 
-                                                        <div className="flex-1 space-y-3 pb-8 md:pb-0">
-                                                            <div className="flex justify-between items-start">
+                                                        <div className="flex-1 space-y-4">
+                                                            <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0">
                                                                 <div>
-                                                                    <h3 className="text-xl font-bold text-foreground group-hover:text-[#005a41] transition-colors mb-1">
+                                                                    <h3 className="text-xl font-black text-foreground group-hover:text-[#005a41] transition-colors mb-1 tracking-tight">
                                                                         {app.propertyTitle}
                                                                     </h3>
-                                                                    <p className="text-sm text-muted-foreground flex items-center">
-                                                                        <User2 className="h-3 w-3 mr-1.5" />
-                                                                        {app.customer?.name || t('common.unknownApplicant')}
-                                                                    </p>
-                                                                    <p className="text-[10px] text-muted-foreground font-medium flex items-center mt-1">
-                                                                        <Clock className="h-3 w-3 mr-1" />
-                                                                        {app.date || new Date(app.createdAt).toLocaleDateString()}
-                                                                    </p>
+                                                                    <div className="flex flex-wrap items-center gap-3">
+                                                                        <p className="text-sm font-bold text-muted-foreground flex items-center">
+                                                                            <User2 className="h-3.5 w-3.5 mr-1.5 text-primary/60" />
+                                                                            {app.customer?.name || t('common.unknownApplicant')}
+                                                                        </p>
+                                                                        <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest flex items-center bg-muted/50 px-2 py-0.5 rounded-md">
+                                                                            <Clock className="h-3 w-3 mr-1.5" />
+                                                                            {app.date || new Date(app.createdAt).toLocaleDateString()}
+                                                                        </p>
+                                                                    </div>
                                                                 </div>
                                                                 <Badge className={cn(
-                                                                    "text-[10px] font-bold uppercase tracking-widest px-3 py-1 border-none shadow-sm",
+                                                                    "text-[10px] font-black uppercase tracking-[0.15em] px-3 py-1.5 border-none shadow-sm h-fit",
                                                                     app.status === 'accepted' ? "bg-green-100 text-green-700" :
                                                                     app.status === 'rejected' ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"
                                                                 )}>
@@ -375,80 +377,84 @@ export default function AgentDashboardPage() {
                                                                 </Badge>
                                                             </div>
 
-                                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                                                                <div className="bg-muted/30 p-2.5 rounded-lg border border-border/50">
-                                                                    <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight mb-1">{app.listingType === 'buy' ? t('common.price') : t('common.rent')}</p>
-                                                                    <p className="text-sm font-bold text-foreground">{t('common.etb')} {app.price != null ? app.price.toLocaleString() : t('common.na')}{app.listingType === 'buy' ? '' : t('common.perMo')}</p>
+                                                            <div className="flex flex-wrap gap-4 items-center">
+                                                                <div className="bg-muted/40 px-3 py-2 rounded-xl border border-border/50">
+                                                                    <p className="text-[9px] uppercase font-black text-muted-foreground tracking-widest mb-0.5">{app.listingType === 'buy' ? t('common.price') : t('common.rent')}</p>
+                                                                    <p className="text-sm font-black text-[#005a41] flex items-baseline gap-1">
+                                                                        <span className="text-[10px] font-black uppercase opacity-60">{t('common.etb')}</span>
+                                                                        {app.price != null ? app.price.toLocaleString() : t('common.na')}
+                                                                        {app.listingType !== 'buy' && <span className="text-[10px] font-bold opacity-60">/{t('common.mo')}</span>}
+                                                                    </p>
                                                                 </div>
+                                                                {app.message && (
+                                                                    <div className="flex-1 min-w-[200px] p-3 bg-[#005a41]/5 border-l-4 border-[#005a41] rounded-r-xl">
+                                                                        <p className="text-xs text-muted-foreground font-medium italic line-clamp-2">"{app.message}"</p>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            {app.message && (
-                                                                <div className="mt-3 p-3 bg-muted/10 border-l-2 border-[#005a41]/40 rounded-r-lg">
-                                                                    <p className="text-xs text-muted-foreground italic line-clamp-2">"{app.message}"</p>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
 
-                                                    {/* Absolute positioned Action Buttons - Bottom Right */}
-                                                    <div className="absolute bottom-4 right-4 flex gap-2">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs h-9 px-4 rounded-lg bg-white/80 backdrop-blur-sm shadow-sm"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                const customerId = app.customerId || app.customer?.id;
-                                                                if (customerId) {
-                                                                    router.push(`/profile/${customerId}`);
-                                                                } else {
-                                                                    toast.error(t('common.customerProfileNotFound'));
-                                                                }
-                                                            }}
-                                                        >
-                                                            <User2 className="h-3.5 w-3.5 mr-2" />
-                                                            {t('common.seeProfile')}
-                                                        </Button>
-                                                        {app.status === 'pending' && (
-                                                            <>
-                                                                <Button
-                                                                    size="sm"
-                                                                    disabled={!currentUser?.verified}
-                                                                    className="bg-[#005a41] hover:bg-[#004a35] text-white shadow-lg shadow-[#005a41]/20 font-bold text-xs h-9 px-4 rounded-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (currentUser?.verified) updateApplicationStatus(app.id, 'accepted');
-                                                                    }}
-                                                                >
-                                                                    <Check className="h-3.5 w-3.5 mr-1" /> {t('common.accept')}
-                                                                </Button>
+                                                            {/* Action Buttons Container */}
+                                                            <div className="flex flex-wrap gap-2 pt-2 sm:pt-0">
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    disabled={!currentUser?.verified}
-                                                                    className="border-rose-200 text-rose-600 hover:bg-rose-50 shadow-sm font-bold text-xs h-9 px-4 rounded-lg transition-all hover:scale-105 active:scale-95 bg-white disabled:opacity-50"
+                                                                    className="border-primary/20 text-primary hover:bg-primary/5 font-black text-[10px] h-9 px-4 rounded-xl bg-white shadow-sm uppercase tracking-widest"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        if (currentUser?.verified) updateApplicationStatus(app.id, 'rejected');
+                                                                        const customerId = app.customerId || app.customer?.id;
+                                                                        if (customerId) {
+                                                                            router.push(`/profile/${customerId}`);
+                                                                        } else {
+                                                                            toast.error(t('common.customerProfileNotFound'));
+                                                                        }
                                                                     }}
                                                                 >
-                                                                    <X className="h-3.5 w-3.5 mr-1" /> {t('common.reject')}
+                                                                    <User2 className="h-3.5 w-3.5 mr-2" />
+                                                                    {t('common.seeProfile')}
                                                                 </Button>
-                                                            </>
-                                                        )}
-                                                        {app.status !== 'pending' && (
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                disabled={!currentUser?.verified}
-                                                                className="h-9 px-4 rounded-lg text-xs font-bold text-muted-foreground hover:bg-muted/50 transition-all disabled:opacity-50"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    if (currentUser?.verified) updateApplicationStatus(app.id, 'pending');
-                                                                }}
-                                                            >
-                                                                {t('common.reset')}
-                                                            </Button>
-                                                        )}
+                                                                {app.status === 'pending' && (
+                                                                    <>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            disabled={!currentUser?.verified}
+                                                                            className="bg-[#005a41] hover:bg-[#004a35] text-white shadow-lg shadow-[#005a41]/20 font-black text-[10px] h-9 px-6 rounded-xl transition-all hover:scale-105 active:scale-95 disabled:opacity-50 uppercase tracking-widest"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                if (currentUser?.verified) updateApplicationStatus(app.id, 'accepted');
+                                                                            }}
+                                                                        >
+                                                                            <Check className="h-3.5 w-3.5 mr-2" /> {t('common.accept')}
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            disabled={!currentUser?.verified}
+                                                                            className="border-rose-200 text-rose-600 hover:bg-rose-50 shadow-sm font-black text-[10px] h-9 px-6 rounded-xl transition-all hover:scale-105 active:scale-95 bg-white disabled:opacity-50 uppercase tracking-widest"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                if (currentUser?.verified) updateApplicationStatus(app.id, 'rejected');
+                                                                            }}
+                                                                        >
+                                                                            <X className="h-3.5 w-3.5 mr-2" /> {t('common.reject')}
+                                                                        </Button>
+                                                                    </>
+                                                                )}
+                                                                {app.status !== 'pending' && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        disabled={!currentUser?.verified}
+                                                                        className="h-9 px-4 rounded-xl text-[10px] font-black text-muted-foreground hover:bg-muted/50 transition-all disabled:opacity-50 uppercase tracking-widest"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            if (currentUser?.verified) updateApplicationStatus(app.id, 'pending');
+                                                                        }}
+                                                                    >
+                                                                        {t('common.reset')}
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </CardContent>

@@ -141,25 +141,25 @@ export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
             </div>
 
             {/* Receipt Content */}
-            <div className="max-w-4xl mx-auto px-4 py-8" ref={receiptRef} id="receipt-content">
-                <Card className="border-none shadow-2xl shadow-black/5 ring-1 ring-border bg-white print:shadow-none print:ring-0">
-                    <CardContent className="p-12 sm:p-20">
+            <div className="max-w-4xl mx-auto px-0 sm:px-4 py-0 sm:py-8" ref={receiptRef} id="receipt-content">
+                <Card className="border-none shadow-2xl shadow-black/5 ring-1 ring-border bg-white print:shadow-none print:ring-0 rounded-none sm:rounded-2xl">
+                    <CardContent className="p-6 md:p-12 sm:p-20">
                         {/* Header */}
-                        <div className="flex flex-col md:flex-row justify-between items-start gap-12 mb-16">
-                            <div className="space-y-4">
+                        <div className="flex flex-col md:flex-row justify-between items-center md:items-start text-center md:text-left gap-8 md:gap-12 mb-12 md:mb-16">
+                            <div className="space-y-4 flex flex-col items-center md:items-start">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-20 h-20">
+                                    <div className="w-16 h-16 md:w-20 md:h-20">
                                         <img src="/e.png" alt="HomeCar Logo" className="w-full h-full object-contain" />
                                     </div>
                                 </div>
-                                <div className="text-sm text-muted-foreground font-medium space-y-1">
-                                    <p>HomeCar Property Solutions Ltd.</p>
+                                <div className="text-xs md:text-sm text-muted-foreground font-medium space-y-1">
+                                    <p className="font-bold text-foreground">HomeCar Property Solutions Ltd.</p>
                                     <p>Addis Ababa, Ethiopia</p>
-                                    <p>homecarsupport@gmail.com</p>
+                                    <p className="opacity-70">homecarsupport@gmail.com</p>
                                 </div>
                             </div>
-                            <div className="text-right space-y-2">
-                                <h1 className="text-5xl font-black text-foreground/10 uppercase tracking-tighter">Receipt</h1>
+                            <div className="md:text-right space-y-3 w-full md:w-auto">
+                                <h1 className="text-4xl md:text-5xl font-black text-foreground/10 uppercase tracking-tighter">Receipt</h1>
                                 <div className="space-y-1">
                                     <p className="text-xs font-bold text-muted-foreground tracking-widest uppercase">Transaction Reference</p>
                                     <p className="text-xl font-bold text-foreground truncate max-w-[250px]">{transaction.chapaReference || `#TX-${transaction.id.toUpperCase()}`}</p>
@@ -207,25 +207,25 @@ export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
                         </div>
 
                         {/* Line Items */}
-                        <div className="mb-16">
-                            <table className="w-full text-left">
+                        <div className="mb-16 overflow-x-auto">
+                            <table className="w-full text-left min-w-[500px] md:min-w-0">
                                 <thead className="border-b-2 border-foreground">
                                     <tr>
-                                        <th className="py-4 text-xs font-black uppercase tracking-widest">Description</th>
-                                        <th className="py-4 text-xs font-black uppercase tracking-widest text-right">{priceLabel}</th>
-                                        <th className="py-4 text-xs font-black uppercase tracking-widest text-right">Total</th>
+                                        <th className="py-4 text-[10px] md:text-xs font-black uppercase tracking-widest">Description</th>
+                                        <th className="py-4 text-[10px] md:text-xs font-black uppercase tracking-widest text-right">{priceLabel}</th>
+                                        <th className="py-4 text-[10px] md:text-xs font-black uppercase tracking-widest text-right">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
                                     <tr>
-                                        <td className="py-8">
-                                            <p className="font-black text-lg text-foreground">{transaction.property?.title || 'Revenue'}</p>
-                                            <p className="text-sm text-muted-foreground font-medium">
+                                        <td className="py-6 md:py-8">
+                                            <p className="font-black text-base md:text-lg text-foreground">{transaction.property?.title || 'Revenue'}</p>
+                                            <p className="text-xs md:text-sm text-muted-foreground font-medium">
                                                 {transaction.type === 'RENT' ? `Monthly rent collection` : 'Property payment'}
                                             </p>
                                         </td>
-                                        <td className="py-8 text-right font-bold text-muted-foreground">ETB {transaction.amount.toLocaleString()}</td>
-                                        <td className="py-8 text-right font-black text-foreground">ETB {transaction.amount.toLocaleString()}</td>
+                                        <td className="py-6 md:py-8 text-right font-bold text-muted-foreground text-sm md:text-base">ETB {transaction.amount.toLocaleString()}</td>
+                                        <td className="py-6 md:py-8 text-right font-black text-foreground text-sm md:text-base">ETB {transaction.amount.toLocaleString()}</td>
                                     </tr>
                                 </tbody>
                             </table>

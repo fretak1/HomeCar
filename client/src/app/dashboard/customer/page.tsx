@@ -23,9 +23,11 @@ import {
     Camera,
     Loader2,
     X,
-    User
+    User,
+    MapPin
 } from 'lucide-react';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -323,11 +325,9 @@ export default function CustomerDashboardPage() {
             <div className="min-h-screen bg-white">
                 <div className="bg-primary py-12">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h1 className="text-4xl mb-2 text-white font-bold">{t('customerDashboard.title')}</h1>
-                                <p className="text-xl text-white/90">{t('customerDashboard.subtitle')}</p>
-                            </div>
+                        <div className="text-center md:text-left">
+                            <h1 className="text-3xl md:text-5xl mb-2 text-white font-black tracking-tight">{t('customerDashboard.title')}</h1>
+                            <p className="text-lg md:text-xl text-white/80 font-medium">{t('customerDashboard.subtitle')}</p>
                         </div>
                     </div>
                 </div>
@@ -337,61 +337,55 @@ export default function CustomerDashboardPage() {
                     {isLoading && !hasCompletedInitialLoad ? (
                         <StatCardsSkeleton count={5} />
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-                            <Card className="border-border">
-                                <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-6 mb-8">
+                            <Card className="border-border shadow-sm">
+                                <CardContent className="p-4 md:p-6">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                                         <div>
-                                            <p className="text-sm text-muted-foreground mb-1">{t('customerDashboard.activeLeases')}</p>
-                                            <p className="text-3xl text-foreground font-bold">{leases.filter(l => l.status === 'Active' || l.status === 'ACTIVE').length}</p>
+                                            <p className="text-[10px] md:text-sm text-muted-foreground font-bold uppercase tracking-wider mb-1">{t('customerDashboard.activeLeases')}</p>
+                                            <p className="text-2xl md:text-3xl text-foreground font-black">{leases.filter(l => l.status === 'Active' || l.status === 'ACTIVE').length}</p>
                                         </div>
-                                        <div className="p-3 rounded-lg">
-                                            <FileText className="h-6 w-6 text-primary" />
+                                        <div className="p-2 md:p-3 rounded-xl bg-primary/5">
+                                            <FileText className="h-4 w-4 md:h-6 md:w-6 text-primary" />
                                         </div>
                                     </div>
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-border">
-                                <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
+                            <Card className="border-border shadow-sm">
+                                <CardContent className="p-4 md:p-6">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                                         <div>
-                                            <p className="text-sm text-muted-foreground mb-1">{t('customerDashboard.applications')}</p>
-                                            <p className="text-3xl text-foreground font-bold">{applications.length}</p>
+                                            <p className="text-[10px] md:text-sm text-muted-foreground font-bold uppercase tracking-wider mb-1">{t('customerDashboard.applications')}</p>
+                                            <p className="text-2xl md:text-3xl text-foreground font-black">{applications.length}</p>
                                         </div>
-                                        <div className=" p-3 rounded-lg">
-                                            <ClipboardList className="h-6 w-6 text-purple-600" />
+                                        <div className="p-2 md:p-3 rounded-xl bg-purple-50">
+                                            <ClipboardList className="h-4 w-4 md:h-6 md:w-6 text-purple-600" />
                                         </div>
-                                    </div>
-                                    <div className="mt-4 flex items-center text-sm">
-                                        <span className="text-green-500 font-medium">{applications.filter(a => a.status === 'accepted').length} {t('customerDashboard.accepted')}</span>
                                     </div>
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-border">
-                                <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
+                            <Card className="border-border shadow-sm">
+                                <CardContent className="p-4 md:p-6">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                                         <div>
-                                            <p className="text-sm text-muted-foreground mb-1">{t('customerDashboard.favorites')}</p>
-                                            <p className="text-3xl text-foreground font-bold">{favorites.length}</p>
+                                            <p className="text-[10px] md:text-sm text-muted-foreground font-bold uppercase tracking-wider mb-1">{t('customerDashboard.favorites')}</p>
+                                            <p className="text-2xl md:text-3xl text-foreground font-black">{favorites.length}</p>
                                         </div>
-                                        <div className=" p-3 rounded-lg">
-                                            <Heart className="h-6 w-6 text-secondary" />
+                                        <div className="p-2 md:p-3 rounded-xl bg-rose-50">
+                                            <Heart className="h-4 w-4 md:h-6 md:w-6 text-secondary" />
                                         </div>
-                                    </div>
-                                    <div className="mt-4 flex items-center text-sm">
-                                        <span className="text-muted-foreground">{t('customerDashboard.savedItems')}</span>
                                     </div>
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-border">
-                                <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-muted-foreground mb-1">{t('customerDashboard.totalSpent')}</p>
-                                            <p className="text-3xl text-foreground font-bold">
+                            <Card className="border-border shadow-sm">
+                                <CardContent className="p-4 md:p-6">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                                        <div className="overflow-hidden">
+                                            <p className="text-[10px] md:text-sm text-muted-foreground font-bold uppercase tracking-wider mb-1 truncate">{t('customerDashboard.totalSpent')}</p>
+                                            <p className="text-lg md:text-2xl text-foreground font-black truncate">
                                                 {t('common.etb')} {transactions
                                                     .filter(t => t.status === 'COMPLETED')
                                                     .reduce((sum, t) => sum + t.amount, 0)
@@ -399,25 +393,19 @@ export default function CustomerDashboardPage() {
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="mt-4 flex items-center text-sm">
-                                        <span className="text-muted-foreground">{t('customerDashboard.lifetimeValue')}</span>
-                                    </div>
                                 </CardContent>
                             </Card>
 
-                            <Card className="border-border">
-                                <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
+                            <Card className="border-border shadow-sm col-span-1 md:col-span-1">
+                                <CardContent className="p-4 md:p-6">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                                         <div>
-                                            <p className="text-sm text-muted-foreground mb-1">{t('customerDashboard.maintenance')}</p>
-                                            <p className="text-3xl text-foreground font-bold">{maintenanceRequests.length}</p>
+                                            <p className="text-[10px] md:text-sm text-muted-foreground font-bold uppercase tracking-wider mb-1">{t('customerDashboard.maintenance')}</p>
+                                            <p className="text-2xl md:text-3xl text-foreground font-black">{maintenanceRequests.length}</p>
                                         </div>
-                                        <div className=" p-3 rounded-lg">
-                                            <Wrench className="h-6 w-6 text-yellow-600" />
+                                        <div className="p-2 md:p-3 rounded-xl bg-yellow-50">
+                                            <Wrench className="h-4 w-4 md:h-6 md:w-6 text-yellow-600" />
                                         </div>
-                                    </div>
-                                    <div className="mt-4 flex items-center text-sm">
-                                        <span className="text-yellow-600 font-medium">{maintenanceRequests.filter(r => r.status === 'pending').length} {t('customerDashboard.pending')}</span>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -591,32 +579,35 @@ export default function CustomerDashboardPage() {
 
                                                 return (
                                                     <Card key={lease.id} className="border-border">
-                                                        <CardContent className="p-6">
-                                                            <div className="flex items-start justify-between">
-                                                                <div className="flex space-x-4">
-                                                                    <img
-                                                                        src={getListingMainImage(property)}
-                                                                        alt={property.title}
-                                                                        className="w-24 h-24 rounded-lg object-cover"
-                                                                    />
-                                                                    <div>
-                                                                        <h3 className="mb-1 text-foreground">{property.title}</h3>
-                                                                        <p className="text-xs font-medium text-primary/80 mb-1">
+                                                        <CardContent className="p-4 md:p-6">
+                                                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                                                                <div className="flex flex-col sm:flex-row gap-4">
+                                                                    <div className="w-full sm:w-24 h-48 sm:h-24 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
+                                                                        <img
+                                                                            src={getListingMainImage(property)}
+                                                                            alt={property.title}
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <h3 className="text-lg font-bold text-foreground mb-1 truncate">{property.title}</h3>
+                                                                        <p className="text-xs font-bold text-primary/80 uppercase tracking-wider mb-1.5">
                                                                             {property.propertyType || (property.assetType === 'HOME' ? 'Property' : 'Vehicle')}
                                                                         </p>
-                                                                        <p className="text-sm text-muted-foreground mb-2">
-                                                                            {formatLocation(property.location || property)}
+                                                                        <p className="text-sm text-muted-foreground mb-3 flex items-center">
+                                                                            <MapPin className="h-3.5 w-3.5 mr-1.5 opacity-70" />
+                                                                            <span className="truncate">{formatLocation(property.location || property)}</span>
                                                                         </p>
-                                                                        <div className="flex items-center space-x-4 text-sm">
-                                                                            <div className="flex items-center text-muted-foreground">
-                                                                                <Calendar className="h-4 w-4 mr-1" />
-                                                                                <span>Started: {format(new Date(lease.startDate), 'MMM dd, yyyy')}</span>
+                                                                        <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm">
+                                                                            <div className="flex items-center text-muted-foreground bg-muted/30 px-2 py-1 rounded-md">
+                                                                                <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                                                                                <span className="font-medium">{format(new Date(lease.startDate), 'MMM dd, yyyy')}</span>
                                                                             </div>
                                                                             <Badge className={cn(
-                                                                                "border-none",
+                                                                                "border-none px-2.5 py-1 text-[10px] font-black uppercase tracking-widest",
                                                                                 lease.status === 'ACTIVE' ? "bg-green-100 text-green-700" :
                                                                                     lease.status === 'PENDING' ? "bg-amber-100 text-amber-700" : 
-                                                                                    lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700 font-bold" :
+                                                                                    lease.status === 'CANCELLATION_PENDING' ? "bg-orange-100 text-orange-700" :
                                                                                     "bg-gray-100 text-gray-700"
                                                                             )}>
                                                                                 {lease.status === 'CANCELLATION_PENDING' ? t('common.cancellationPending' as any) || 'CANCELLATION PENDING' : t(`common.${lease.status.toLowerCase()}` as any) || lease.status}
@@ -624,14 +615,16 @@ export default function CustomerDashboardPage() {
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                <div className="text-right">
-                                                                    <p className="text-2xl text-primary">
-                                                                        ETB {(lease.recurringAmount || lease.totalPrice || property.price).toLocaleString()}
-                                                                    </p>
-                                                                    <p className="text-sm text-muted-foreground">{lease.recurringAmount ? t('common.perMo') : t('customerDashboard.total' as any) || 'total'}</p>
-                                                                    <div className="flex flex-wrap md:justify-end gap-2 mt-2">
-                                                                        <Link href={`/dashboard/customer/lease/${lease.id}`}>
-                                                                            <Button variant="outline" size="sm" className="text-primary border-primary hover:bg-primary hover:text-white transition-all duration-300 shadow-sm hover:shadow-md active:scale-95">
+                                                                <div className="flex flex-col sm:flex-row md:flex-col items-start sm:items-center md:items-end justify-between md:justify-start gap-4 pt-4 md:pt-0 border-t md:border-t-0 border-border/50">
+                                                                    <div className="text-left md:text-right">
+                                                                        <p className="text-xl md:text-2xl font-black text-[#005a41]">
+                                                                            ETB {(lease.recurringAmount || lease.totalPrice || property.price).toLocaleString()}
+                                                                        </p>
+                                                                        <p className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground">{lease.recurringAmount ? t('common.perMo') : t('customerDashboard.total' as any) || 'total'}</p>
+                                                                    </div>
+                                                                    <div className="flex flex-wrap justify-end gap-2 w-full sm:w-auto">
+                                                                        <Link href={`/dashboard/customer/lease/${lease.id}`} className="w-full sm:w-auto">
+                                                                            <Button variant="outline" size="sm" className="h-9 w-full sm:w-auto px-4 rounded-xl text-xs font-bold border-primary/20 text-primary hover:bg-primary/5 transition-all">
                                                                                 {t('customerDashboard.viewDetails')}
                                                                             </Button>
                                                                         </Link>
@@ -750,13 +743,13 @@ export default function CustomerDashboardPage() {
                                                                                                                 {lease.recurringAmount ? `${daysFilled}/30 ${t('customerDashboard.days')}` : `${Math.round(progressPercentage)}%`}
                                                                                                             </span>
                                                                                                         </div>
-                                                                                                        <div className="flex gap-0.5 h-3">
-                                                                                                            {Array.from({ length: lease.recurringAmount ? 30 : 50 }).map((_, d) => (
+                                                                                                        <div className="flex gap-0.5 h-2.5 overflow-hidden rounded-full">
+                                                                                                            {Array.from({ length: Math.min(lease.recurringAmount ? 30 : 50, 40) }).map((_, d) => (
                                                                                                                 <div
                                                                                                                     key={d}
-                                                                                                                    className={`h-full w-full rounded-[1px] transition-all duration-700 ${d < (lease.recurringAmount ? daysFilled : (progressPercentage / 2))
+                                                                                                                    className={`h-full flex-1 transition-all duration-700 ${d < (lease.recurringAmount ? (daysPassedThisMonth * (Math.min(lease.recurringAmount ? 30 : 50, 40) / 30)) : (progressPercentage * (Math.min(lease.recurringAmount ? 30 : 50, 40) / 100))) 
                                                                                                                         ? (isMonthPast ? 'bg-green-500 shadow-[0_0_2px_rgba(34,197,94,0.3)]' : 'bg-primary shadow-[0_0_3px_rgba(0,128,0,0.2)] animate-pulse')
-                                                                                                                        : 'bg-muted-foreground/20'
+                                                                                                                        : 'bg-muted/40'
                                                                                                                         }`}
                                                                                                                 />
                                                                                                             ))}
@@ -1005,39 +998,39 @@ export default function CustomerDashboardPage() {
                                                                     request.status === 'inProgress' ? "bg-blue-500" : "bg-yellow-500"
                                                             )} />
 
-                                                            <div className="flex-1 p-6">
-                                                                <div className="flex flex-col lg:flex-row gap-6">
+                                                            <div className="flex-1 p-4 md:p-6">
+                                                                <div className="flex flex-col sm:flex-row gap-4 md:gap-6">
                                                                     {request.images && request.images.length > 0 && (
-                                                                        <div className="w-full lg:w-48 h-32 rounded-xl overflow-hidden shadow-inner flex-shrink-0">
+                                                                        <div className="w-full sm:w-32 h-48 sm:h-32 rounded-xl overflow-hidden shadow-sm flex-shrink-0">
                                                                             <img src={request.images[0]} alt={request.category} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                                                         </div>
                                                                     )}
-                                                                    <div className="flex-1 space-y-3">
+                                                                    <div className="flex-1 space-y-2 md:space-y-3 min-w-0">
                                                                         <div className="flex flex-wrap items-center gap-2">
                                                                             <Badge className={cn(
-                                                                                "text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 border-none",
+                                                                                "text-[10px] font-black uppercase tracking-widest px-2 py-1 border-none",
                                                                                 request.status === 'completed' ? "bg-green-100 text-green-700" :
                                                                                     request.status === 'inProgress' ? "bg-blue-100 text-blue-700" : "bg-yellow-100 text-yellow-700"
                                                                             )}>
                                                                                 {t(`ownerDashboard.maintenanceStatus.${request.status}` as any) || request.status}
                                                                             </Badge>
 
-                                                                            <span className="text-xs text-muted-foreground flex items-center">
-                                                                                <Calendar className="h-3 w-3 mr-1" />
+                                                                            <span className="text-[10px] md:text-xs font-bold text-muted-foreground flex items-center bg-muted/40 px-2 py-1 rounded-md">
+                                                                                <Calendar className="h-3 w-3 mr-1.5 opacity-70" />
                                                                                 {request.date}
                                                                             </span>
                                                                         </div>
 
                                                                         <div>
-                                                                            <h3 className="text-lg font-bold text-foreground group-hover:text-[#005a41] transition-colors">
+                                                                            <h3 className="text-base md:text-lg font-black text-foreground group-hover:text-[#005a41] transition-colors truncate">
                                                                                 {request.category}
                                                                             </h3>
-                                                                            <p className="text-sm font-medium text-muted-foreground">
+                                                                            <p className="text-xs md:text-sm font-bold text-[#005a41] truncate opacity-80">
                                                                                 {request.propertyTitle}
                                                                             </p>
                                                                         </div>
 
-                                                                        <p className="text-sm text-foreground/80 line-clamp-2 max-w-2xl">
+                                                                        <p className="text-xs md:text-sm text-foreground/70 line-clamp-2 leading-relaxed">
                                                                             {request.description}
                                                                         </p>
                                                                     </div>
@@ -1185,7 +1178,8 @@ export default function CustomerDashboardPage() {
                                         </div>
                                     </CardHeader>
                                     <CardContent className="p-0">
-                                        <div className="overflow-x-auto">
+                                        {/* Desktop Table View */}
+                                        <div className="hidden md:block overflow-x-auto">
                                             <table className="w-full">
                                                 <thead>
                                                     <tr className="border-b border-border/50 bg-muted/5">
@@ -1290,6 +1284,83 @@ export default function CustomerDashboardPage() {
 
                                                 </tbody>
                                             </table>
+                                        </div>
+
+                                        {/* Mobile Card View */}
+                                        <div className="md:hidden divide-y divide-border/50">
+                                            {isTransactionLoading && !hasCompletedInitialLoad ? (
+                                                Array.from({ length: 3 }).map((_, i) => (
+                                                    <div key={i} className="p-4 space-y-3">
+                                                        <Skeleton className="h-4 w-1/3" />
+                                                        <Skeleton className="h-6 w-full" />
+                                                        <div className="flex justify-between">
+                                                            <Skeleton className="h-4 w-1/4" />
+                                                            <Skeleton className="h-4 w-1/4" />
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (() => {
+                                                const filteredTransactions = transactions.filter(t => {
+                                                    const tDate = new Date(t.createdAt);
+                                                    let matchesDate = true;
+                                                    if (transactionDateFilter === 'today') matchesDate = isToday(tDate);
+                                                    else if (transactionDateFilter === 'yesterday') matchesDate = isYesterday(tDate);
+                                                    else if (transactionDateFilter === 'this-month') matchesDate = isThisMonth(tDate);
+                                                    else if (transactionDateFilter === 'this-year') matchesDate = isThisYear(tDate);
+                                                    const matchesStatus = transactionStatus === 'all' || t.status === transactionStatus.toUpperCase();
+                                                    return matchesDate && matchesStatus;
+                                                });
+
+                                                if (filteredTransactions.length === 0) {
+                                                    return (
+                                                        <div className="p-12 text-center text-muted-foreground">
+                                                            <Search className="h-8 w-8 mx-auto opacity-20 mb-2" />
+                                                            <p className="text-sm font-medium">{t('customerDashboard.noTransactionsFound')}</p>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return filteredTransactions.map((transaction) => (
+                                                    <div key={transaction.id} className="p-4 space-y-4">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-tight mb-1">
+                                                                    {transaction.chapaReference || `TX-${transaction.id.substring(0, 8).toUpperCase()}`}
+                                                                </p>
+                                                                <h4 className="font-bold text-foreground">
+                                                                    {transaction.type === 'RENT' ? t('customerDashboard.rentPayment') : t('customerDashboard.propertyPurchase')}
+                                                                </h4>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {(transaction.metadata as any)?.month || transaction.property?.title || t('common.payment')}
+                                                                </p>
+                                                            </div>
+                                                            <Badge className={
+                                                                transaction.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                                                    transaction.status === 'FAILED' ? 'bg-red-100 text-red-700' :
+                                                                        'bg-amber-100 text-amber-700'
+                                                            }>
+                                                                {t(`customerDashboard.${transaction.status.toLowerCase()}` as any) || transaction.status}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="flex justify-between items-end">
+                                                            <div>
+                                                                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">{t('customerDashboard.amount')}</p>
+                                                                <p className="text-lg font-black text-[#005a41]">ETB {transaction.amount.toLocaleString()}</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest mb-1">{t('customerDashboard.date')}</p>
+                                                                <p className="text-xs font-bold">{format(new Date(transaction.createdAt), 'MMM dd, yyyy')}</p>
+                                                            </div>
+                                                        </div>
+                                                        <Link href={`/dashboard/customer/documents/receipt/${transaction.id}`} className="block">
+                                                            <Button variant="outline" className="w-full rounded-xl text-xs font-bold border-primary/20 text-primary h-10">
+                                                                <FileText className="h-3.5 w-3.5 mr-2" />
+                                                                {t('customerDashboard.viewReceipt')}
+                                                            </Button>
+                                                        </Link>
+                                                    </div>
+                                                ));
+                                            })()}
                                         </div>
                                     </CardContent>
                                 </Card>

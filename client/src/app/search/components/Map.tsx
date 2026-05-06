@@ -36,8 +36,8 @@ const Map = () => {
             const map = new mapboxgl.Map({
                 container: mapContainerRef.current,
                 style: "mapbox://styles/mapbox/satellite-streets-v12",
-                center: (filters.coordinates && filters.coordinates[0]) ? [filters.coordinates[0]!, filters.coordinates[1]!] : [-74.5, 40],
-                zoom: 9,
+                center: (filters.coordinates && filters.coordinates[0]) ? [filters.coordinates[0]!, filters.coordinates[1]!] : [38.7578, 8.9806],
+                zoom: 12,
             });
             mapRef.current = map;
             map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
@@ -81,7 +81,7 @@ const Map = () => {
                     hasValidCoords = true;
                 } else {
                     // Fallback to random placement near center if no coordinates
-                    const center = mapRef.current?.getCenter() || { lng: -74.5, lat: 40 };
+                    const center = mapRef.current?.getCenter() || { lng: 38.7578, lat: 8.9806 };
                     const fallbackLng = center.lng + (Math.random() - 0.5) * 0.01;
                     const fallbackLat = center.lat + (Math.random() - 0.5) * 0.01;
                     createMarker(item, mapRef.current!, [fallbackLng, fallbackLat], searchType, t);
@@ -105,30 +105,8 @@ const Map = () => {
         return () => window.removeEventListener('resize', resizeMap);
     }, []);
 
-    if (!token || token === "pk.eyJ1IjoiZnJldGFrZWxlIiwiYSI6ImNtamtkNGI2ejAwM28wMXNnZWJibTI0MmwiH0.X") {
-        return (
-            <div className="flex-[2] relative rounded-xl overflow-hidden shadow-sm border border-border hidden lg:block mx-1 bg-muted/30">
-                <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center">
-                    <div className="bg-background rounded-full p-4 mb-4 shadow-sm border border-border">
-                        <svg className="w-8 h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </div>
-                    <h3 className="font-semibold text-foreground mb-1">{t("listings.mapsConfigRequired")}</h3>
-                    <p className="text-sm text-muted-foreground max-w-xs mb-4">
-                        {t("listings.mapsConfigDesc")}
-                    </p>
-                    <div className="text-xs text-left bg-background p-3 rounded-lg border border-border font-mono text-muted-foreground whitespace-pre-line">
-                        {t("listings.mapsConfigInstructions")}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className="flex-[2] relative rounded-xl overflow-hidden shadow-sm border border-border hidden lg:block mx-1">
+        <div className="flex-1 lg:flex-[2] relative rounded-xl overflow-hidden shadow-sm border border-border mx-1 h-full">
             <div className="map-container h-full w-full" ref={mapContainerRef} />
         </div>
     );

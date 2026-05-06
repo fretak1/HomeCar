@@ -27,12 +27,14 @@ interface GlobalState {
     isFiltersFullOpen: boolean;
     viewMode: 'grid' | 'list';
     searchType: 'property' | 'vehicle';
+    mobileSearchMode: 'list' | 'map';
     filters: Filters;
     setAIChatOpen: (isOpen: boolean) => void;
     toggleFiltersFullOpen: () => void;
     setViewMode: (mode: 'grid' | 'list') => void;
     setFilters: (filters: Partial<Filters>) => void;
     setSearchType: (type: 'property' | 'vehicle') => void;
+    setMobileSearchMode: (mode: 'list' | 'map') => void;
 }
 
 const initialFilters: Filters = {
@@ -62,6 +64,7 @@ export const useGlobalStore = create<GlobalState>((set) => ({
     isFiltersFullOpen: false,
     viewMode: 'grid',
     searchType: 'property',
+    mobileSearchMode: 'list',
     filters: initialFilters,
 
     setAIChatOpen: (isOpen) => set({ isAIChatOpen: isOpen }),
@@ -71,4 +74,5 @@ export const useGlobalStore = create<GlobalState>((set) => ({
         filters: { ...state.filters, ...newFilters }
     })),
     setSearchType: (type) => set({ searchType: type }),
+    setMobileSearchMode: (mode) => set({ mobileSearchMode: mode }),
 }));

@@ -29,12 +29,10 @@ export default function RecommendationsPage() {
                 <div className="mb-12">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
-                            <h1 className="text-4xl md:text-5xl font-black text-foreground tracking-tight">
+                            <h1 className="text-2xl md:text-5xl font-black text-foreground tracking-tight">
                                 Your <span className="text-primary italic">Exclusive</span> Matches
                             </h1>
-                            <p className="text-muted-foreground mt-4 text-lg max-w-2xl font-medium leading-relaxed">
-                                Our <span className="text-primary font-bold">neural engine</span> has analyzed your behavior and location preferences to curate these high-precision matches.
-                            </p>
+                            
                         </div>
                     </div>
                 </div>
@@ -48,14 +46,16 @@ export default function RecommendationsPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.5 }}
                     >
-                        {recommendations.map((item: any) => (
-                            <div key={item.propertyId} className="h-full">
-                                {item.assetType === 'HOME'
-                                    ? <PropertyCard property={item} />
-                                    : <CarCard car={item} />
-                                }
-                            </div>
-                        ))}
+                        {recommendations
+                            .filter((item: any) => item.isVerified === true && item.status === 'AVAILABLE')
+                            .map((item: any) => (
+                                <div key={item.propertyId || item.id} className="h-full">
+                                    {item.assetType === 'HOME'
+                                        ? <PropertyCard property={item} />
+                                        : <CarCard car={item} />
+                                    }
+                                </div>
+                            ))}
                     </motion.div>
                 ) : (
                     <div className="text-center py-24 bg-white rounded-[2.5rem] shadow-sm border border-border/60">

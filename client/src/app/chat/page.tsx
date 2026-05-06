@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Send, Search, MessageSquare, Loader2 } from 'lucide-react';
+import { 
+    Send, 
+    Search, 
+    MessageSquare, 
+    Loader2, 
+    ArrowLeft 
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -13,6 +19,7 @@ import { useChatStore } from '@/store/useChatStore';
 import { useUserStore } from '@/store/useUserStore';
 import ChatLoading from './loading';
 import { useTranslation } from '@/contexts/LanguageContext';
+import { cn } from '@/lib/utils';
 
 function getInitials(name?: string) {
     if (!name) return '??';
@@ -46,6 +53,7 @@ function ChatPageInner() {
     const { t } = useTranslation();
 
     const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
+    const [showMobileChat, setShowMobileChat] = useState(false);
     const [messageText, setMessageText] = useState('');
     const [search, setSearch] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -66,6 +74,7 @@ function ChatPageInner() {
     useEffect(() => {
         if (preselectedPartnerId) {
             setSelectedPartnerId(preselectedPartnerId);
+            setShowMobileChat(true);
         }
     }, [preselectedPartnerId]);
 
@@ -116,11 +125,14 @@ function ChatPageInner() {
 
     return (
         <div className="h-[calc(100vh-73px)] w-full bg-background flex flex-col">
-            <div className="flex-1 w-full bg-card border-t border-border overflow-hidden flex">
-                <div className="flex w-full h-full">
+            <div className="flex-1 w-full bg-card border-t border-border overflow-hidden flex relative">
+                <div className="flex w-full h-full relative">
 
                     {/* Contacts Sidebar */}
-                    <div className="w-96 border-r border-border flex flex-col">
+                    <div className={cn(
+                        "w-full md:w-80 lg:w-96 border-r border-border flex flex-col transition-all duration-300 bg-background",
+                        showMobileChat ? "hidden md:flex" : "flex"
+                    )}>
                         <div className="p-4 border-b border-border">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -147,9 +159,12 @@ function ChatPageInner() {
                                     {filteredConversations.map((contact) => (
                                         <button
                                             key={contact.partnerId}
-                                            onClick={() => setSelectedPartnerId(contact.partnerId)}
-                                            className={`w-full p-3 rounded-lg text-left transition-colors ${selectedPartnerId === contact.partnerId
-                                                ? 'bg-primary/10'
+                                            onClick={() => {
+                                                setSelectedPartnerId(contact.partnerId);
+                                                setShowMobileChat(true);
+                                            }}
+                                            className={`w-full p-3 rounded-xl text-left transition-all duration-200 ${selectedPartnerId === contact.partnerId
+                                                ? 'bg-primary/10 ring-1 ring-primary/20'
                                                 : 'hover:bg-muted'
                                                 }`}
                                         >
@@ -189,21 +204,36 @@ function ChatPageInner() {
                     </div>
 
                     {/* Chat Area */}
-                    <div className="flex-1 flex flex-col min-h-0">
+                    <div className={cn(
+                        "flex-1 flex flex-col min-h-0 bg-card transition-all duration-300",
+                        !showMobileChat ? "hidden md:flex" : "flex"
+                    )}>
                         {selectedConversation ? (
                             <>
                                 {/* Chat Header */}
-                                <div className="p-4 border-b border-border flex items-center space-x-3">
-                                    <Avatar className="h-10 w-10 bg-primary/10">
+                                <div className="p-4 border-b border-border flex items-center bg-card sticky top-0 z-20">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="md:hidden mr-2 -ml-2 rounded-full"
+                                        onClick={() => setShowMobileChat(false)}
+                                    >
+                                        <ArrowLeft className="h-5 w-5" />
+                                    </Button>
+                                    <Avatar className="h-10 w-10 border-2 border-primary/10">
                                         {selectedConversation.partnerImage && (
                                             <AvatarImage src={selectedConversation.partnerImage} alt={selectedConversation.partnerName} />
                                         )}
-                                        <AvatarFallback className="bg-primary/10 text-primary">
+                                        <AvatarFallback className="bg-primary/5 text-primary font-bold">
                                             {getInitials(selectedConversation.partnerName)}
                                         </AvatarFallback>
                                     </Avatar>
-                                    <div>
-                                        <h3 className="text-foreground font-medium">{selectedConversation.partnerName}</h3>
+                                    <div className="ml-3">
+                                        <h3 className="text-foreground font-black tracking-tight">{selectedConversation.partnerName}</h3>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
+                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Online</span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -244,13 +274,13 @@ function ChatPageInner() {
                                                         </Avatar>
                                                     )}
                                                     <div
-                                                        className={`max-w-md rounded-2xl px-4 py-3 ${isOwn
-                                                            ? 'bg-primary text-white'
-                                                            : 'bg-muted text-foreground'
+                                                        className={`max-w-[85%] md:max-w-md rounded-2xl px-4 py-3 shadow-sm ${isOwn
+                                                            ? 'bg-[#005a41] text-white rounded-tr-none'
+                                                            : 'bg-muted/50 text-foreground rounded-tl-none border border-border/30'
                                                             }`}
                                                     >
-                                                        <p className="mb-1">{message.content}</p>
-                                                        <p className={`text-xs ${isOwn ? 'text-white/70' : 'text-muted-foreground'}`}>
+                                                        <p className="text-sm md:text-base leading-relaxed">{message.content}</p>
+                                                        <p className={`text-[10px] mt-1 font-bold ${isOwn ? 'text-white/60' : 'text-muted-foreground/60'}`}>
                                                             {new Date(message.createdAt).toLocaleTimeString('en-US', {
                                                                 hour: 'numeric',
                                                                 minute: '2-digit',
