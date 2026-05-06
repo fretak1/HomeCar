@@ -10,8 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useFavoriteStore } from "@/store/useFavoriteStore";
 import { useInteractionStore } from "@/store/useInteractionStore";
 import { Toaster } from "@/components/ui/sonner";
-import { Map as MapIcon, List as ListIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
 import { useGlobalStore } from "@/store/useGlobalStore";
 import dynamic from "next/dynamic";
 
