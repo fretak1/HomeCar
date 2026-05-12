@@ -32,6 +32,8 @@ import {
   AlertCircle,
   ArrowRight,
   BadgeCheck,
+  Bath,
+  Bed,
   Bell,
   Building2,
   Calendar,
@@ -45,21 +47,28 @@ import {
   Clock3,
   CreditCard,
   DollarSign,
+  Eye,
   FileText,
   Heart,
   Home,
   LayoutDashboard,
   LogOut,
+  MapPin,
   MessageSquare,
+  Move,
+  Pencil,
   Plus,
   Search,
   ShieldCheck,
   Sparkles,
+  Star,
+  Trash2,
   User,
   User2,
   Users,
   Wallet,
   Wrench,
+  X,
 } from 'lucide-react-native';
 
 
@@ -233,14 +242,7 @@ const FAVORITE_FILTERS: OptionItem[] = [
 const DEFAULT_LEASE_TERMS =
   'The tenant agrees to pay on time, keep the property in good condition, and follow all community rules during the lease period.';
 
-const getDashboardHeaderStyle = (role?: string) => {
-  if (Platform.OS === 'web') {
-    return {
-      backgroundImage:
-        'linear-gradient(92deg, #0E6B53 0%, #0E6B53 34%, #0B7282 72%, #1E56C8 100%)',
-    } as any;
-  }
-
+const getDashboardHeaderStyle = (_role?: string) => {
   return { backgroundColor: '#0E6B53' };
 };
 
@@ -1380,104 +1382,217 @@ function DashboardScreen({ forcedRole }: DashboardScreenProps) {
 
     const propertyId = property.id;
     const isFavorited = favorites.some(f => f.propertyId === propertyId || f.property?.id === propertyId);
+    const isHome = String(property.assetType).toUpperCase() === 'HOME';
+    const isVerified = property.isVerified;
+    const status = String(property.status || 'AVAILABLE').toUpperCase();
+    const listingTypes: string[] = Array.isArray(property.listingType) ? property.listingType : [];
+    const rating = Number(property.rating ?? 0);
+    const isOwner = user?.id === property.ownerId;
+
+    // Status badge color
+    const statusBg =
+      status === 'AVAILABLE' ? '#10B981' :
+      status === 'RENTED' || status === 'BOOKED' ? '#F59E0B' : '#EF4444';
 
     return (
       <TouchableOpacity
         key={property.id}
+        activeOpacity={0.95}
         onPress={() => router.push(`/property/${property.id}`)}
-        className="bg-white border border-border rounded-[24px] overflow-hidden mb-4"
+        className="bg-white border border-border rounded-[16px] overflow-hidden mb-4"
+        style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 }}
       >
+        {/* ── Image ── */}
         <View className="relative">
           <Image
             source={{ uri: getImageUrl(mainImage) }}
-            style={{ width: '100%', height: 180, backgroundColor: '#E5E7EB' }}
+            style={{ width: '100%', height: 190, backgroundColor: '#E5E7EB' }}
             resizeMode="cover"
           />
-          {options?.showFavorite ? (
-            <TouchableOpacity 
-              onPress={(e) => {
-                e.stopPropagation();
-                toggleFavorite(propertyId);
-              }}
-              className="absolute top-4 right-4 w-10 h-10 bg-white/90 rounded-full items-center justify-center shadow-sm"
-            >
-              <Heart 
-                size={20} 
-                color={isFavorited ? '#EF4444' : '#6B7280'} 
-                fill={isFavorited ? '#EF4444' : 'none'} 
-              />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-        <View className="p-4">
-          <View className="flex-row items-start justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="text-foreground text-lg font-black">{property.title}</Text>
-              <Text className="text-muted-foreground mt-1 leading-6">
-                {getPropertyLocation(property)}
-              </Text>
+
+          {/* Top-left: listing type badges */}
+          {listingTypes.length > 0 && (
+            <View className="absolute top-3 left-3 flex-col" style={{ gap: 4 }}>
+              {listingTypes
+                .filter(t => t.toUpperCase() !== status && t.toUpperCase() !== 'AVAILABLE')
+                .map(type => (
+                  <View key={type} className="bg-white/90 px-2 py-0.5 rounded-full">
+                    <Text className="text-[#005a41] text-[10px] font-black uppercase tracking-widest">
+                      {type.replace('_', ' ')}
+                    </Text>
+                  </View>
+                ))}
             </View>
-            <View className="flex-row items-center gap-2" />
+          )}
+
+          {/* Top-right: status + verification + favorite */}
+          <View className="absolute top-3 right-3 flex-col items-end" style={{ gap: 6 }}>
+            {isVerified ? (
+              <View style={{ backgroundColor: statusBg }} className="px-2 py-0.5 rounded-full">
+                <Text className="text-white text-[10px] font-black uppercase tracking-widest">
+                  {status}
+                </Text>
+              </View>
+            ) : (
+              <View
+                style={{
+                  backgroundColor: property.rejectionReason ? '#FEF2F2' : '#FFFBEB',
+                  borderWidth: 1,
+                  borderColor: property.rejectionReason ? '#FECACA' : '#FDE68A',
+                }}
+                className="px-2 py-0.5 rounded-full"
+              >
+                <Text
+                  style={{ color: property.rejectionReason ? '#B91C1C' : '#92400E' }}
+                  className="text-[10px] font-black uppercase tracking-widest"
+                >
+                  {property.rejectionReason ? 'Rejected' : 'Pending'}
+                </Text>
+              </View>
+            )}
+
+            {/* Favorite — shown for non-owners or when showFavorite is set */}
+            {(options?.showFavorite || !isOwner) && (
+              <TouchableOpacity
+                onPress={(e) => { e.stopPropagation(); toggleFavorite(propertyId); }}
+                className="w-9 h-9 bg-white/90 rounded-full items-center justify-center"
+                style={{ shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }}
+              >
+                <Heart size={18} color={isFavorited ? '#EF4444' : '#6B7280'} fill={isFavorited ? '#EF4444' : 'none'} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* ── Content ── */}
+        <View className="p-4">
+          {/* Title + Rating */}
+          <View className="flex-row items-start justify-between mb-1">
+            <Text className="text-foreground text-base font-black flex-1 pr-3" numberOfLines={1}>
+              {property.title}
+            </Text>
+            {rating > 0 && (
+              <View className="flex-row items-center bg-yellow-400/10 px-2 py-0.5 rounded-full">
+                <Star size={12} color="#EAB308" fill="#EAB308" />
+                <Text className="text-yellow-700 text-xs font-black ml-1">{rating.toFixed(1)}</Text>
+              </View>
+            )}
           </View>
 
-          <Text className="text-primary text-[22px] font-black mt-4">
-            {formatCurrency(property.price)}
-          </Text>
-          <Text className="text-muted-foreground text-[11px] font-black uppercase tracking-[1px] mt-2">
-            {humanize(property.assetType)} • {humanize(property.propertyType || property.brand || 'Listing')}
-          </Text>
+          {/* Location */}
+          <View className="flex-row items-center mb-3">
+            <MapPin size={13} color="#6B7280" />
+            <Text className="text-muted-foreground text-sm ml-1 flex-1" numberOfLines={1}>
+              {getPropertyLocation(property)}
+            </Text>
+          </View>
 
-          {options?.showActions ? (
-            <View className="flex-row mt-4" style={{ gap: 10 }}>
-              <View className="flex-1">
-                <PrimaryButton
-                  label="View Detail"
-                  onPress={() => router.push(`/property/${property.id}`)}
-                  tone="outline"
-                />
-              </View>
-              {normalizedRole === 'ADMIN' && !property.isVerified ? (
-                <View className="flex-1">
-                  <PrimaryButton
-                    label="Verify"
-                    onPress={() => verifyProperty(property.id, true)}
-                  />
+          {/* Specs row */}
+          <View className="flex-row items-center mb-3" style={{ gap: 12 }}>
+            {isHome ? (
+              <>
+                <View className="flex-row items-center" style={{ gap: 4 }}>
+                  <Bed size={14} color="#6B7280" />
+                  <Text className="text-muted-foreground text-xs font-semibold">{property.bedrooms ?? 0}</Text>
                 </View>
-              ) : null}
+                <View className="flex-row items-center" style={{ gap: 4 }}>
+                  <Bath size={14} color="#6B7280" />
+                  <Text className="text-muted-foreground text-xs font-semibold">{property.bathrooms ?? 0}</Text>
+                </View>
+                <View className="flex-row items-center" style={{ gap: 4 }}>
+                  <Move size={14} color="#6B7280" />
+                  <Text className="text-muted-foreground text-xs font-semibold">{property.area ?? 0} sqft</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                {property.brand ? (
+                  <View className="bg-muted/50 border border-border px-2 py-0.5 rounded-full">
+                    <Text className="text-foreground text-[10px] font-black uppercase">{property.brand}</Text>
+                  </View>
+                ) : null}
+                {property.transmission ? (
+                  <Text className="text-muted-foreground text-xs font-semibold">{property.transmission}</Text>
+                ) : null}
+                {property.mileage != null ? (
+                  <Text className="text-muted-foreground text-xs font-semibold">{Number(property.mileage).toLocaleString()} km</Text>
+                ) : null}
+              </>
+            )}
+          </View>
+
+          {/* Price */}
+          <View className="pt-3 border-t border-border/50">
+            <View className="flex-row items-baseline" style={{ gap: 2 }}>
+              <Text className="text-[#005a41] text-[10px] font-black uppercase tracking-wider opacity-80">ETB</Text>
+              <Text className="text-[#005a41] text-xl font-black">{Number(property.price).toLocaleString()}</Text>
+              {listingTypes.some(t => t.toUpperCase().includes('RENT')) && (
+                <Text className="text-muted-foreground text-xs font-bold">/mo</Text>
+              )}
             </View>
-          ) : null}
-          {options?.showOwnerActions ? (
-            <View className="flex-row mt-4" style={{ gap: 10 }}>
-              <View className="flex-1">
-                <PrimaryButton
-                  label="Edit"
-                  onPress={() => router.push(`/add-listing?id=${property.id}`)}
-                  tone="outline"
-                />
+
+            {/* Actions below price */}
+            {(options?.showActions || options?.showOwnerActions) && (
+              <View className="flex-row mt-3" style={{ gap: 8 }}>
+                {options?.showActions && (
+                  <>
+                    <TouchableOpacity
+                      onPress={() => router.push(`/property/${property.id}`)}
+                      className="flex-1 flex-row items-center justify-center border border-border bg-white h-10 rounded-xl"
+                      style={{ gap: 4 }}
+                    >
+                      <Eye size={14} color="#374151" />
+                      <Text className="text-foreground text-xs font-black">View</Text>
+                    </TouchableOpacity>
+                    {normalizedRole === 'ADMIN' && !property.isVerified && (
+                      <TouchableOpacity
+                        onPress={() => verifyProperty(property.id, true)}
+                        className="flex-1 flex-row items-center justify-center bg-primary h-10 rounded-xl"
+                        style={{ gap: 4 }}
+                      >
+                        <CheckCircle2 size={14} color="white" />
+                        <Text className="text-white text-xs font-black">Verify</Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
+                {options?.showOwnerActions && (
+                  <>
+                    <TouchableOpacity
+                      onPress={() => router.push(`/add-listing?id=${property.id}`)}
+                      className="flex-1 flex-row items-center justify-center border border-[#005a41]/30 bg-white h-10 rounded-xl"
+                      style={{ gap: 4 }}
+                    >
+                      <Pencil size={14} color="#005a41" />
+                      <Text style={{ color: '#005a41' }} className="text-xs font-black">Edit</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setConfirmDialog({
+                          visible: true,
+                          title: 'Delete Property',
+                          message: 'Are you sure you want to permanently delete this listing? This action cannot be undone.',
+                          onConfirm: async () => {
+                            setConfirmDialog(prev => ({ ...prev, visible: false }));
+                            try {
+                              await deleteProperty(property.id);
+                            } catch (error) {
+                              Alert.alert('Error', 'Failed to delete property. Please try again.');
+                            }
+                          },
+                        });
+                      }}
+                      className="flex-1 flex-row items-center justify-center border border-rose-200 bg-white h-10 rounded-xl"
+                      style={{ gap: 4 }}
+                    >
+                      <Trash2 size={14} color="#E11D48" />
+                      <Text className="text-rose-600 text-xs font-black">Delete</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
-              <View className="flex-1">
-                <PrimaryButton
-                  label="Delete"
-                  tone="danger"
-                  onPress={() => {
-                    setConfirmDialog({
-                      visible: true,
-                      title: 'Delete Property',
-                      message: 'Are you sure you want to permanently delete this listing? This action cannot be undone.',
-                      onConfirm: async () => {
-                        setConfirmDialog(prev => ({ ...prev, visible: false }));
-                        try {
-                          await deleteProperty(property.id);
-                        } catch (error) {
-                          Alert.alert('Error', 'Failed to delete property. Please try again.');
-                        }
-                      }
-                    });
-                  }}
-                />
-              </View>
-            </View>
-          ) : null}
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -1514,7 +1629,7 @@ function DashboardScreen({ forcedRole }: DashboardScreenProps) {
             router.push(`/property/${propertyId}`);
           }
         }}
-        className="bg-white border border-border rounded-[28px] overflow-hidden mb-5"
+        className="bg-white border border-border rounded-[16px] overflow-hidden mb-5"
         style={{
           shadowColor: '#0F172A',
           shadowOpacity: 0.06,
@@ -1566,12 +1681,9 @@ function DashboardScreen({ forcedRole }: DashboardScreenProps) {
                     </Text>
                   </View>
                   <View style={{ width: 1, height: 12, backgroundColor: '#E2E8F0', marginHorizontal: 8 }} />
-                  <View className="flex-row items-center">
-                    <Wallet size={12} color="#065F46" />
-                    <Text className="text-primary font-black text-[11px] ml-1">
-                      {`${formatCurrency(application.price || property?.price)}${listingType === 'rent' ? '/mo' : ''}`}
-                    </Text>
-                  </View>
+                  <Text className="text-primary font-black text-[11px]">
+                    {`${formatCurrency(application.price || property?.price)}${listingType === 'rent' ? '/mo' : ''}`}
+                  </Text>
                 </View>
               </View>
               <Badge value={application.status} />
@@ -1660,7 +1772,7 @@ function DashboardScreen({ forcedRole }: DashboardScreenProps) {
     const leaseStartDate = new Date(lease?.startDate);
     const leaseEndDate = new Date(lease?.endDate);
     const totalLeaseDays = Math.max(1, differenceInDays(leaseEndDate, leaseStartDate));
-    const totalLeaseMonths = Math.max(1, Math.ceil(totalLeaseDays / 30));
+    const totalLeaseMonths = Math.max(1, Math.floor(totalLeaseDays / 30));
     const recurringAmount = Number(lease?.recurringAmount || property?.price || 0);
     const tenantName = lease?.customer?.name || 'Tenant';
     const ownerName = lease?.owner?.name || 'Property Owner';
@@ -1672,7 +1784,7 @@ function DashboardScreen({ forcedRole }: DashboardScreenProps) {
     return (
         <View
           key={lease.id}
-          className="bg-white border border-border rounded-[28px] overflow-hidden mb-5"
+          className="bg-white border border-border rounded-[16px] overflow-hidden mb-5"
           style={{
             shadowColor: '#0F172A',
             shadowOpacity: 0.06,
@@ -1777,7 +1889,7 @@ function DashboardScreen({ forcedRole }: DashboardScreenProps) {
                   >
                     <Text className="text-foreground font-black text-sm">View Details</Text>
                   </TouchableOpacity>
-                  {normalizedRole !== 'AGENT' && leaseStatus === 'PENDING' ? (
+                  {normalizedRole === 'CUSTOMER' && leaseStatus === 'PENDING' ? (
                     <TouchableOpacity
                       onPress={async () => {
                         await acceptLease(lease.id, normalizedRole.toLowerCase() as any);
@@ -2004,7 +2116,7 @@ function DashboardScreen({ forcedRole }: DashboardScreenProps) {
     return (
       <View
         key={request.id}
-        className="bg-white border border-border rounded-[28px] overflow-hidden mb-5"
+        className="bg-white border border-border rounded-[16px] overflow-hidden mb-5"
         style={{
           shadowColor: '#0F172A',
           shadowOpacity: 0.06,
@@ -2150,7 +2262,7 @@ function DashboardScreen({ forcedRole }: DashboardScreenProps) {
     return (
       <View
         key={transaction.id}
-        className="bg-white border border-border rounded-[28px] overflow-hidden mb-5"
+        className="bg-white border border-border rounded-[16px] overflow-hidden mb-5"
         style={{
           shadowColor: '#0F172A',
           shadowOpacity: 0.06,
@@ -2967,7 +3079,7 @@ function DashboardScreen({ forcedRole }: DashboardScreenProps) {
 
         <View className="px-3 pt-5 pb-10">
           {showVerificationBanner ? (
-            <View className="bg-white border border-[#FDE68A] rounded-[28px] p-5 shadow-sm mb-5">
+            <View className="bg-white border border-[#FDE68A] rounded-[16px] p-5 shadow-sm mb-5">
               <View className="flex-row items-start">
                 <View className="w-12 h-12 rounded-2xl bg-amber-100 items-center justify-center">
                   {user.verificationPhoto ? (
@@ -3437,23 +3549,22 @@ function DashboardScreen({ forcedRole }: DashboardScreenProps) {
             />
 
             <View className="flex-row mt-5" style={{ gap: 12 }}>
-              <View className="flex-1">
-                <PrimaryButton
-                  label="Cancel"
-                  onPress={() => {
-                    setEmailDialogVisible(false);
-                    setPendingPaymentInfo(null);
-                  }}
-                  tone="outline"
-                />
-              </View>
-              <View className="flex-1">
-                <PrimaryButton
-                  label="Initialize Payment"
-                  onPress={processPaymentWithEmail}
-                  disabled={!emailToConfirm.includes('@')}
-                />
-              </View>
+              <TouchableOpacity
+                onPress={() => {
+                  setEmailDialogVisible(false);
+                  setPendingPaymentInfo(null);
+                }}
+                className="flex-1 h-11 rounded-xl items-center justify-center border border-border bg-white"
+              >
+                <Text className="text-foreground font-black">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={processPaymentWithEmail}
+                disabled={!emailToConfirm.includes('@')}
+                className={`flex-1 h-11 rounded-xl items-center justify-center bg-primary ${!emailToConfirm.includes('@') ? 'opacity-50' : ''}`}
+              >
+                <Text className="text-white font-black">Initialize Payment</Text>
+              </TouchableOpacity>
             </View>
           </ModalShell>
         </OverlayModal>

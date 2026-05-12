@@ -45,6 +45,7 @@ import { ethiopiaLocations } from '../src/constants/ethiopiaLocations';
 import { useAIStore } from '../src/store/useAIStore';
 import { useAuthStore } from '../src/store/useAuthStore';
 import { useListingStore } from '../src/store/useListingStore';
+import { toast } from '../src/lib/toast';
 
 type AssetType = 'HOME' | 'CAR';
 type ListingIntent = 'buy' | 'rent';
@@ -917,7 +918,7 @@ export default function AddListingScreen() {
         });
 
         if (!result?.predicted_price) {
-          Alert.alert('AI estimate unavailable', 'Please try again in a moment.');
+          toast.error('AI estimate unavailable. Please try again in a moment.');
           return;
         }
 
@@ -959,7 +960,7 @@ export default function AddListingScreen() {
       });
 
       if (!result?.predicted_price) {
-        Alert.alert('AI estimate unavailable', 'Please try again in a moment.');
+        toast.error('AI estimate unavailable. Please try again in a moment.');
         return;
       }
 
@@ -970,13 +971,13 @@ export default function AddListingScreen() {
       setAiReasoning(result.reasoning || '');
       setSimilarListings(result.similar_listings || []);
     } catch {
-      Alert.alert('AI estimate unavailable', 'Please try again in a moment.');
+      toast.error('AI estimation failed');
     }
   };
 
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
-      Alert.alert('Missing title', 'Please add a listing title first.');
+      toast.error('Please add a listing title first.');
       return;
     }
 
@@ -984,10 +985,7 @@ export default function AddListingScreen() {
     const keepImages = images.filter((image) => image.remote).map((image) => image.uri);
 
     if (!isEditing && localImages.length < 4) {
-      Alert.alert(
-        'More photos needed',
-        `Please upload at least 4 photos. You currently have ${localImages.length}.`,
-      );
+      toast.error(`Please upload at least 4 photos. You currently have ${localImages.length}.`);
       return;
     }
 
@@ -1044,16 +1042,17 @@ export default function AddListingScreen() {
     try {
       if (isEditing && id) {
         await updateProperty(id, form);
+        toast.success('Property updated successfully!');
       } else {
         await addProperty(form);
+        toast.success('Property added successfully!');
       }
       router.back();
     } catch (submitError: any) {
-      Alert.alert(
-        'Unable to save listing',
+      toast.error(
         submitError?.response?.data?.message ||
           submitError?.message ||
-          'Please try again in a moment.',
+          'Unable to save listing. Please try again.',
       );
     }
   };
@@ -1505,7 +1504,7 @@ export default function AddListingScreen() {
                 <TouchableOpacity
                   onPress={handleAIEstimate}
                   disabled={isPredicting}
-                  className="bg-black rounded-xl px-4 py-3 mt-4 self-start flex-row items-center"
+                  className="bg-primary rounded-xl px-4 py-3 mt-4 self-start flex-row items-center"
                 >
                   {isPredicting ? (
                     <ActivityIndicator color="white" />

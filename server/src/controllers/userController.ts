@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../lib/prisma.js';
 import { auth } from '../lib/auth.js';
+import { sendEmail } from '../services/emailService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_fallback_secret_key';
 
@@ -393,12 +394,34 @@ export const verifyUser = async (req: any, res: Response) => {
             });
         }
 
-        // Also update agent licenses to verified if user is verified
         if (verified) {
             await prisma.document.updateMany({
                 where: { userId: id, type: 'AGENT_LICENSE' },
                 data: { verified: true }
             });
+        }
+
+        // --- Send Email Notification ---
+        if (currentUser) {
+            const subject = verified 
+                ? 'Your HomeCar Account is Verified!' 
+                : 'HomeCar Account Verification Rejected';
+            
+            const html = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                    <h2 style="color: ${verified ? '#10b981' : '#ef4444'};">${subject}</h2>
+                    <p>Hello ${currentUser.name},</p>
+                    <p>${verified 
+                        ? 'Congratulations! Your account and license documents have been verified by our administration team. You can now fully utilize the agent features on HomeCar.' 
+                        : `Unfortunately, your account verification was rejected. <br><br><strong>Reason:</strong> ${rejectionReason}`
+                    }</p>
+                    <p style="margin-top: 20px;">Best regards,<br/>HomeCar Team</p>
+                </div>
+            `;
+            
+            sendEmail(currentUser.email, subject, html).catch(err => 
+                console.error('Failed to send verification email:', err)
+            );
         }
 
         const { passwordHash: _, ...userWithoutPassword } = user;

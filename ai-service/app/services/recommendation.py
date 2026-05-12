@@ -58,8 +58,14 @@ class RecommendationService:
         if property_pool.empty:
             return []
 
-        # If user has no history or search intent, we provide general.
-        if history_df.empty and search_df.empty and map_df.empty:
+        # Check if user has any personalization signals (History, Search, Map, or a Profile with kids/marriage status)
+        has_signals = not history_df.empty or not search_df.empty or not map_df.empty
+        if not has_signals and not profile_df.empty:
+            profile = profile_df.iloc[0]
+            if profile.get('kids') or profile.get('marriageStatus'):
+                has_signals = True
+
+        if not has_signals:
             return self.get_general_recommendations(limit)
 
         ml_results = self._get_ml_recommendations(
@@ -436,7 +442,7 @@ class RecommendationService:
                     matches = property_pool[property_pool.apply(check_car_listing, axis=1)].index
                     boost = 2.0 * weight
                     property_pool.loc[matches, 'score'] += boost
-                    for idx in matches: add_to_breakdown(idx, 'listing_intent', boost)
+                    for idx in matches: add_to_breakdown(idx, 'car_listing_intent', boost)
 
                 # 3.2 Property Specifics
                 if cat == 'home_bedroom_preference':
@@ -716,10 +722,10 @@ class RecommendationService:
                 "engine_mode": self.engine_mode
             },
             "interaction_signals": {
-                "transactions": len(history[history['interaction_type'] == 'TRANSACTION']),
-                "applications": len(history[history['interaction_type'] == 'APPLICATION']),
-                "favorites": len(history[history['interaction_type'] == 'FAVORITE']),
-                "views": len(history[history['interaction_type'] == 'VIEW']),
+                "transactions": len(history[history['interaction_type'] == 'TRANSACTION']) if not history.empty else 0,
+                "applications": len(history[history['interaction_type'] == 'APPLICATION']) if not history.empty else 0,
+                "favorites": len(history[history['interaction_type'] == 'FAVORITE']) if not history.empty else 0,
+                "views": len(history[history['interaction_type'] == 'VIEW']) if not history.empty else 0,
                 "total_timeline_events": len(history)
             },
             "ml_status": self.ml_service.get_status(),

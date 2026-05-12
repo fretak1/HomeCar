@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { createApi } from '@/lib/api';
+import { api } from '@/lib/api';
 
-const api = createApi();
+
 
 interface VerificationLog {
     id: string;

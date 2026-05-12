@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { User } from '@/data/mockData';
-import { createApi, API_ROUTES } from '@/lib/api';
+import { User } from '@/types';
+import { api, API_ROUTES } from '@/lib/api';
 import { authClient } from '@/lib/auth-client';
 
-const api = createApi();
+
 
 interface UserState {
     users: User[];
@@ -18,6 +18,7 @@ interface UserState {
     getMe: () => Promise<void>;
     updateUser: (userData: any) => Promise<void>;
     verifyUser: (id: string, verified: boolean, rejectionReason?: string) => Promise<void>;
+    submitAgentVerification: (formData: FormData) => Promise<void>;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
@@ -177,6 +178,19 @@ export const useUserStore = create<UserState>((set, get) => ({
             }));
         } catch (error: any) {
             const message = error.response?.data?.error || 'Verification failed';
+            set({ error: message, isLoading: false });
+            throw new Error(message);
+        }
+    },
+    submitAgentVerification: async (formData: FormData) => {
+        set({ isLoading: true, error: null });
+        try {
+            const response = await api.patch(`${API_ROUTES.USER}/verify`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            set({ currentUser: response.data.user, isLoading: false });
+        } catch (error: any) {
+            const message = error.response?.data?.error || 'Submission failed';
             set({ error: message, isLoading: false });
             throw new Error(message);
         }

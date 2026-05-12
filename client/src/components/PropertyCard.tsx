@@ -9,6 +9,7 @@ import { Property } from '@/store/usePropertyStore';
 import { useFavoriteStore } from '@/store/useFavoriteStore';
 import { useUserStore } from '@/store/useUserStore';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/contexts/LanguageContext';
 
 interface PropertyCardProps {
   property: Property;
@@ -18,6 +19,7 @@ interface PropertyCardProps {
 }
 
 export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyCardProps) {
+  const { t } = useTranslation();
   const { currentUser } = useUserStore();
   const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
   const favorite = isFavorite(property.id);
@@ -99,7 +101,7 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
                           : "bg-amber-50 text-amber-700 border-amber-100"
                   )}
                 >
-                  {property.rejectionReason ? 'Rejected' : 'Pending Verification'}
+                  {property.rejectionReason ? t('common.rejected') : t('ownerDashboard.verificationPending')}
                 </Badge>
               </div>
             )}
@@ -151,7 +153,7 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
                 </div>
                 <div className="flex items-center space-x-1">
                   <Square className="h-4 w-4" />
-                  <span className="text-sm">{property.area} sq ft</span>
+                  <span className="text-sm">{property.area} {t('property.sqft')}</span>
                 </div>
               </>
             ) : (
@@ -163,7 +165,7 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
                   <span className="text-xs">{property.transmission}</span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <span className="text-xs">{property.mileage?.toLocaleString()} km</span>
+                  <span className="text-xs">{property.mileage?.toLocaleString()} {t('property.km')}</span>
                 </div>
               </>
             )}
@@ -192,7 +194,7 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
                   }}
                 >
                   <Pencil className="h-3.5 w-3.5 mr-1.5" />
-                  Edit
+                  {t('common.edit')}
                 </Button>
               )}
               {onDelete && (
@@ -207,7 +209,7 @@ export function PropertyCard({ property, onEdit, onDelete, disabled }: PropertyC
                   }}
                 >
                   <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                  Delete
+                  {t('common.delete')}
                 </Button>
               )}
             </div>

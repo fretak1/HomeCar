@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/useUserStore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getCookie } from '@/lib/utils';
 
 export default function UserDashboardPage() {
     const router = useRouter();
@@ -15,24 +16,16 @@ export default function UserDashboardPage() {
             return;
         }
 
-        if (currentUser) {
-            if (currentUser.role === 'CUSTOMER') {
-                router.replace('/dashboard/customer');
-            } else {
-                const role = currentUser.role.toLowerCase();
-                router.replace(`/dashboard/${role}`);
+            if (currentUser.role) {
+                if (currentUser.role === 'CUSTOMER') {
+                    router.replace('/');
+                } else {
+                    const role = currentUser.role.toLowerCase();
+                    router.replace(`/dashboard/${role}`);
+                }
             }
-        }
     }, [currentUser, isLoading, router]);
 
-    // Fast synchronous check to prevent flashing dashboard UI for customers
-    const getCookie = (name: string) => {
-        if (typeof document === 'undefined') return null;
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop()?.split(';').shift();
-        return null;
-    };
     const userRoleCookie = getCookie('user-role')?.toUpperCase();
     const activeRole = currentUser?.role?.toUpperCase() || userRoleCookie;
 

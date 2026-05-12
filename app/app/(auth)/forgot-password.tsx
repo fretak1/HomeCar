@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Mail, KeyRound, ArrowLeft } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authClient } from '../../src/lib/auth-client';
+import { toast } from '../../src/lib/toast';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -20,7 +20,7 @@ export default function ForgotPasswordScreen() {
 
   const handleSubmit = async () => {
     if (!email) {
-      Alert.alert('Error', 'Please enter your email address.');
+      toast.error('Please enter your email address.');
       return;
     }
 
@@ -32,12 +32,13 @@ export default function ForgotPasswordScreen() {
       });
 
       if (error) {
-        Alert.alert('Error', error.message || 'Failed to send reset code.');
+        toast.error(error.message || 'Failed to send reset code.');
       } else {
+        toast.success('Reset code sent to your email!');
         router.push(`/(auth)/reset-password?email=${encodeURIComponent(email)}`);
       }
     } catch (err) {
-      Alert.alert('Error', 'An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
     } finally {
       setIsLoading(false);
     }

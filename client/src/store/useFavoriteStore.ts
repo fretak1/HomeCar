@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { createApi, API_ROUTES } from '@/lib/api';
+import { api, API_ROUTES } from '@/lib/api';
 import { Property } from './usePropertyStore';
 
-const api = createApi();
+
 
 export interface Favorite {
     id: string;

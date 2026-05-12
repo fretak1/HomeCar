@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { PropertyCard } from '@/components/PropertyCard';
-import { CarCard } from '@/components/CarCard';
+
 import { useAIStore } from '@/store/useAIStore';
 import { useUserStore } from '@/store/useUserStore';
 import { Sparkles } from 'lucide-react';
@@ -50,10 +50,7 @@ export default function RecommendationsPage() {
                             .filter((item: any) => item.isVerified === true && item.status === 'AVAILABLE')
                             .map((item: any) => (
                                 <div key={item.propertyId || item.id} className="h-full">
-                                    {item.assetType === 'HOME'
-                                        ? <PropertyCard property={item} />
-                                        : <CarCard car={item} />
-                                    }
+                                    <PropertyCard property={item} />
                                 </div>
                             ))}
                     </motion.div>

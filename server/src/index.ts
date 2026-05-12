@@ -1,6 +1,6 @@
+import './env.js'; // Must be first — loads dotenv before any other module reads process.env
 import express, { Request, Response, NextFunction } from 'express'; 
 import cors from 'cors';
-import dotenv from 'dotenv';
 import morgan from 'morgan';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,8 +8,6 @@ import { createServer } from 'http';
 import { initSocket } from './socket.js';
 import { initCronJobs } from './services/cronService.js';
 import fs from 'fs';
-
-dotenv.config();
 
 // Initialize Cron Jobs
 initCronJobs();

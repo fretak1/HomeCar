@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { Document } from '@/data/mockData';
-import { createApi, API_ROUTES } from '@/lib/api';
+import { Document } from '@/types';
+import { api, API_ROUTES } from '@/lib/api';
 
-const api = createApi();
+
 
 interface DocumentState {
     documents: Document[];

@@ -1,5 +1,5 @@
 import { Star } from 'lucide-react';
-import { Review } from '@/data/mockData';
+import { Review } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getImageUrl } from '@/lib/utils';

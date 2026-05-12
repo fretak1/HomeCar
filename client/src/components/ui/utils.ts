@@ -1,6 +1,3 @@
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+// Re-export shim — all shadcn/ui components import cn() from this path.
+// The canonical implementation lives in @/lib/utils.
+export { cn } from '@/lib/utils';

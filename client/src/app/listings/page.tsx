@@ -11,7 +11,7 @@ import {
     Loader2 
 } from 'lucide-react';
 import { PropertyCard } from '@/components/PropertyCard';
-import { CarCard } from '@/components/CarCard';
+
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
@@ -420,7 +420,7 @@ function ListingContent() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {searchType === 'property'
                                             ? items.map(p => <PropertyCard key={p.id} property={p as any} />)
-                                            : items.map(c => <CarCard key={c.id} car={c as any} />)
+                                            : items.map(c => <PropertyCard key={c.id} property={c as any} />)
                                         }
                                     </div>
 

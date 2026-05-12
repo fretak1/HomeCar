@@ -518,10 +518,10 @@ export default function PropertyDetailPage() {
                     </div>
                 </div>
 
-                {/* Similar Properties - Hidden for restricted roles */}
+                {/* Recommended for You - Hidden for restricted roles */}
                 {!(currentUser && ['ADMIN', 'OWNER', 'AGENT'].includes(currentUser.role)) && (
                     <div className="mt-16">
-                        <AIRecommendations title={t('property.similarProperties' as any) || 'Similar Listings'} />
+                        <AIRecommendations title={t('recommendations.justForYou')} />
                     </div>
                 )}
             </div>

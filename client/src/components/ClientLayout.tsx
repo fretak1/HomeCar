@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { getCookie } from "@/lib/utils";
 import { AskAIAssistant } from "@/components/ai/AskAIAssistant";
 import { Toaster } from "sonner";
 
@@ -30,14 +31,6 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     const { fetchFavorites } = useFavoriteStore();
     const isAuthPage = pathname === "/login" || pathname === "/signup" || pathname === "/forgot-password" || pathname === "/reset-password" || pathname === "/verify-email";
 
-    // Use cookie for immediate role check to prevent flash
-    const getCookie = (name: string) => {
-        if (typeof document === 'undefined') return null;
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop()?.split(';').shift();
-        return null;
-    };
     const userRoleCookie = getCookie('user-role')?.toUpperCase();
     const isRestrictedRoleCookie = userRoleCookie && RESTRICTED_ROLES.includes(userRoleCookie);
 
@@ -65,21 +58,34 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
 
     const isRestrictedRole = currentUser && RESTRICTED_ROLES.includes(currentUser.role);
     
-    // Pages where the footer should be hidden for ALL users (interactive workspaces & utilities)
     const isAppWorkspacePage = 
         pathname.startsWith('/dashboard') || 
         pathname.startsWith('/chat') || 
         pathname.startsWith('/checkout') || 
         pathname.startsWith('/verify-email');
 
-    // Hide footer on intense workspaces and utility screens
     const shouldHideFooter = isRestrictedRole || isAuthPage || isAppWorkspacePage;
-    
-    // Hide AI Assistant on Auth pages, restricted roles, and all dashboard/app workspaces
     const shouldHideAskAI = isRestrictedRole || isAuthPage || isAppWorkspacePage;
 
+    // Show full-screen spinner only on consumer pages (home, listings) while determining
+    // auth state — prevents the flash of home content before restricted roles redirect.
+    // Management paths (/profile, /dashboard etc.) render immediately without spinner.
+    const isConsumerPage = !isManagementPath(pathname) && !isAuthPage && !isAppWorkspacePage;
+    if (isLoading && isConsumerPage) {
+        return (
+            <LanguageProvider>
+                <div className="min-h-screen bg-background flex items-center justify-center">
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center animate-pulse">
+                            <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                        </div>
+                    </div>
+                </div>
+            </LanguageProvider>
+        );
+    }
+
     // Proactive guard: if a restricted role is on a consumer path, render nothing
-    // (middleware already redirected — this blocks the brief content flash)
     if ((isRestrictedRoleCookie || (!isLoading && isRestrictedRole)) && !isManagementPath(pathname) && !isAuthPage) {
         return <div className="min-h-screen bg-background" />;
     }

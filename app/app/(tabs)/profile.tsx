@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Image,
@@ -27,9 +26,11 @@ import {
   Briefcase,
   ChevronDown,
   LogOut,
+  MapPin,
 } from 'lucide-react-native';
 import { useAuthStore } from '../../src/store/useAuthStore';
 import OptionPickerModal from '../../src/components/OptionPickerModal';
+import { toast } from '../../src/lib/toast';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -43,6 +44,11 @@ export default function ProfileScreen() {
     kids: '',
     gender: '',
     employmentStatus: '',
+    aboutMe: '',
+    region: '',
+    city: '',
+    subcity: '',
+    village: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
@@ -65,6 +71,11 @@ export default function ProfileScreen() {
         kids: user.kids?.toString() || '',
         gender: user.gender || '',
         employmentStatus: user.employmentStatus || '',
+        aboutMe: user.aboutMe || '',
+        region: user.location?.region || '',
+        city: user.location?.city || '',
+        subcity: user.location?.subcity || '',
+        village: user.location?.village || '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
@@ -75,7 +86,7 @@ export default function ProfileScreen() {
   const handleUpdate = async () => {
     try {
       if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
-        Alert.alert('Error', 'New passwords do not match');
+        toast.error('New passwords do not match');
         return;
       }
 
@@ -116,7 +127,7 @@ export default function ProfileScreen() {
       }
 
       await updateProfile(submissionData);
-      Alert.alert('Success', 'Profile updated successfully');
+      toast.success('Profile updated successfully!');
       setSelectedImage(null);
       setFormData(prev => ({
         ...prev,
@@ -125,14 +136,14 @@ export default function ProfileScreen() {
         confirmPassword: ''
       }));
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update profile');
+      toast.error(err.message || 'Failed to update profile');
     }
   };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need access to your photos to update your profile picture.');
+      toast.error('We need access to your photos to update your profile picture.');
       return;
     }
 
@@ -265,6 +276,33 @@ export default function ProfileScreen() {
               icon={User}
               isDropdown
             />
+
+            {/* About Me */}
+            <View className="mb-5">
+              <Text className="text-[10px] font-black uppercase tracking-[1.5px] text-primary mb-2 ml-1">
+                About Me
+              </Text>
+              <TextInput
+                style={{
+                  backgroundColor: '#F9FAFB',
+                  borderWidth: 1,
+                  borderColor: '#E5E7EB',
+                  borderRadius: 16,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  fontSize: 15,
+                  fontWeight: '600',
+                  color: '#111827',
+                  minHeight: 100,
+                  textAlignVertical: 'top',
+                }}
+                value={formData.aboutMe}
+                onChangeText={(text) => setFormData(f => ({ ...f, aboutMe: text }))}
+                placeholder="Tell us a bit about yourself..."
+                placeholderTextColor="#9CA3AF"
+                multiline
+              />
+            </View>
           </View>
 
           <View className="bg-gray-50/50 rounded-[32px] p-6 border border-border/60 mb-8">
@@ -295,6 +333,43 @@ export default function ProfileScreen() {
               placeholder="Select Employment"
               icon={Briefcase}
               isDropdown
+            />
+          </View>
+
+          {/* Address Details */}
+          <View className="bg-gray-50/50 rounded-[32px] p-6 border border-border/60 mb-8">
+            <View className="flex-row items-center mb-6" style={{ gap: 8 }}>
+              <MapPin size={16} color="#065F46" />
+              <Text className="text-sm font-black text-foreground uppercase tracking-[1px]">Address Details</Text>
+            </View>
+
+            <InputField
+              label="Region"
+              value={formData.region}
+              onChangeText={(text: string) => setFormData(f => ({ ...f, region: text }))}
+              placeholder="e.g. Addis Ababa"
+              icon={MapPin}
+            />
+            <InputField
+              label="City"
+              value={formData.city}
+              onChangeText={(text: string) => setFormData(f => ({ ...f, city: text }))}
+              placeholder="e.g. Addis Ababa"
+              icon={MapPin}
+            />
+            <InputField
+              label="Subcity"
+              value={formData.subcity}
+              onChangeText={(text: string) => setFormData(f => ({ ...f, subcity: text }))}
+              placeholder="e.g. Bole"
+              icon={MapPin}
+            />
+            <InputField
+              label="Village / Area"
+              value={formData.village}
+              onChangeText={(text: string) => setFormData(f => ({ ...f, village: text }))}
+              placeholder="e.g. Gerji"
+              icon={MapPin}
             />
           </View>
 

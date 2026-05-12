@@ -6,6 +6,7 @@ import { useAuthStore } from '../../src/store/useAuthStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import apiClient from '../../src/api/apiClient';
 import { authClient } from '../../src/lib/auth-client';
+import { toast } from '../../src/lib/toast';
 
 export default function VerifyScreen() {
   const router = useRouter();
@@ -51,6 +52,7 @@ export default function VerifyScreen() {
       // Verification successful, session is automatically created
       const session = await authClient.getSession();
       if (session.data?.user) {
+        toast.success('Email verified successfully!');
         setUser({
           id: session.data.user.id,
           email: session.data.user.email,
@@ -64,7 +66,7 @@ export default function VerifyScreen() {
         router.replace('/(auth)/login');
       }
     } catch (err: any) {
-      setError(err.message || "Verification failed");
+      toast.error(err.message || 'Invalid or expired code');
     } finally {
       setIsLoading(false);
     }
@@ -80,9 +82,9 @@ export default function VerifyScreen() {
         type: 'email-verification',
       });
       if (error) throw error;
-      setError('A new code has been sent!');
+      toast.success('A new code has been sent to your email.');
     } catch (err: any) {
-      setError(err.message || "Failed to resend code");
+      toast.error(err.message || 'Failed to resend code');
     } finally {
       setIsLoading(false);
     }

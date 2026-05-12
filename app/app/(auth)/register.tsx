@@ -9,6 +9,7 @@ import apiClient from '../../src/api/apiClient';
 import { getDashboardRoute } from '../../src/utils/routes';
 import { authClient } from '../../src/lib/auth-client';
 import GoogleLogo from '../../src/components/GoogleLogo';
+import { toast } from '../../src/lib/toast';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -63,9 +64,9 @@ export default function RegisterScreen() {
       if (signUpError) {
         const message = signUpError.message || "Registration failed";
         if (message.toLowerCase().includes('already') || message.toLowerCase().includes('exists')) {
-          setError('This email is already registered. Please go to Log In.');
+          toast.error('This email is already registered. Please go to Log In.');
         } else {
-          setError(message);
+          toast.error(message);
         }
         setIsLoading(false);
         return;
@@ -73,11 +74,11 @@ export default function RegisterScreen() {
 
       // Set pending email for the verification screen
       setPendingEmail(email);
-      
+      toast.success('Account created! Please enter the verification code sent to your email.');
       // Registration successful, BetterAuth sends the OTP automatically
       router.push('/(auth)/verify');
     } catch (err: any) {
-      setError(err.message || "Registration failed");
+      toast.error(err.message || "Registration failed");
     } finally {
       setIsLoading(false);
     }

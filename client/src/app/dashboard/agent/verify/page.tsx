@@ -109,9 +109,9 @@ export default function AgentVerificationPage() {
                 formData.append('selfie', blob, 'selfie.jpg');
             }
 
+            // Call store method
+            await useUserStore.getState().submitAgentVerification(formData);
             
-            // Immediately update global state to reflect success and fetch documents securely
-            await useUserStore.getState().getMe();
             toast.success(t('agentDashboard.verification.capturedSuccessfully'));
             setIsEditing(false);
             router.push('/dashboard/agent');

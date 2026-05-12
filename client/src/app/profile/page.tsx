@@ -138,7 +138,7 @@ export default function ProfilePage() {
     return (
         <div className="max-w-4xl mx-auto px-4 py-8 md:py-16">
             <div className="mb-10 text-center md:text-left">
-                <h1 className="text-4xl md:text-6xl font-black text-foreground tracking-tight mb-3 bg-clip-text text-transparent bg-gradient-to-r from-[#005a41] to-[#00a878]">
+                <h1 className="text-3xl md:text-4xl font-black text-[#005a41] tracking-tight mb-3">
                     {t('profile.title')}
                 </h1>
                 <p className="text-lg md:text-xl text-muted-foreground font-medium max-w-2xl">{t('profile.subtitle')}</p>
@@ -147,7 +147,7 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {/* Profile Overview Card */}
                 <Card className="md:col-span-1 border-border/50 shadow-xl shadow-black/5 h-fit overflow-hidden rounded-3xl">
-                    <div className="h-24 bg-gradient-to-br from-[#005a41] to-[#008a65]" />
+                    <div className="h-24 bg-[#005a41]" />
                     <CardContent className="pt-0 pb-8 text-center -mt-12">
                         <div
                             className="relative inline-block group cursor-pointer"
@@ -175,7 +175,7 @@ export default function ProfilePage() {
                         <div className="mt-6 px-4">
                             <h2 className="text-2xl font-black text-foreground tracking-tight">{currentUser.name}</h2>
                             <p className="text-xs font-black text-[#005a41] uppercase tracking-[0.2em] mt-2 py-1 px-3 bg-[#005a41]/5 rounded-full inline-block">
-                                {t(`common.${currentUser.role.toLowerCase()}` as any)}
+                                {currentUser.role ? t(`common.${currentUser.role.toLowerCase()}` as any) : ''}
                             </p>
                         </div>
                     </CardContent>

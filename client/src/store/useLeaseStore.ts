@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { Lease } from '@/data/mockData';
-import { createApi, API_ROUTES } from '@/lib/api';
+import { Lease } from '@/types';
+import { api, API_ROUTES } from '@/lib/api';
 
-const api = createApi();
+
 
 interface LeaseState {
     leases: Lease[];

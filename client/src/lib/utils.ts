@@ -64,3 +64,15 @@ export function getImageUrl(image: any) {
     if (!image) return "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80";
     return typeof image === 'string' ? image : image.url;
 }
+
+/**
+ * Reads a cookie value by name from document.cookie.
+ * Returns null if not found or if called server-side.
+ */
+export function getCookie(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift() ?? null;
+    return null;
+}

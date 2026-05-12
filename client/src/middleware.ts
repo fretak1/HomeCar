@@ -44,7 +44,7 @@ export function middleware(request: NextRequest) {
     if (isTryingAddProperty && !['OWNER', 'AGENT'].includes(normalizedRole)) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
-    if (isTryingAiInsights && normalizedRole !== 'ADMIN') {
+    if (isTryingAiInsights && !['ADMIN', 'CUSTOMER', 'OWNER', 'AGENT'].includes(normalizedRole)) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }

@@ -30,7 +30,14 @@ export default function LoginPage() {
         try {
             await login(email, password);
             toast.success(t('auth.login.success'));
-            router.replace('/dashboard');
+            
+            // Get the user from store after login
+            const user = useUserStore.getState().currentUser;
+            if (user?.role === 'CUSTOMER') {
+                router.replace('/');
+            } else {
+                router.replace('/dashboard');
+            }
         } catch (error: any) {
             console.error('Login error:', error);
             if (error.message.includes('not verified')) {

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Modal,
   ScrollView,
@@ -35,6 +34,7 @@ import {
   Star,
   Heart,
 } from 'lucide-react-native';
+import { toast } from '../../src/lib/toast';
 
 const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=1000';
@@ -240,8 +240,9 @@ export default function PropertyDetailScreen() {
     try {
       setIsTogglingFavorite(true);
       await toggleFavorite(propertyId);
+      toast.success(isFavorited ? 'Removed from favorites' : 'Added to favorites');
     } catch (err) {
-      Alert.alert('Error', 'Failed to update favorites.');
+      toast.error('Failed to update favorites.');
     } finally {
       setIsTogglingFavorite(false);
     }
@@ -295,14 +296,13 @@ export default function PropertyDetailScreen() {
       setCustomerApplications((current) => [response.data, ...current]);
       setApplicationMessage('');
       setIsApplyModalVisible(false);
-      Alert.alert('Application submitted', 'Your application was sent successfully.');
+      toast.success('Application submitted successfully!');
     } catch (submitError: any) {
       const message =
         submitError?.response?.data?.error ||
         submitError?.response?.data?.message ||
         'Failed to submit application.';
-
-      Alert.alert('Application failed', message);
+      toast.error(message);
     } finally {
       setIsApplying(false);
     }

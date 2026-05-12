@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { Review } from '@/data/mockData';
-import { createApi, API_ROUTES } from '@/lib/api';
+import { Review } from '@/types';
+import { api, API_ROUTES } from '@/lib/api';
 
-const api = createApi();
+
 
 interface ReviewState {
     reviews: Review[];

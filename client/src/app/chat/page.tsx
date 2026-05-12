@@ -232,7 +232,6 @@ function ChatPageInner() {
                                         <h3 className="text-foreground font-black tracking-tight">{selectedConversation.partnerName}</h3>
                                         <div className="flex items-center gap-1.5">
                                             <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
-                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Online</span>
                                         </div>
                                     </div>
                                 </div>

@@ -114,7 +114,7 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                         <CardHeader className="bg-[#005a41]/5 border-b border-[#005a41]/10">
                             <CardTitle className="text-lg font-bold flex items-center gap-2">
                                 <Phone className="h-5 w-5 text-[#005a41]" />
-                                {t('profile.contactDetails')}
+                                {t('publicProfile.contactDetails')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -124,7 +124,7 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                         <Mail className="h-5 w-5 text-blue-600" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('profile.emailAddress')}</p>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('publicProfile.emailAddress')}</p>
                                         <p className="text-sm font-bold text-foreground">{user.email}</p>
                                     </div>
                                 </div>
@@ -133,8 +133,8 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                         <Phone className="h-5 w-5 text-green-600" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('profile.phoneNumber')}</p>
-                                        <p className="text-sm font-bold text-foreground">{user.phoneNumber || t('profile.notSpecified')}</p>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('publicProfile.phoneNumber')}</p>
+                                        <p className="text-sm font-bold text-foreground">{user.phoneNumber || t('publicProfile.notSpecified')}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4 p-5 bg-muted/5">
@@ -142,7 +142,7 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                         <CalendarDays className="h-5 w-5 text-slate-600" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('profile.memberSince')}</p>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('publicProfile.memberSince')}</p>
                                         <p className="text-sm font-bold text-foreground">{format(new Date(user.createdAt), 'MMM dd, yyyy')}</p>
                                     </div>
                                 </div>
@@ -155,7 +155,7 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                         <CardHeader className="bg-[#005a41]/5 border-b border-[#005a41]/10">
                             <CardTitle className="text-lg font-bold flex items-center gap-2">
                                 <MapPin className="h-5 w-5 text-[#005a41]" />
-                                {t('profile.addressDetails')}
+                                {t('publicProfile.addressDetails')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-0">
@@ -165,8 +165,8 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                         <Shield className="h-5 w-5 text-emerald-600" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('profile.region')}</p>
-                                        <p className="text-sm font-bold text-foreground">{user.location?.region || t('profile.notSpecified')}</p>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('publicProfile.region')}</p>
+                                        <p className="text-sm font-bold text-foreground">{user.location?.region || t('publicProfile.notSpecified')}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4 p-5 hover:bg-muted/10 transition-colors">
@@ -174,8 +174,8 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                         <Building2 className="h-5 w-5 text-orange-600" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('profile.city')}</p>
-                                        <p className="text-sm font-bold text-foreground">{user.location?.city || t('profile.notSpecified')}</p>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('publicProfile.city')}</p>
+                                        <p className="text-sm font-bold text-foreground">{user.location?.city || t('publicProfile.notSpecified')}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4 p-5 hover:bg-muted/10 transition-colors">
@@ -183,8 +183,8 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                         <MapPin className="h-5 w-5 text-purple-600" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('profile.subcity')}</p>
-                                        <p className="text-sm font-bold text-foreground">{user.location?.subcity || t('profile.notSpecified')}</p>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('publicProfile.subcity')}</p>
+                                        <p className="text-sm font-bold text-foreground">{user.location?.subcity || t('publicProfile.notSpecified')}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4 p-5 hover:bg-muted/10 transition-colors">
@@ -192,8 +192,8 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                         <MapPin className="h-5 w-5 text-blue-600" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('profile.villageArea')}</p>
-                                        <p className="text-sm font-bold text-foreground">{user.location?.village || t('profile.notSpecified')}</p>
+                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('publicProfile.villageArea')}</p>
+                                        <p className="text-sm font-bold text-foreground">{user.location?.village || t('publicProfile.notSpecified')}</p>
                                     </div>
                                 </div>
                             </div>
@@ -208,27 +208,27 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                         <CardHeader className="border-b border-border/50 bg-muted/5">
                             <CardTitle className="text-xl font-bold flex items-center gap-2">
                                 <CheckCircle className="h-6 w-6 text-emerald-600" />
-                                {t('profile.userInfoHistory')}
+                                {t('publicProfile.userInfoHistory')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="p-8 space-y-8">
                             {/* Personal Details Row */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('profile.gender')}</p>
-                                    <p className="text-sm font-bold text-foreground capitalize">{user.gender || t('profile.notSpecified')}</p>
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('publicProfile.gender')}</p>
+                                    <p className="text-sm font-bold text-foreground capitalize">{user.gender || t('publicProfile.notSpecified')}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('profile.marriageStatus')}</p>
-                                    <p className="text-sm font-bold text-foreground capitalize">{user.marriageStatus || t('profile.notSpecified')}</p>
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('publicProfile.marriageStatus')}</p>
+                                    <p className="text-sm font-bold text-foreground capitalize">{user.marriageStatus || t('publicProfile.notSpecified')}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('profile.kids')}</p>
-                                    <p className="text-sm font-bold text-foreground">{user.kids ?? t('profile.notSpecified')}</p>
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('publicProfile.kids')}</p>
+                                    <p className="text-sm font-bold text-foreground">{user.kids ?? t('publicProfile.notSpecified')}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('profile.employment')}</p>
-                                    <p className="text-sm font-bold text-foreground capitalize">{user.employmentStatus || t('profile.notSpecified')}</p>
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('publicProfile.employment')}</p>
+                                    <p className="text-sm font-bold text-foreground capitalize">{user.employmentStatus || t('publicProfile.notSpecified')}</p>
                                 </div>
                             </div>
 
@@ -238,7 +238,7 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                             <div className="space-y-4">
                                 <h4 className="text-sm font-black uppercase tracking-widest text-[#005a41] flex items-center gap-2">
                                     <User className="h-4 w-4" />
-                                    {t('profile.about')} {displayRole}
+                                    {t('publicProfile.about')} {displayRole}
                                 </h4>
                                 <div className="p-6 bg-[#005a41]/5 border border-[#005a41]/10 rounded-2xl">
                                     <p className="text-base text-foreground leading-relaxed">
@@ -255,7 +255,7 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                     <div className="space-y-4">
                                         <h4 className="text-sm font-black uppercase tracking-widest text-[#005a41] flex items-center gap-2">
                                             <CalendarDays className="h-4 w-4" />
-                                            {user.role === 'AGENT' ? t('profile.leasesInitiatedManaged') : t('profile.activePastLeases')}
+                                            {user.role === 'AGENT' ? t('publicProfile.leasesInitiatedManaged') : t('publicProfile.activePastLeases')}
                                         </h4>
                                         {leasesLoading ? (
                                             <div className="h-20 animate-pulse bg-muted/50 rounded-xl" />
@@ -269,9 +269,9 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                                             </div>
                                                             <div>
                                                                 <div className="flex items-center gap-2">
-                                                                    <p className="font-bold text-sm text-foreground">{lease.property?.title || t('profile.propertyLease')}</p>
+                                                                    <p className="font-bold text-sm text-foreground">{lease.property?.title || t('publicProfile.propertyLease')}</p>
                                                                     {user.role === 'AGENT' && lease.property?.listedById === user.id && lease.ownerId !== user.id && (
-                                                                        <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[8px] h-4 font-black">{t('profile.initiated')}</Badge>
+                                                                        <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[8px] h-4 font-black">{t('publicProfile.initiated')}</Badge>
                                                                     )}
                                                                 </div>
                                                                 <p className="text-[10px] text-muted-foreground uppercase font-black">{format(new Date(lease.startDate), 'MMM yyyy')} - {format(new Date(lease.endDate), 'MMM yyyy')}</p>
@@ -283,7 +283,7 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                             </div>
                                         ) : (
                                             <div className="p-10 text-center border-2 border-dashed border-border rounded-2xl bg-muted/5">
-                                                <p className="text-xs text-muted-foreground font-medium">{t('profile.noRecordedHistory')}</p>
+                                                <p className="text-xs text-muted-foreground font-medium">{t('publicProfile.noRecordedHistory')}</p>
                                             </div>
                                         )}
                                     </div>
@@ -293,7 +293,7 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                     <div className="space-y-4">
                                         <h4 className="text-sm font-black uppercase tracking-widest text-[#005a41] flex items-center gap-2">
                                             <Building2 className="h-4 w-4" />
-                                            {user.role === 'OWNER' ? t('profile.propertiesOwned') : t('profile.managedListings')}
+                                            {user.role === 'OWNER' ? t('publicProfile.propertiesOwned') : t('publicProfile.managedListings')}
                                         </h4>
                                         {propertiesLoading ? (
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -308,7 +308,7 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                                             </div>
                                         ) : (
                                             <div className="p-10 text-center border-2 border-dashed border-border rounded-2xl bg-muted/5">
-                                                <p className="text-xs text-muted-foreground font-medium">{t('profile.noPropertyRecords')}</p>
+                                                <p className="text-xs text-muted-foreground font-medium">{t('publicProfile.noPropertyRecords')}</p>
                                             </div>
                                         )}
                                     </div>

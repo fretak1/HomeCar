@@ -21,8 +21,8 @@ export function LanguageSwitcher({ className, compact = false }: LanguageSwitche
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 rounded-xl border border-border bg-white/90 p-1 shadow-sm",
-        compact && "rounded-full",
+        "inline-flex items-center gap-1 rounded-lg border border-border bg-white/90 p-1 shadow-sm",
+        compact && "rounded-lg",
         className
       )}
       aria-label={t("common.language")}

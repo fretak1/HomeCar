@@ -44,6 +44,8 @@ export function Navbar() {
   const router = useRouter();
   const { t } = useTranslation();
   const { currentUser, logout, isLoading: userLoading } = useUserStore();
+  // Only show loading skeleton on the very first load (no user data yet)
+  const showLoadingSkeleton = userLoading && !currentUser;
   const { notifications, unreadCount, fetchNotifications, markAllAsRead, connectSocket, disconnectSocket } = useNotificationStore();
   const [displayNotifications, setDisplayNotifications] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -82,7 +84,7 @@ export function Navbar() {
   };
 
   const getDashboardLabel = () => {
-    if (!currentUser) return t('nav.dashboard');
+    if (!currentUser || !currentUser.role) return t('nav.dashboard');
     const role = currentUser.role.toLowerCase();
     if (role === 'customer') return t('nav.customerDashboard');
     if (role === 'owner') return t('nav.ownerDashboard');
@@ -107,7 +109,7 @@ export function Navbar() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center">
-              {userLoading ? (
+              {showLoadingSkeleton ? (
                 <Skeleton className="h-10 w-28 rounded-lg" />
               ) : (
                 <Logo className="h-10 w-auto" priority />
@@ -120,10 +122,10 @@ export function Navbar() {
               { name: t('nav.home'), href: '/' },
               { name: t('nav.searchOnMap'), href: '/search' },
               { name: t('nav.properties'), href: '/listings' },
-              { name: getDashboardLabel(), href: currentUser ? `/dashboard/${currentUser.role.toLowerCase()}` : '/dashboard' },
+              { name: getDashboardLabel(), href: currentUser && currentUser.role ? `/dashboard/${currentUser.role.toLowerCase()}` : '/dashboard' },
             ].filter((item) => {
               // Hide all links while auth state is loading to prevent role-based glitch
-              if (userLoading) return false;
+              if (showLoadingSkeleton) return false;
 
               // Hide Dashboard link if not logged in
               if (item.href === '/dashboard' && !currentUser) return false;
@@ -150,7 +152,7 @@ export function Navbar() {
 
           <div className="flex items-center space-x-3">
             <div className="hidden md:block">
-              {userLoading ? (
+              {showLoadingSkeleton ? (
                 <Skeleton className="h-9 w-24 rounded-full" />
               ) : (
                 <LanguageSwitcher compact />
@@ -158,7 +160,7 @@ export function Navbar() {
             </div>
 
 
-            {userLoading ? (
+            {showLoadingSkeleton ? (
               <div className="flex items-center space-x-3">
                 <Skeleton className="h-10 w-10 rounded-full" />
                 <Skeleton className="h-8 w-24 rounded-lg hidden md:block" />
@@ -167,7 +169,7 @@ export function Navbar() {
               <div className="flex items-center space-x-3">
                 {currentUser && ['OWNER', 'AGENT', 'CUSTOMER'].includes(currentUser.role) && (
                   <Link href="/chat">
-                    <Button variant="ghost" className="relative h-9 sm:h-10 w-fit px-2 sm:px-3 text-muted-foreground hover:bg-primary/5 rounded-xl transition-all active:scale-95 group flex items-center gap-2">
+                    <Button variant="ghost" className="relative h-9 sm:h-10 w-fit px-2 sm:px-3 text-muted-foreground hover:bg-primary/5 rounded-lg transition-all active:scale-95 group flex items-center gap-2">
                       <MessageSquare className="h-5 w-5 group-hover:text-primary transition-colors" />
                       <span className="text-[13px] font-bold group-hover:text-primary hidden sm:block">{t('nav.messages')}</span>
                     </Button>
@@ -224,7 +226,7 @@ export function Navbar() {
                       )}
                     </div>
                     <div className="p-2 border-t border-border bg-gray-50/50">
-                      <Button variant="ghost" size="sm" className="w-full text-[11px] font-bold text-muted-foreground" onClick={() => router.push(currentUser ? `/dashboard/${currentUser.role.toLowerCase()}` : '/dashboard')}>
+                      <Button variant="ghost" size="sm" className="w-full text-[11px] font-bold text-muted-foreground" onClick={() => router.push(currentUser && currentUser.role ? `/dashboard/${currentUser.role.toLowerCase()}` : '/dashboard')}>
                         {t('nav.seeAllInDashboard')}
                       </Button>
                     </div>
@@ -233,7 +235,7 @@ export function Navbar() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-10 w-fit gap-3 px-2 hover:bg-primary/5 rounded-xl transition-all active:scale-95 group">
+                    <Button variant="ghost" className="relative h-10 w-fit gap-3 px-2 hover:bg-primary/5 rounded-lg transition-all active:scale-95 group">
                       <ChevronDown className="h-4 w-4 text-muted-foreground/50 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                       <Avatar className="h-8 w-8 border-2 border-primary/20 shadow-sm ring-2 ring-white group-hover:border-primary/40 transition-colors">
                         <AvatarImage src={currentUser.profileImage} alt={currentUser.name} />
@@ -287,12 +289,12 @@ export function Navbar() {
             ) : (
               <div className="hidden md:flex items-center space-x-3">
                 <Link href="/login">
-                  <Button variant="outline" className="text-[13px] font-bold text-foreground hover:bg-[#14b8a6] hover:text-white px-6 rounded-xl transition-all active:scale-95 border-gray-200 hover:border-[#14b8a6]">
+                  <Button variant="outline" className="text-[13px] font-bold text-foreground hover:bg-[#14b8a6] hover:text-white px-6 rounded-lg transition-all active:scale-95 border-gray-200 hover:border-[#14b8a6]">
                     {t('nav.signIn')}
                   </Button>
                 </Link>
                 <Link href="/signup">
-                  <Button className="bg-[#005a41] hover:bg-[#004a35] text-white text-[13px] font-bold px-6 rounded-xl transition-all active:scale-95">
+                  <Button className="bg-[#005a41] hover:bg-[#004a35] text-white text-[13px] font-bold px-6 rounded-lg transition-all active:scale-95">
                     {t('nav.signUp')}
                   </Button>
                 </Link>
@@ -321,12 +323,12 @@ export function Navbar() {
                       { name: t('nav.home'), href: '/', icon: <User className="h-4 w-4" /> },
                       { name: t('nav.searchOnMap'), href: '/search', icon: <Search className="h-4 w-4" /> },
                       { name: t('nav.properties'), href: '/listings', icon: <FileText className="h-4 w-4" /> },
-                      { name: getDashboardLabel(), href: currentUser ? `/dashboard/${currentUser.role.toLowerCase()}` : '/dashboard', icon: <Wrench className="h-4 w-4" /> },
+                      { name: getDashboardLabel(), href: currentUser && currentUser.role ? `/dashboard/${currentUser.role.toLowerCase()}` : '/dashboard', icon: <Wrench className="h-4 w-4" /> },
                     ].filter((item) => {
-                      if (userLoading) return false;
+                      if (showLoadingSkeleton) return false;
                       if (item.href === '/dashboard' && !currentUser) return false;
-                      const isRestrictedRole = currentUser && ['ADMIN', 'OWNER', 'AGENT'].includes(currentUser.role);
-                      if (isRestrictedRole && item.href !== '/dashboard' && item.href !== `/dashboard/${currentUser.role.toLowerCase()}`) {
+                      const isRestrictedRole = currentUser && currentUser.role && ['ADMIN', 'OWNER', 'AGENT'].includes(currentUser.role);
+                      if (isRestrictedRole && currentUser && currentUser.role && item.href !== '/dashboard' && item.href !== `/dashboard/${currentUser.role.toLowerCase()}`) {
                         return false;
                       }
                       return true;

@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { SearchBar } from '@/components/SearchBar';
 import { PropertyCard } from '@/components/PropertyCard';
-import { CarCard } from '@/components/CarCard';
+
 import { AIRecommendations } from '@/components/AIRecommendations';
 import { usePropertyStore } from '@/store/usePropertyStore';
+import { useUserStore } from '@/store/useUserStore';
 import {
     Home as HomeIcon,
     Car as CarIcon,
@@ -41,24 +43,26 @@ const partners = [
 
 export default function Home() {
     const { t } = useTranslation();
+    const router = useRouter();
     const { properties, fetchProperties, isLoading } = usePropertyStore();
+    const { currentUser } = useUserStore();
     const [homesApi, setHomesApi] = useState<CarouselApi>();
     const [carsApi, setCarsApi] = useState<CarouselApi>();
 
-    // Immediate redirection for management roles to avoid flash
-    if (typeof window !== 'undefined') {
-        const getCookie = (name: string) => {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop()?.split(';').shift();
-            return null;
-        };
-        const userRole = getCookie('user-role')?.toUpperCase();
-        if (userRole && ['ADMIN', 'OWNER', 'AGENT'].includes(userRole)) {
-            window.location.href = '/dashboard';
-            return <div className="min-h-screen bg-background" />;
+    const handleListProperty = (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (!currentUser) {
+            router.push('/login');
+            return;
         }
-    }
+        const role = currentUser.role?.toUpperCase();
+        if (role === 'OWNER' || role === 'AGENT') {
+            router.push('/dashboard/add-property');
+        } else {
+            router.push('/login');
+        }
+    };
+
 
     useEffect(() => {
         fetchProperties({ limit: 200 });
@@ -260,7 +264,7 @@ export default function Home() {
                                 <CarouselContent className="-ml-6">
                                     {featuredCars.map((car) => (
                                         <CarouselItem key={car.id} className="pl-6 md:basis-1/2 lg:basis-1/3">
-                                            <CarCard car={car} />
+                                            <PropertyCard property={car} />
                                         </CarouselItem>
                                     ))}
                                 </CarouselContent>
@@ -268,7 +272,7 @@ export default function Home() {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {featuredCars.map((car) => (
-                                    <CarCard key={car.id} car={car} />
+                                    <PropertyCard key={car.id} property={car} />
                                 ))}
                             </div>
                         )
@@ -303,11 +307,9 @@ export default function Home() {
                             {t('home.ctaSubtitle')}
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <Link href="/dashboard/add-property">
-                                <Button size="lg" variant="secondary" className="bg-white hover:bg-white/90 text-primary">
-                                    {t('home.listYourProperty')}
-                                </Button>
-                            </Link>
+                            <Button size="lg" variant="secondary" className="bg-white hover:bg-white/90 text-primary" onClick={handleListProperty}>
+                                {t('home.listYourProperty')}
+                            </Button>
                             <Link href="/listings">
                                 <Button size="lg" variant="outline" className="border-white text-primary hover:bg-white/10">
                                     {t('home.browseListings')}

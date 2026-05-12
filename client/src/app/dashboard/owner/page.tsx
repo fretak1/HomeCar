@@ -341,7 +341,7 @@ export default function OwnerDashboardPage() {
                                                                     <div className="flex flex-wrap items-center gap-3 mt-3">
                                                                         <div className="flex items-center text-[10px] font-black text-muted-foreground uppercase tracking-widest bg-muted/50 px-2 py-1 rounded-md">
                                                                             <Calendar className="h-3 w-3 mr-1.5 opacity-50" />
-                                                                            {t('common.started')}: {format(new Date(lease.startDate), 'MMM dd')}
+                                                                            {format(new Date(lease.startDate), 'MMM dd, yyyy')} – {format(new Date(lease.endDate), 'MMM dd, yyyy')}
                                                                         </div>
                                                                         <Badge className={cn(
                                                                             "border-none px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-lg",
@@ -389,12 +389,7 @@ export default function OwnerDashboardPage() {
                                                                             {lease.status === 'CANCELLATION_PENDING' ? t('ownerDashboard.confirmCancellation') : t('ownerDashboard.cancelLease')}
                                                                         </Button>
                                                                     )}
-                                                                    {lease.status === 'PENDING' && !lease.ownerAccepted && (
-                                                                        <Button size="sm" onClick={() => acceptLease(lease.id, 'owner')} className="flex-1 sm:flex-none h-10 px-6 rounded-xl bg-[#005a41] hover:bg-[#004a35] text-white font-black text-[10px] uppercase tracking-widest transition-all shadow-lg shadow-[#005a41]/20">
-                                                                            <CheckCircle className="h-4 w-4 mr-2" />
-                                                                            {t('ownerDashboard.acceptLease')}
-                                                                        </Button>
-                                                                    )}
+                                                                    
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1140,11 +1135,9 @@ export default function OwnerDashboardPage() {
             <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent className="rounded-2xl border-border/50 shadow-xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="text-xl font-bold">{t('common.areYouSure')}</AlertDialogTitle>
+                        <AlertDialogTitle className="text-xl font-bold">{t('agentDashboard.deleteListing')}</AlertDialogTitle>
                         <AlertDialogDescription className="text-muted-foreground">
-                            {t('ownerDashboard.deleteWarning')}
-                            <span className="font-semibold text-foreground"> "{itemToDelete?.title}" </span>
-                            {t('ownerDashboard.deleteWarningSuffix')}
+                            {t('agentDashboard.deleteWarning').replace('{title}', itemToDelete?.title || '')}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="gap-2 sm:gap-0">
@@ -1159,7 +1152,7 @@ export default function OwnerDashboardPage() {
                             }}
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl"
                         >
-                            {t('ownerDashboard.deleteListing')}
+                            {t('common.delete' as any) || 'Delete'}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

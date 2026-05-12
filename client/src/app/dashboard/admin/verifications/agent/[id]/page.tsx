@@ -25,9 +25,9 @@ import { cn } from '@/lib/utils';
 import { Document, Page, pdfjs } from 'react-pdf';
 
 import { useUserStore } from '@/store/useUserStore';
-import { API_BASE_URL, createApi } from '@/lib/api';
+import { API_BASE_URL, api } from '@/lib/api';
 
-const api = createApi();
+
 
 // Configure PDF.js worker using a reliable CDN
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;

@@ -1,8 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect } from 'react';
-import { createApi, API_ROUTES } from '@/lib/api';
-const api = createApi();
+import { api, API_ROUTES } from '@/lib/api';
 import { cn, formatLocation, getListingMainImage } from "@/lib/utils";
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
@@ -41,9 +40,7 @@ import {
     DialogTrigger
 } from "@/components/ui/dialog";
 import DashboardTabs from '@/components/DashboardTabs';
-import {
-    // mockTransactions,
-} from '@/data/mockData';
+
 import { usePropertyStore } from '@/store/usePropertyStore';
 import { useUserStore } from '@/store/useUserStore';
 import { useTransactionStore } from '@/store/useTransactionStore';
@@ -83,6 +80,7 @@ export default function CustomerDashboardPage() {
     const router = useRouter();
     const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('applications');
+    const [isTabInitiated, setIsTabInitiated] = useState(false);
     const [hasStartedInitialLoad, setHasStartedInitialLoad] = useState(false);
     const [hasCompletedInitialLoad, setHasCompletedInitialLoad] = useState(false);
     const [isNewRequestOpen, setIsNewRequestOpen] = useState(false);
@@ -167,7 +165,17 @@ export default function CustomerDashboardPage() {
         if (tab && ['applications', 'maintenance', 'leases', 'transactions', 'favorites'].includes(tab)) {
             setActiveTab(tab);
         }
+        setIsTabInitiated(true);
     }, [searchParams]);
+
+    // Update URL when tab changes
+    useEffect(() => {
+        if (isTabInitiated) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('tab', activeTab);
+            router.replace(url.pathname + url.search, { scroll: false });
+        }
+    }, [activeTab, isTabInitiated, router]);
 
     // Re-fetch applications whenever the tab is switched to 'applications' or 'maintenance'
     useEffect(() => {
@@ -506,18 +514,18 @@ export default function CustomerDashboardPage() {
                                                         </div>
 
                                                         {/* Bottom Right Actions */}
-                                                        <div className="absolute bottom-4 right-4 flex gap-2">
+                                                        <div className="flex gap-2 px-6 pb-4 xl:pb-0 xl:px-0 xl:absolute xl:bottom-4 xl:right-4">
                                                             <Button
                                                                 size="sm"
                                                                 variant="outline"
-                                                                className="border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs h-9 px-4 rounded-lg bg-white/80 backdrop-blur-sm"
+                                                                className="border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground font-bold text-xs h-9 px-4 rounded-lg bg-white/80 backdrop-blur-sm transition-all"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     router.push(`/profile/${app.managerId}`);
                                                                 }}
                                                             >
                                                                 <User className="h-3.5 w-3.5 mr-2" />
-                                                                {t('customerDashboard.seeProfile')}
+                                                                {t('common.seeProfile')}
                                                             </Button>
                                                             {app.status === 'accepted' && (
                                                                 <Button
@@ -601,7 +609,7 @@ export default function CustomerDashboardPage() {
                                                                         <div className="flex flex-wrap items-center gap-3 text-xs md:text-sm">
                                                                             <div className="flex items-center text-muted-foreground bg-muted/30 px-2 py-1 rounded-md">
                                                                                 <Calendar className="h-3.5 w-3.5 mr-1.5" />
-                                                                                <span className="font-medium">{format(new Date(lease.startDate), 'MMM dd, yyyy')}</span>
+                                                                                <span className="font-medium">{format(new Date(lease.startDate), 'MMM dd, yyyy')} – {format(new Date(lease.endDate), 'MMM dd, yyyy')}</span>
                                                                             </div>
                                                                             <Badge className={cn(
                                                                                 "border-none px-2.5 py-1 text-[10px] font-black uppercase tracking-widest",
@@ -760,7 +768,7 @@ export default function CustomerDashboardPage() {
                                                                                                         {isPaid ? (
                                                                                                             <div className="flex items-center text-green-600 font-bold text-xs bg-green-50 py-2.5 rounded-xl border border-green-100 w-full md:w-auto justify-center px-4">
                                                                                                                 <CheckCircle className="h-4 w-4 mr-2" />
-                                                                                                                {t('customerDashboard.collected')}
+                                                                                                                Paid
                                                                                                             </div>
                                                                                                         ) : isPending ? (
                                                                                                             <div className="flex items-center text-amber-600 font-bold text-xs bg-amber-50 py-2.5 rounded-xl border border-amber-100 w-full md:w-auto justify-center px-4">

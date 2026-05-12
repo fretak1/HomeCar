@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { createApi, API_ROUTES } from '@/lib/api';
+import { api, API_ROUTES } from '@/lib/api';
 
-const api = createApi();
+
 
 export type MaintenanceCategory = 'PLUMBING' | 'ELECTRICAL' | 'INTERNET' | 'DAMAGE' | 'CLEANING' | 'ENGINE' | 'BATTERY' | 'TIRE' | 'OTHER';
 

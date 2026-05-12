@@ -35,7 +35,7 @@ export default function ChatThreadScreen() {
     activePartnerName ||
     conversation?.partnerName ||
     messages.find(m => m.senderId === id)?.sender?.name ||
-    'Chat Partner';
+    '';
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -47,10 +47,12 @@ export default function ChatThreadScreen() {
             <ArrowLeft size={24} color="#1F2937" />
           </TouchableOpacity>
           <View className="w-10 h-10 bg-primary/10 rounded-xl items-center justify-center">
-            <Text className="text-primary font-black">{partnerName[0]}</Text>
+            <Text className="text-primary font-black">{partnerName ? partnerName[0] : '?'}</Text>
           </View>
           <View className="ml-3">
-            <Text className="text-foreground font-black text-lg">{partnerName}</Text>
+            <Text className="text-foreground font-black text-lg">
+              {partnerName || (isLoadingMessages ? 'Loading...' : 'Unknown')}
+            </Text>
           </View>
         </View>
         

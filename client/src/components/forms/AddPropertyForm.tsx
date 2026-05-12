@@ -58,7 +58,7 @@ import {
 } from 'lucide-react';
 import { CameraCapture } from '@/components/CameraCapture';
 import { MapPicker } from '@/components/MapPicker';
-import { cn } from '@/components/ui/utils';
+import { cn } from '@/lib/utils';
 import { ethiopiaLocations } from '@/lib/ethiopiaLocations';
 
 interface AddItemFormProps {
@@ -375,11 +375,11 @@ export function AddPropertyForm({ onSuccess, onCancel, initialData }: AddItemFor
                 <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/20 border border-border/50 rounded-xl max-w-md mx-auto">
                     <TabsTrigger value="Home" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
                         <Home className="h-4 w-4 mr-2" />
-                        Property
+                        Home
                     </TabsTrigger>
                     <TabsTrigger value="Car" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm">
                         <Car className="h-4 w-4 mr-2" />
-                        Vehicle
+                        Car
                     </TabsTrigger>
                 </TabsList>
             </Tabs>

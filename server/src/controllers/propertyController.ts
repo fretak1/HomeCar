@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../lib/prisma.js';
 import axios from 'axios';
 import cloudinary from '../config/cloudinary.js';
+import { sendEmail } from '../services/emailService.js';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -681,6 +682,29 @@ export const verifyProperty = async (req: any, res: Response) => {
                     documentId: doc?.id
                 }
             });
+        }
+
+        // --- Send Email Notification ---
+        if (currentProperty && currentProperty.owner) {
+            const subject = isVerified 
+                ? `Your Property "${currentProperty.title}" is Verified!` 
+                : `Property Verification Rejected: ${currentProperty.title}`;
+            
+            const html = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                    <h2 style="color: ${isVerified ? '#10b981' : '#ef4444'};">${subject}</h2>
+                    <p>Hello ${currentProperty.owner.name},</p>
+                    <p>${isVerified 
+                        ? 'Congratulations! Your property ownership document has been verified by our administration team. Your property is now publicly listed as verified on HomeCar.' 
+                        : `Unfortunately, the verification for your property "${currentProperty.title}" was rejected. <br><br><strong>Reason:</strong> ${rejectionReason}`
+                    }</p>
+                    <p style="margin-top: 20px;">Best regards,<br/>HomeCar Team</p>
+                </div>
+            `;
+            
+            sendEmail(currentProperty.owner.email, subject, html).catch(err => 
+                console.error('Failed to send property verification email:', err)
+            );
         }
 
         res.json(property);

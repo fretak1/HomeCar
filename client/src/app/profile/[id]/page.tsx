@@ -3,12 +3,12 @@
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserProfileDetail } from '@/components/profile/UserProfileDetail';
-import { createApi, API_ROUTES } from '@/lib/api';
+import { api, API_ROUTES } from '@/lib/api';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useChatStore } from '@/store/useChatStore';
 
-const api = createApi();
+
 
 import { ProfileSkeleton } from '@/components/ui/dashboard-skeletons';
 import { useTranslation } from '@/contexts/LanguageContext';

@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getDashboardRoute } from '../../src/utils/routes';
 import { authClient } from '../../src/lib/auth-client';
 import GoogleLogo from '../../src/components/GoogleLogo';
+import { toast } from '../../src/lib/toast';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -21,10 +22,15 @@ export default function LoginScreen() {
     if (!email || !password) return;
     try {
       await login(email, password);
+      toast.success('Login successful!');
       const nextUser = useAuthStore.getState().user;
       router.replace(getDashboardRoute(nextUser?.role));
-    } catch (err) {
-      // Error is handled by store
+    } catch (err: any) {
+      if (err?.message?.includes('not verified')) {
+        toast.error('Email not verified. Please check your inbox for the verification link.');
+      } else {
+        toast.error(err?.message || 'Login failed. Please check your credentials.');
+      }
     }
   };
 

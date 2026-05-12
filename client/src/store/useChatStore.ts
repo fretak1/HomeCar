@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { createApi, API_ROUTES } from '@/lib/api';
+import { api, API_ROUTES } from '@/lib/api';
 import { io, Socket } from 'socket.io-client';
 
-const api = createApi();
+
 
 export interface ChatMessage {
     id: string;

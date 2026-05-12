@@ -24,9 +24,9 @@ import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
 
 import { usePropertyStore } from '@/store/usePropertyStore';
-import { API_BASE_URL, createApi } from '@/lib/api';
+import { API_BASE_URL, api } from '@/lib/api';
 
-const api = createApi();
+
 import { useEffect, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 

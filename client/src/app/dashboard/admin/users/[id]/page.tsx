@@ -3,10 +3,10 @@
 import {  useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { UserProfileDetail } from '@/components/profile/UserProfileDetail';
-import { createApi, API_ROUTES } from '@/lib/api';
+import { api, API_ROUTES } from '@/lib/api';
 import { useChatStore } from '@/store/useChatStore';
 
-const api = createApi();
+
 
 export default function UserProfilePage() {
     const params = useParams();

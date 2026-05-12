@@ -628,11 +628,7 @@ export default function HomeScreen() {
         <View
           style={{ paddingHorizontal: horizontalPadding, paddingVertical: compact ? 48 : 64 }}
         >
-          <GradientSection
-            gradientId="ctaGradient"
-            colors={['#065F46', '#1E40AF']}
-            rounded={32}
-          >
+          <View style={{ backgroundColor: '#0E6B53', borderRadius: 32, overflow: 'hidden' }}>
             <View className="px-6 py-12">
               <Text
                 className="text-white text-center font-black tracking-tight"
@@ -647,7 +643,18 @@ export default function HomeScreen() {
               <View className="mt-8">
                 <TouchableOpacity
                   className="h-14 rounded-2xl bg-white items-center justify-center"
-                  onPress={() => router.push('/add-listing')}
+                  onPress={() => {
+                    if (!user) {
+                      router.push('/login');
+                      return;
+                    }
+                    const role = String(user.role || '').toUpperCase();
+                    if (role === 'OWNER' || role === 'AGENT') {
+                      router.push('/add-listing');
+                    } else {
+                      router.push('/login');
+                    }
+                  }}
                 >
                   <Text className="text-primary font-black text-base">
                     List Your Property
@@ -664,7 +671,7 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          </GradientSection>
+          </View>
         </View>
       </ScrollView>
 

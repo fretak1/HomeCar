@@ -267,11 +267,11 @@ export default function LeaseScreen() {
     const end = new Date(lease.endDate);
     const now = new Date();
     const totalDays = Math.max(1, differenceInDays(end, start));
-    const elapsedDays = Math.max(0, differenceInDays(now, start));
-    const progress = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
+    const elapsedDays = Math.max(0, Math.min(totalDays, differenceInDays(now, start)));
     const remainingDays = Math.max(0, totalDays - elapsedDays);
+    const progress = Math.min(100, Math.max(0, (elapsedDays / totalDays) * 100));
     const remainingMonths = Math.max(0, Math.floor(remainingDays / 30));
-    const termMonths = Math.max(1, Math.ceil(totalDays / 30));
+    const termMonths = Math.max(1, Math.floor(totalDays / 30));
 
     return {
       start,
@@ -279,6 +279,7 @@ export default function LeaseScreen() {
       now,
       progress,
       elapsedDays,
+      remainingDays,
       remainingMonths,
       totalDays,
       termMonths,
@@ -290,17 +291,21 @@ export default function LeaseScreen() {
       return [];
     }
 
+    const start = new Date(lease.startDate);
+    const end = new Date(lease.endDate);
+    // Match web exactly: differenceInDays without any clamping
+    const rawTotalDays = differenceInDays(end, start);
     const totalPeriods = lease.recurringAmount
-      ? Math.max(1, Math.floor(lifecycle.totalDays / 30))
+      ? Math.max(1, Math.floor(rawTotalDays / 30))
       : 1;
 
     return Array.from({ length: totalPeriods }).map((_, index) => {
       const periodStart = lease.recurringAmount
-        ? addDays(lifecycle.start, index * 30)
-        : lifecycle.start;
+        ? addDays(start, index * 30)
+        : start;
       const periodEnd = lease.recurringAmount
         ? addDays(periodStart, 30)
-        : lifecycle.end;
+        : end;
       const monthLabel = format(periodStart, 'MMM-yyyy');
       const transaction = transactions.find((entry: any) => {
         const metadata = entry?.metadata || entry?.meta || {};
@@ -508,36 +513,12 @@ export default function LeaseScreen() {
           {(leaseStatus === 'ACTIVE' ||
             (leaseStatus === 'CANCELLATION_PENDING' &&
               ((normalizedRole === 'CUSTOMER' && !lease.customerCancelled) ||
-               (normalizedRole !== 'CUSTOMER' && !lease.ownerCancelled)))) ? (
-            <TouchableOpacity
-              onPress={handleCancelLease}
-              disabled={isSubmittingCancel}
-              className={`mt-4 self-start border rounded-[16px] px-4 py-3 ${
-                leaseStatus === 'CANCELLATION_PENDING'
-                  ? 'border-[#FCD34D] bg-[#FFF7ED]'
-                  : 'border-[#FECACA] bg-[#FEF2F2]'
-              }`}
-            >
-              <Text
-                className={`font-black text-[11px] uppercase tracking-[1px] ${
-                  leaseStatus === 'CANCELLATION_PENDING'
-                    ? 'text-[#C2410C]'
-                    : 'text-[#BE123C]'
-                }`}
-              >
-                {isSubmittingCancel
-                  ? 'Updating...'
-                  : leaseStatus === 'CANCELLATION_PENDING'
-                  ? 'Confirm Cancellation'
-                  : 'Cancel Lease'}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
+               (normalizedRole !== 'CUSTOMER' && !lease.ownerCancelled)))) ? null : null}
         </View>
 
         <View className="px-4 pt-5" style={{ gap: 18 }}>
           <View
-            className="bg-white border border-border rounded-[32px] overflow-hidden"
+            className="bg-white border border-border rounded-[16px] overflow-hidden"
             style={CARD_SHADOW}
           >
             <View className="relative">
@@ -647,6 +628,9 @@ export default function LeaseScreen() {
                 <Text className="text-primary font-black mt-1">
                   {lifecycle.remainingMonths} month{lifecycle.remainingMonths === 1 ? '' : 's'}
                 </Text>
+                <Text className="text-muted-foreground text-[11px] mt-0.5">
+                  {lifecycle.remainingDays} days
+                </Text>
               </View>
 
               <View className="flex-1 items-end">
@@ -679,15 +663,26 @@ export default function LeaseScreen() {
             >
               <View style={{ gap: 14 }}>
                 {paymentPeriods.map((period) => {
-                  const settlementDate = period.isPaid && period.transaction?.updatedAt
-                    ? format(new Date(period.transaction.updatedAt), 'MMM dd, yyyy')
-                    : '-';
+                  // Use createdAt (when payment was made) not updatedAt
+                  const settlementDate = period.isPaid && period.transaction?.createdAt
+                    ? format(new Date(period.transaction.createdAt), 'MMM dd, yyyy')
+                    : '—';
+
                   const canPay =
                     (period.isCurrent || period.isPast) &&
                     !period.isPaid &&
                     !period.isPending &&
                     leaseStatus === 'ACTIVE' &&
-                    String(user?.role || '').toUpperCase() === 'CUSTOMER';
+                    normalizedRole === 'CUSTOMER';
+
+                  // Status matches web exactly
+                  const statusLabel = period.isPaid
+                    ? 'RECEIVED'
+                    : period.isPast
+                    ? 'OVERDUE'
+                    : period.isCurrent
+                    ? 'UPCOMING'
+                    : 'PENDING';
 
                   return (
                     <View
@@ -699,26 +694,11 @@ export default function LeaseScreen() {
                       <View className="flex-row items-start justify-between">
                         <View className="flex-1 pr-3">
                           <Text className="text-[16px] leading-6 font-black text-foreground">
-                            {format(period.periodStart, 'MMM dd')} -{' '}
+                            {format(period.periodStart, 'MMM dd')} –{' '}
                             {format(period.periodEnd, 'MMM dd, yyyy')}
                           </Text>
-                          
                         </View>
-
-                        <StatusBadge
-                          value={
-                            period.isPaid
-                              ? 'COLLECTED'
-                              : period.isPending
-                              ? 'PENDING'
-                              : period.isCurrent
-                              ? 'SETTLING'
-                              : period.isPast
-                              ? 'OVERDUE'
-                              : 'UPCOMING'
-                          }
-                          small
-                        />
+                        <StatusBadge value={statusLabel} small />
                       </View>
 
                       <View className="mt-4 flex-row flex-wrap" style={{ gap: 14 }}>
@@ -740,6 +720,18 @@ export default function LeaseScreen() {
                           </Text>
                         </View>
                       </View>
+
+                      {/* Pay button for customer */}
+                      {canPay && (
+                        <TouchableOpacity
+                          onPress={() => handleOpenPayment(period.periodStart)}
+                          className="mt-4 bg-primary rounded-xl h-11 items-center justify-center"
+                        >
+                          <Text className="text-white font-black text-sm">Pay Now</Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {/* View Receipt removed */}
                     </View>
                   );
                 })}
@@ -748,21 +740,20 @@ export default function LeaseScreen() {
           )}
 
           {normalizedRole === 'AGENT' ? (
-            <View style={{ gap: 18 }}>
-              <ParticipantCard
-                role="Property Owner"
-                name={ownerName}
-                type="Certified Property Owner"
-                supportLabel="Direct contact for payouts"
-              />
-              <ParticipantCard
-                role="Tenant"
-                name={tenantName}
-                type="Verified HomeCar Tenant"
-                supportLabel="Responsible for occupancy"
-                onMessage={tenantId ? () => router.push(`/chat/${tenantId}`) : undefined}
-                onViewProfile={tenantId ? () => router.push(`/profile/${tenantId}`) : undefined}
-              />
+            <View className="bg-white border border-border rounded-2xl overflow-hidden" style={CARD_SHADOW}>
+              <View className="bg-primary border-b border-primary/80 px-5 py-4">
+                <Text className="text-white font-black text-lg">Lease Participants</Text>
+              </View>
+              <View className="px-5 py-4 border-b border-border/50">
+                <Text className="text-[10px] uppercase font-black tracking-[1px] text-muted-foreground mb-1">Property Owner</Text>
+                <Text className="text-foreground font-black text-base">{ownerName}</Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">Certified Property Owner</Text>
+              </View>
+              <View className="px-5 py-4">
+                <Text className="text-[10px] uppercase font-black tracking-[1px] text-muted-foreground mb-1">Tenant</Text>
+                <Text className="text-foreground font-black text-base">{tenantName}</Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">Verified HomeCar Tenant</Text>
+              </View>
             </View>
           ) : (
             <ParticipantCard

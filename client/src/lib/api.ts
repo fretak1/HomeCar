@@ -4,19 +4,11 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhos
 
 export const API_ROUTES = {
     AUTH: `${API_BASE_URL}/api/auth`,
-    SERVICES: `${API_BASE_URL}/api/services`,
-    EVENTS: `${API_BASE_URL}/api/events`,
-    GUIDES: `${API_BASE_URL}/api/guides`,
-    TASKS: `${API_BASE_URL}/api/tasks`,
     USER: `${API_BASE_URL}/api/user`,
-    ORDER: `${API_BASE_URL}/api/order`,
     COMMENTS: `${API_BASE_URL}/api/messages`,
-    NEWSLETTER: `${API_BASE_URL}/api/newsletter`,
     PAYMENT: `${API_BASE_URL}/api/payment`,
-    BLOGS: `${API_BASE_URL}/api/blogs`,
     NOTIFICATIONS: `${API_BASE_URL}/api/notifications`,
     APPLICATIONS: `${API_BASE_URL}/api/applications`,
-    SHIFTS: `${API_BASE_URL}/api/shifts`,
     LEASES: `${API_BASE_URL}/api/leases`,
     PROPERTIES: `${API_BASE_URL}/api/properties`,
     FAVORITES: `${API_BASE_URL}/api/favorites`,
@@ -89,3 +81,6 @@ export const createApi = (baseURL: string = API_BASE_URL || '') => {
 
     return api;
 };
+
+// Shared singleton instance — import this instead of calling createApi()
+export const api = createApi();

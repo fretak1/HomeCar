@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { PropertyCard } from '@/components/PropertyCard';
-import { CarCard } from '@/components/CarCard';
+
 import { useAIStore } from '@/store/useAIStore';
 import { useUserStore } from '@/store/useUserStore';
 import { ArrowRight } from 'lucide-react';
@@ -104,10 +104,7 @@ export function AIRecommendations({ title }: AIRecommendationsProps) {
               .filter((item: any) => item.isVerified === true && item.status === 'AVAILABLE')
               .map((item: any) => (
                 <CarouselItem key={item.propertyId || item.id} className="pl-8 md:basis-1/2 lg:basis-1/3">
-                  {item.assetType === 'HOME'
-                    ? <PropertyCard property={item} />
-                    : <CarCard car={item} />
-                  }
+                  <PropertyCard property={item} />
                 </CarouselItem>
               ))}
           </CarouselContent>

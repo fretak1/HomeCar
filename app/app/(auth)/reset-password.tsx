@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Lock, Eye, EyeOff, ShieldCheck } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authClient } from '../../src/lib/auth-client';
+import { toast } from '../../src/lib/toast';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -26,17 +26,17 @@ export default function ResetPasswordScreen() {
 
   const handleSubmit = async () => {
     if (otp.length !== 6) {
-      Alert.alert('Error', 'Please enter the 6-digit reset code.');
+      toast.error('Please enter the 6-digit reset code.');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match.');
+      toast.error('Passwords do not match.');
       return;
     }
 
     if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters.');
+      toast.error('Password must be at least 8 characters.');
       return;
     }
 
@@ -49,12 +49,13 @@ export default function ResetPasswordScreen() {
       });
 
       if (error) {
-        Alert.alert('Error', error.message || 'Failed to reset password.');
+        toast.error(error.message || 'Failed to reset password. The code may be invalid or expired.');
       } else {
+        toast.success('Password reset successful!');
         router.replace('/(auth)/login');
       }
     } catch (err) {
-      Alert.alert('Error', 'An unexpected error occurred.');
+      toast.error('An unexpected error occurred.');
     } finally {
       setIsLoading(false);
     }
