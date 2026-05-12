@@ -96,7 +96,7 @@ export default function OwnerDashboardPage() {
     const { properties, fetchPropertiesByOwnerId, isLoading: isPropLoading, error: propError, deleteProperty } = usePropertyStore();
     const { applications, fetchApplications, updateApplicationStatus, isLoading: isAppLoading } = useApplicationStore();
     const { requests: maintenanceRequests, fetchRequests: fetchMaintenanceRequests, updateRequestStatus, isLoading: isMaintenanceLoading } = useMaintenanceStore();
-    const { leases, fetchLeases, acceptLease, requestLeaseCancellation, isLoading: isLeaseLoading } = useLeaseStore();
+    const { leases, fetchLeases, requestLeaseCancellation, isLoading: isLeaseLoading } = useLeaseStore();
     const { transactions, fetchTransactions, isLoading: isTransactionLoading } = useTransactionStore();
     const { connectSocket } = useChatStore();
 
