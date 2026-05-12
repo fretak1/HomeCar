@@ -16,6 +16,7 @@ export default function UserDashboardPage() {
             return;
         }
 
+        if (currentUser) {
             if (currentUser.role) {
                 if (currentUser.role === 'CUSTOMER') {
                     router.replace('/');
@@ -24,6 +25,7 @@ export default function UserDashboardPage() {
                     router.replace(`/dashboard/${role}`);
                 }
             }
+        }
     }, [currentUser, isLoading, router]);
 
     const userRoleCookie = getCookie('user-role')?.toUpperCase();
