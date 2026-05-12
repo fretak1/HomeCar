@@ -97,7 +97,6 @@ export const translations: Record<Language, TranslationTree> = {
       collected: "Collected",
       overdue: "OVERDUE",
       upcoming: "Upcoming",
-      delete: "Delete",
     },
     nav: {
       home: "Home",
@@ -1115,7 +1114,6 @@ export const translations: Record<Language, TranslationTree> = {
       collected: "ተሰብስቧል",
       overdue: "ጊዜው አልፏል",
       upcoming: "የሚመጣ",
-      delete: "ሰርዝ",
     },
     nav: {
       home: "መነሻ",
