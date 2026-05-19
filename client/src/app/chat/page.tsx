@@ -352,12 +352,12 @@ function ChatPageInner() {
 																<div 
 																	className="relative group cursor-pointer hover:opacity-95 transition-opacity"
 																	onClick={() => {
-																		const filename = message.attachment.split('/').pop() || 'photo.jpg';
+																		const filename = message.attachment!.split('/').pop() || 'photo.jpg';
 																		const displayName = filename.replace(/_\d+(?=\.[^.]+$)/, '');
-																		setLightboxImage({ url: message.attachment, name: displayName });
+																		setLightboxImage({ url: message.attachment!, name: displayName });
 																	}}
 																>
-																	<img src={message.attachment} alt="attachment" className="max-w-full rounded-2xl object-cover max-h-64 border border-black/10 shadow-md animate-in fade-in" />
+																	<img src={message.attachment!} alt="attachment" className="max-w-full rounded-2xl object-cover max-h-64 border border-black/10 shadow-md animate-in fade-in" />
 																	<p className="text-[10px] mt-1.5 font-semibold text-muted-foreground/75">
 																		{new Date(message.createdAt).toLocaleTimeString('en-US', {
 																			hour: 'numeric',
@@ -376,17 +376,17 @@ function ChatPageInner() {
                                                                         alt="attachment" 
                                                                         className="max-w-full rounded-md object-cover max-h-64 border border-black/10 cursor-pointer hover:opacity-90 transition-opacity" 
                                                                         onClick={() => {
-                                                                            const filename = message.attachment.split('/').pop() || 'photo.jpg';
+                                                                            const filename = message.attachment!.split('/').pop() || 'photo.jpg';
                                                                             const displayName = filename.replace(/_\d+(?=\.[^.]+$)/, '');
-                                                                            setLightboxImage({ url: message.attachment, name: displayName });
+                                                                            setLightboxImage({ url: message.attachment!, name: displayName });
                                                                         }}
                                                                     />
                                                                 ) : (() => {
-                                                                    const filename = message.attachment.split('/').pop() || 'document.pdf';
+                                                                    const filename = message.attachment!.split('/').pop() || 'document.pdf';
                                                                     const displayName = filename.replace(/_\d+(?=\.[^.]+$)/, '');
-                                                                    const downloadUrl = message.attachment.includes('/upload/') 
-                                                                        ? message.attachment.replace('/upload/', '/upload/fl_attachment/') 
-                                                                        : message.attachment;
+                                                                    const downloadUrl = message.attachment!.includes('/upload/') 
+                                                                        ? message.attachment!.replace('/upload/', '/upload/fl_attachment/') 
+                                                                        : message.attachment!;
                                                                     return (
                                                                         <button 
                                                                             onClick={() => triggerDownload(downloadUrl, displayName)}
