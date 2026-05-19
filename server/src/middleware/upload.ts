@@ -12,11 +12,14 @@ const storage = new CloudinaryStorage({
         if (file.fieldname === 'images' || file.fieldname === 'selfie') folder = 'homecar/properties';
         if (isSecureDoc) folder = 'homecar/documents';
 
+        const originalName = file.originalname ? file.originalname.split('.').slice(0, -1).join('.') : file.fieldname;
+        const cleanName = originalName.replace(/[^a-zA-Z0-9_-]/g, '_');
+
         return {
             folder: folder,
             resource_type: isSecureDoc ? 'raw' : 'auto',
             type: isSecureDoc ? 'authenticated' : 'upload',
-            public_id: `${file.fieldname}_${Date.now()}`,
+            public_id: `${cleanName}_${Date.now()}`,
             // In Cloudinary, 'raw' assets don't always use 'allowed_formats' the same way as images
             allowed_formats: isSecureDoc ? undefined : ['jpg', 'png', 'jpeg', 'avif', 'pdf', 'webp', 'gif'],
         };

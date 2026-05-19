@@ -247,7 +247,7 @@ export default function PropertyDetailPage() {
                                                         property.status === 'RENTED' ||
                                                         property.status === 'SOLD' ||
                                                         property.status === 'UNAVAILABLE' ||
-                                                        applications.some(app => app.propertyId === id && app.customerId === currentUser?.id)
+                                                        applications.some(app => app.propertyId === id && app.customerId === currentUser?.id && app.status === 'pending')
                                                     }
                                                 >
                                                     <Calendar className="h-5 w-5 mr-2" />
@@ -263,7 +263,7 @@ export default function PropertyDetailPage() {
                                                         ? t('property.alreadySold')
                                                         : property.status === 'UNAVAILABLE'
                                                         ? t('property.currentlyUnavailable')
-                                                        : applications.some(app => app.propertyId === id && app.customerId === currentUser?.id)
+                                                        : applications.some(app => app.propertyId === id && app.customerId === currentUser?.id && app.status === 'pending')
                                                         ? t('property.alreadyApplied')
                                                         : t('property.applyFor').replace('{type}', listingTypes[0] || '')
                                                     }
@@ -280,7 +280,7 @@ export default function PropertyDetailPage() {
                                                     </DialogHeader>
                                                     <div className="grid gap-4 py-4">
                                                         <div className="space-y-2">
-                                                            <h4 className="font-medium text-sm">{t('ownerDashboard.tabs.messages' as any) || 'Message'}</h4>
+                                                            <h4 className="font-medium text-sm">{(t('ownerDashboard.tabs.messages' as any) || '').includes('.') ? 'Message' : t('ownerDashboard.tabs.messages' as any)}</h4>
                                                             <Textarea
                                                                 placeholder={t('profile.aboutMePlaceholder')}
                                                                 value={applicationMessage}
@@ -327,7 +327,7 @@ export default function PropertyDetailPage() {
                                     <Button
                                         disabled={!property.owner?.id}
                                         variant="outline"
-                                        className="w-full cursor-pointer hover:bg-[#005a41]/5 border-[#005a41]/20 text-[#005a41] font-bold rounded-xl shadow-none transition-all active:scale-95"
+                                        className="w-full cursor-pointer bg-transparent hover:bg-[#005a41]/5 hover:text-[#005a41] border-[#005a41]/20 text-[#005a41] font-bold rounded-xl shadow-none transition-all active:scale-95"
                                         onClick={() => {
                                             if (!currentUser) {
                                                 toast.error(t('customerDashboard.pleaseLogin'), {

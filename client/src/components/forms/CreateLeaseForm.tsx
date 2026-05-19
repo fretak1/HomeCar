@@ -52,14 +52,16 @@ interface CreateLeaseFormProps {
     onSuccess: () => void;
     onCancel: () => void;
     role?: 'owner' | 'agent';
+    leaseId?: string;
+    initialData?: any;
 }
 
-export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateLeaseFormProps) {
+export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner', leaseId, initialData }: CreateLeaseFormProps) {
     const { t } = useTranslation();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [ownerSearchOpen, setOwnerSearchOpen] = useState(false);
     const [ownerSearchQuery, setOwnerSearchQuery] = useState('');
-    const { leases, fetchLeases, createLease } = useLeaseStore();
+    const { leases, fetchLeases, createLease, updateLease } = useLeaseStore();
     const { currentUser, users: allUsers, fetchUsers } = useUserStore();
     const { properties: allProperties, fetchProperties, fetchPropertiesByOwnerId } = usePropertyStore();
     const { applications, fetchApplications } = useApplicationStore();
@@ -79,15 +81,15 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
 
     const form = useForm({
         defaultValues: {
-            ownerId: '',
-            tenantId: '',
-            propertyId: '',
-            startDate: '',
-            endDate: '',
-            paymentModel: 'Recurring' as const,
-            totalPrice: '',
-            recurringAmount: '',
-            terms: '',
+            ownerId: initialData?.ownerId || '',
+            tenantId: initialData?.customerId || '',
+            propertyId: initialData?.propertyId || '',
+            startDate: initialData?.startDate ? new Date(initialData.startDate).toISOString().split('T')[0] : '',
+            endDate: initialData?.endDate ? new Date(initialData.endDate).toISOString().split('T')[0] : '',
+            paymentModel: initialData?.recurringAmount ? 'Recurring' : 'OneTime',
+            totalPrice: initialData?.totalPrice?.toString() || '',
+            recurringAmount: initialData?.recurringAmount?.toString() || '',
+            terms: initialData?.terms || '',
         },
     });
 
@@ -176,7 +178,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
     const onSubmit = async (data: any) => {
         setIsSubmitting(true);
         try {
-            await createLease({
+            const leaseData = {
                 startDate: data.startDate,
                 endDate: data.endDate,
                 totalPrice: parseFloat(data.totalPrice),
@@ -185,12 +187,19 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                 propertyId: data.propertyId,
                 customerId: data.tenantId,
                 ownerId: role === 'agent' ? data.ownerId : (currentUser?.id || 'o1')
-            } as any);
-            toast.success(t('lease.success'));
+            };
+
+            if (leaseId) {
+                await updateLease(leaseId, leaseData as any);
+                toast.success(t('lease.updated') || 'Lease updated successfully');
+            } else {
+                await createLease(leaseData as any);
+                toast.success(t('lease.success'));
+            }
             onSuccess();
         } catch (error: any) {
-            console.error('Lease creation failed:', error);
-            const errorMessage = error.response?.data?.error || t('lease.failed');
+            console.error('Lease operation failed:', error);
+            const errorMessage = error.response?.data?.error || (leaseId ? 'Failed to update lease' : t('lease.failed'));
             toast.error(errorMessage);
         } finally {
             setIsSubmitting(false);
@@ -548,7 +557,7 @@ export function CreateLeaseForm({ onSuccess, onCancel, role = 'owner' }: CreateL
                         ) : (
                             <>
                                 <Check className="mr-2 h-5 w-5" />
-                                {t('lease.createLease')}
+                                {leaseId ? t('common.saveChanges') || 'Save Changes' : t('lease.createLease')}
                             </>
                         )}
                     </Button>

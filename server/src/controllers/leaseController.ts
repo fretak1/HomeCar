@@ -362,3 +362,78 @@ export const requestLeaseCancellation = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 };
+
+export const updateLease = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const data = req.body;
+        const user = (req as any).user;
+
+        const existingLease = await prisma.lease.findUnique({
+            where: { id },
+            include: { property: true }
+        });
+
+        if (!existingLease) {
+            return res.status(404).json({ error: 'Lease not found' });
+        }
+
+        // Safety check: Only pending leases can be edited
+        if (existingLease.status !== 'PENDING') {
+            return res.status(400).json({ error: 'Only pending leases can be edited. Active or cancelled leases are locked.' });
+        }
+
+        // Authorization check: Only the owner or the agent who listed the property can edit
+        const isOwner = existingLease.ownerId === user.id;
+        const isAgent = existingLease.property.listedById === user.id;
+        
+        if (!isOwner && !isAgent && user.role !== 'ADMIN') {
+            return res.status(403).json({ error: 'You do not have permission to edit this lease.' });
+        }
+
+        const lease = await prisma.lease.update({
+            where: { id },
+            data: {
+                startDate: data.startDate ? new Date(data.startDate) : undefined,
+                endDate: data.endDate ? new Date(data.endDate) : undefined,
+                totalPrice: data.totalPrice ? parseFloat(data.totalPrice) : undefined,
+                recurringAmount: data.recurringAmount !== undefined ? parseFloat(data.recurringAmount) : undefined,
+                terms: data.terms,
+                // Reset acceptance so both must re-review
+                // If the editor is the owner, they are marked as accepted
+                ownerAccepted: user.role === 'OWNER' ? true : false,
+                customerAccepted: false,
+            },
+            include: {
+                property: { include: { location: true, images: true } },
+                customer: true,
+                owner: true
+            }
+        });
+
+        // Notify customer
+        await createNotification(
+            lease.customerId,
+            'Lease Offer Updated',
+            `The terms for your lease offer on ${lease.property.title} have been updated. Please review the new terms.`,
+            'LEASE',
+            '/dashboard/customer'
+        );
+
+        // If Agent edited, notify owner too
+        if (user.role === 'AGENT' && lease.ownerId !== user.id) {
+            await createNotification(
+                lease.ownerId,
+                'Lease Proposal Updated',
+                `Agent has updated the lease proposal for ${lease.property.title}. Mutual acceptance is required again.`,
+                'LEASE',
+                '/dashboard/owner?tab=leases'
+            );
+        }
+
+        res.json(lease);
+    } catch (error: any) {
+        console.error('Error updating lease:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};

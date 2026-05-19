@@ -89,7 +89,8 @@ export const addApplication = async (req: Request, res: Response) => {
         const existingApplication = await prisma.application.findFirst({
             where: {
                 propertyId,
-                customerId
+                customerId,
+                status: 'pending'
             }
         });
 

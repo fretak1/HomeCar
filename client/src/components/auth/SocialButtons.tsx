@@ -33,7 +33,7 @@ export const SocialButtons = () => {
             <Button
                 variant="outline"
                 type="button"
-                className="w-full h-12 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-900 shadow-sm px-4"
+                className="w-full h-12 rounded-xl bg-white hover:bg-gray-50 hover:text-gray-900 border border-gray-200 text-gray-900 shadow-sm px-4"
                 onClick={handleGoogleSignIn}
             >
                 <span className="w-full grid grid-cols-[20px_1fr_20px] items-center">

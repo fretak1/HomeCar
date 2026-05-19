@@ -215,6 +215,7 @@ model Lease {
 model Chat {
   id         String   @id @default(cuid())
   content    String
+  attachment String?
   read       Boolean  @default(false)
   createdAt  DateTime @default(now())
   senderId   String

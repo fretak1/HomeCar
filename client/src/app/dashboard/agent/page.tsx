@@ -15,7 +15,8 @@ import {
     Clock,
     CheckCircle,
     X,
-    User2
+    User2,
+    Edit
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -113,7 +114,7 @@ export default function AgentDashboardPage() {
                         <Link href={currentUser?.verified ? "/dashboard/add-property" : "#"} className="w-full md:w-auto">
                             <Button
                                 disabled={!currentUser?.verified}
-                                className="w-full md:w-auto bg-white text-[#005a41] hover:bg-white/90 font-bold px-8 py-7 rounded-2xl shadow-2xl shadow-black/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+                                className="w-full md:w-auto bg-white text-[#005a41] hover:bg-white/90 font-bold px-8 py-7 rounded-md shadow-2xl shadow-black/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
                             >
                                 <Plus className="mr-2 h-6 w-6" /> {t('agentDashboard.addListing')}
                             </Button>
@@ -565,11 +566,19 @@ export default function AgentDashboardPage() {
                                                         </div>
 
                                                         <div className="flex flex-row items-center gap-4">
-                                                            <Link href={`/dashboard/agent/lease/${lease.id}`}>
-                                                                <Button variant="outline" size="sm" className="h-10 px-4 rounded-xl text-xs font-bold border-border/60 hover:bg-muted transition-all">
-                                                                    {t('common.viewDetail')}
-                                                                </Button>
-                                                            </Link>
+                                                                <Link href={`/dashboard/agent/lease/${lease.id}`}>
+                                                                    <Button variant="outline" size="sm" className="h-10 px-4 rounded-lg text-xs font-bold border-border/60 hover:bg-muted transition-all">
+                                                                        {t('common.viewDetail')}
+                                                                    </Button>
+                                                                </Link>
+                                                                {lease.status === 'PENDING' && (
+                                                                    <Link href={`/dashboard/agent/lease/${lease.id}/edit`}>
+                                                                        <Button variant="outline" size="sm" className="h-10 px-4 rounded-lg text-xs font-bold border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 transition-all shadow-sm">
+                                                                            <Edit className="h-3.5 w-3.5 mr-2" />
+                                                                            {t('common.edit')}
+                                                                        </Button>
+                                                                    </Link>
+                                                                )}
                                                             <Badge className={cn(
                                                                 "px-3 py-1 border-none text-[10px] font-black uppercase tracking-widest rounded-lg",
                                                                 lease.status === 'ACTIVE' ? 'bg-[#005a41] text-white shadow-lg shadow-[#005a41]/20' :

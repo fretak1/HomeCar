@@ -308,8 +308,12 @@ export const getProperties = async (req: any, res: Response) => {
             include: {
                 location: true,
                 images: true,
-                owner: { select: { id: true, name: true, profileImage: true } },
-                reviews: { select: { rating: true } }
+                owner: { select: { id: true, name: true, profileImage: true, verificationPhoto: true } },
+                reviews: { select: { rating: true } },
+                ownershipDocuments: {
+                    orderBy: { uploadedAt: 'desc' },
+                    take: 1
+                }
             },
             orderBy,
             skip,

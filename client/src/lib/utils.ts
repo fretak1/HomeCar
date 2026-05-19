@@ -76,3 +76,36 @@ export function getCookie(name: string): string | null {
     if (parts.length === 2) return parts.pop()?.split(';').shift() ?? null;
     return null;
 }
+
+/**
+ * Prepares a DOM element for PDF generation by converting all <img> tags to Base64 data URIs.
+ * This is crucial for html2canvas foreignObjectRendering to work with external images.
+ */
+export const prepareDocumentForPDF = async (clonedEl: HTMLElement) => {
+    if (!clonedEl) return;
+
+    const imgs = Array.from(clonedEl.querySelectorAll('img'));
+    await Promise.all(imgs.map(img => new Promise<void>((resolve) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.onload = () => {
+            canvas.width = image.naturalWidth || 100;
+            canvas.height = image.naturalHeight || 100;
+            ctx?.drawImage(image, 0, 0);
+            try { 
+                img.src = canvas.toDataURL('image/png'); 
+            } catch { 
+                /* ignore tainted canvas error */ 
+            }
+            resolve();
+        };
+        image.onerror = () => resolve();
+        
+        const originalSrc = img.getAttribute('src') || img.src;
+        image.src = originalSrc.startsWith('http') 
+            ? originalSrc 
+            : `${window.location.origin}${originalSrc.startsWith('/') ? '' : '/'}${originalSrc}`;
+    })));
+};

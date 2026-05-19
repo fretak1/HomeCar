@@ -383,7 +383,11 @@ export default function AdminDashboardPage() {
             avatar: u.profileImage || ''
         }));
 
-    const pendingProperties = (allAssets as any[]).filter((p: any) => !p.isVerified && !p.rejectionReason).map((p: any) => ({
+    const pendingProperties = (allAssets as any[]).filter((p: any) => 
+        !p.isVerified && 
+        !p.rejectionReason && 
+        p.ownershipDocuments && p.ownershipDocuments.length > 0
+    ).map((p: any) => ({
         id: p.id,
         title: p.title,
         owner: (p as any).owner?.name || p.ownerName || 'Unknown Owner',
@@ -394,7 +398,12 @@ export default function AdminDashboardPage() {
         documentUrl: '#'
     }));
 
-    const pendingAgents = (users as any[]).filter((u: any) => u.role === 'AGENT' && !u.verified && !u.rejectionReason).map((u: any) => ({
+    const pendingAgents = (users as any[]).filter((u: any) => 
+        u.role === 'AGENT' && 
+        !u.verified && 
+        !u.rejectionReason &&
+        u.verificationPhoto // Ensure they uploaded a photo/ID
+    ).map((u: any) => ({
         id: u.id,
         name: u.name,
         email: u.email,

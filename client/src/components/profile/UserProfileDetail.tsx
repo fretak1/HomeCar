@@ -3,7 +3,6 @@
 import React from 'react';
 import {
     User,
-    Mail,
     Phone,
     MapPin,
     CalendarDays,
@@ -119,15 +118,6 @@ export const UserProfileDetail: React.FC<UserProfileDetailProps> = ({
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="space-y-0 divide-y divide-border/50">
-                                <div className="flex items-center gap-4 p-5 hover:bg-muted/10 transition-colors">
-                                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                                        <Mail className="h-5 w-5 text-blue-600" />
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{t('publicProfile.emailAddress')}</p>
-                                        <p className="text-sm font-bold text-foreground">{user.email}</p>
-                                    </div>
-                                </div>
                                 <div className="flex items-center gap-4 p-5 hover:bg-muted/10 transition-colors">
                                     <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
                                         <Phone className="h-5 w-5 text-green-600" />

@@ -9,6 +9,7 @@ export interface ChatMessage {
     senderId: string;
     receiverId: string;
     content: string;
+    attachment?: string;
     read: boolean;
     createdAt: string;
     sender?: {
@@ -38,7 +39,7 @@ interface ChatState {
     setActivePartner: (partnerId: string | null) => void;
     fetchConversations: () => Promise<void>;
     fetchMessages: (partnerId: string) => Promise<void>;
-    sendMessage: (receiverId: string, content: string) => Promise<ChatMessage | null>;
+    sendMessage: (receiverId: string, content: string, attachment?: string) => Promise<ChatMessage | null>;
     initiateChat: (receiverId: string, content?: string) => Promise<string | null>;
     appendMessage: (message: ChatMessage) => void;
     connectSocket: () => void;
@@ -131,9 +132,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
     },
 
-    sendMessage: async (receiverId: string, content: string) => {
+    sendMessage: async (receiverId: string, content: string, attachment?: string) => {
         try {
-            const response = await api.post(`${API_ROUTES.CHATS}/send`, { receiverId, content });
+            const response = await api.post(`${API_ROUTES.CHATS}/send`, { receiverId, content, attachment });
             const newMessage: ChatMessage = response.data;
 
             // Optimistically append to message thread

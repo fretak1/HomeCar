@@ -3,11 +3,9 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
 const getBaseUrl = () => {
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000';
-  }
-  return 'http://localhost:5000';
+  return 'http://192.168.137.228:5000';
 };
+
 
 const apiClient = axios.create({
   baseURL: getBaseUrl(),
@@ -17,6 +15,7 @@ const apiClient = axios.create({
     'Accept': 'application/json',
   },
 });
+
 
 // Request interceptor for Auth Token
 apiClient.interceptors.request.use(
@@ -30,7 +29,7 @@ apiClient.interceptors.request.use(
       } else {
         token = await SecureStore.getItemAsync('better-auth.session_token');
       }
-      
+
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }

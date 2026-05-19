@@ -23,7 +23,8 @@ import {
     User2,
     User,
     Eye,
-    AlertCircle
+    AlertCircle,
+    Edit
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -162,7 +163,7 @@ export default function OwnerDashboardPage() {
                             <p className="text-lg md:text-xl text-white/80 font-medium">{t('ownerDashboard.subtitle')}</p>
                         </div>
                         <Link href="/dashboard/add-property" className="w-full md:w-auto">
-                            <Button className="w-full md:w-auto bg-white text-[#005a41] hover:bg-white/90 font-black px-8 py-7 rounded-2xl shadow-2xl shadow-black/20 transition-all active:scale-95">
+                            <Button className="w-full md:w-auto bg-white text-[#005a41] hover:bg-white/90 font-black px-8 py-7 rounded-md shadow-2xl shadow-black/20 transition-all active:scale-95">
                                 <Plus className="mr-2 h-6 w-6" /> {t('ownerDashboard.addProperty')}
                             </Button>
                         </Link>
@@ -367,17 +368,25 @@ export default function OwnerDashboardPage() {
                                                                 
                                                                 <div className="flex flex-wrap justify-center sm:justify-end gap-2 w-full sm:w-auto">
                                                                     <Link href={`/dashboard/owner/lease/${lease.id}`} className="flex-1 sm:flex-none">
-                                                                        <Button variant="outline" size="sm" className="w-full h-10 px-6 rounded-xl border-border bg-white hover:bg-muted font-black text-[10px] uppercase tracking-widest transition-all">
+                                                                        <Button variant="outline" size="sm" className="w-full h-10 px-6 rounded-lg border-border bg-white hover:bg-muted font-black text-[10px] uppercase tracking-widest transition-all">
                                                                             <FileText className="h-4 w-4 mr-2 text-[#005a41] opacity-70" />
                                                                             {t('common.viewDetail')}
                                                                         </Button>
                                                                     </Link>
+                                                                    {lease.status === 'PENDING' && (
+                                                                        <Link href={`/dashboard/owner/lease/${lease.id}/edit`} className="flex-1 sm:flex-none">
+                                                                            <Button variant="outline" size="sm" className="w-full h-10 px-6 rounded-lg border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100 font-black text-[10px] uppercase tracking-widest transition-all shadow-sm">
+                                                                                <Edit className="h-4 w-4 mr-2" />
+                                                                                {t('common.edit')}
+                                                                            </Button>
+                                                                        </Link>
+                                                                    )}
                                                                     {(lease.status === 'ACTIVE' || (lease.status === 'CANCELLATION_PENDING' && !lease.ownerCancelled)) && (
                                                                         <Button
                                                                             variant="outline"
                                                                             size="sm"
                                                                             className={cn(
-                                                                                "flex-1 sm:flex-none h-10 px-6 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm",
+                                                                                "flex-1 sm:flex-none h-10 px-6 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all shadow-sm",
                                                                                 lease.status === 'CANCELLATION_PENDING' 
                                                                                     ? "text-orange-600 border-orange-200 hover:bg-orange-50" 
                                                                                     : "border-rose-200 text-rose-600 hover:bg-rose-50"

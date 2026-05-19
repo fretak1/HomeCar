@@ -44,6 +44,8 @@ export const translations: Record<Language, TranslationTree> = {
       full_purchase: "Full Purchase",
       na: "N/A",
       perMo: "/mo",
+      mo: "mo",
+      month: "month",
       accept: "Accept",
       reject: "Reject",
       price: "Price",
@@ -414,7 +416,9 @@ export const translations: Record<Language, TranslationTree> = {
         messageOwner: "Message Owner",
         viewOwnerProfile: "View Owner Profile",
         payNow: "Pay Now",
-        view: "View"
+        view: "View",
+        officialDocuments: "Official Documents",
+        viewAgreement: "View Agreement"
       },
 
 
@@ -1061,6 +1065,8 @@ export const translations: Record<Language, TranslationTree> = {
       full_purchase: "ሙሉ ግዢ",
       na: "አይገኝም",
       perMo: "/በወር",
+      mo: "ወር",
+      month: "ወር",
       accept: "ተቀበል",
       reject: "ውድቅ አድርግ",
       price: "ዋጋ",
@@ -1439,7 +1445,9 @@ export const translations: Record<Language, TranslationTree> = {
         messageOwner: "ለባለቤቱ መልዕክት ላክ",
         viewOwnerProfile: "የባለቤቱን ፕሮፋይል ይመልከቱ",
         payNow: "አሁን ክፈል",
-        view: "ይመልከቱ"
+        view: "ይመልከቱ",
+        officialDocuments: "ኦፊሴላዊ ሰነዶች",
+        viewAgreement: "ስምምነቱን ይመልከቱ"
       },
     },
     ownerDashboard: {

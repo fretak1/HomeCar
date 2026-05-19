@@ -13,6 +13,7 @@ interface LeaseState {
     updateLeaseStatus: (id: string, status: Lease['status']) => Promise<void>;
     acceptLease: (id: string, role: 'owner' | 'customer') => Promise<void>;
     requestLeaseCancellation: (id: string, role: 'owner' | 'customer') => Promise<void>;
+    updateLease: (id: string, leaseData: Partial<Lease>) => Promise<void>;
 }
 
 export const useLeaseStore = create<LeaseState>((set) => ({
@@ -85,6 +86,21 @@ export const useLeaseStore = create<LeaseState>((set) => ({
             }));
         } catch (error) {
             set({ error: 'Failed to request cancellation', isLoading: false });
+            throw error;
+        }
+    },
+    updateLease: async (id, leaseData) => {
+        set({ isLoading: true });
+        try {
+            const response = await api.patch(`${API_ROUTES.LEASES}/${id}/update`, leaseData);
+            set((state) => ({
+                leases: state.leases.map((l) =>
+                    l.id === id ? response.data : l
+                ),
+                isLoading: false
+            }));
+        } catch (error) {
+            set({ error: 'Failed to update lease', isLoading: false });
             throw error;
         }
     }

@@ -7,7 +7,11 @@ import {
     Search, 
     MessageSquare, 
     Loader2, 
-    ArrowLeft 
+    ArrowLeft,
+    Paperclip,
+    X,
+    FileText,
+    Download
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -36,6 +40,24 @@ function formatTimestamp(ts: string) {
     return `${diffDays} days ago`;
 }
 
+async function triggerDownload(url: string, filename: string) {
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+        console.error("Secure download failed, falling back to new tab:", e);
+        window.open(url, '_blank');
+    }
+}
+
 function ChatPageInner() {
     const searchParams = useSearchParams();
     const preselectedPartnerId = searchParams.get('partnerId');
@@ -56,7 +78,20 @@ function ChatPageInner() {
     const [showMobileChat, setShowMobileChat] = useState(false);
     const [messageText, setMessageText] = useState('');
     const [search, setSearch] = useState('');
+    const [attachment, setAttachment] = useState<File | null>(null);
+    const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [lightboxImage, setLightboxImage] = useState<{ url: string; name: string } | null>(null);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setLightboxImage(null);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     // Sync active partner with global store to gracefully handle real-time unread badges
     useEffect(() => {
@@ -108,10 +143,42 @@ function ChatPageInner() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, [messages]);
 
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setAttachment(file);
+            setAttachmentPreview(URL.createObjectURL(file));
+        }
+    };
+
     const handleSend = async () => {
-        if (!messageText.trim() || !selectedPartnerId) return;
-        await sendMessage(selectedPartnerId, messageText.trim());
-        setMessageText('');
+        if ((!messageText.trim() && !attachment) || !selectedPartnerId || isUploading) return;
+        
+        setIsUploading(true);
+        let attachmentUrl = undefined;
+
+        try {
+            if (attachment) {
+                const formData = new FormData();
+                formData.append('file', attachment);
+                const { api, API_ROUTES } = await import('@/lib/api');
+                const res = await api.post(`${API_ROUTES.UPLOAD}/single`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                attachmentUrl = res.data.url;
+            }
+
+            await sendMessage(selectedPartnerId, messageText.trim(), attachmentUrl);
+            
+            setMessageText('');
+            setAttachment(null);
+            setAttachmentPreview(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        } catch (error) {
+            console.error('Failed to send message with attachment', error);
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     const selectedConversation = conversations.find(c => c.partnerId === selectedPartnerId);
@@ -260,6 +327,9 @@ function ChatPageInner() {
                                     ) : (
                                         messages.map((message) => {
                                             const isOwn = message.senderId === currentUser?.id;
+                                             const isImageOnly = message.attachment && 
+                                                 (!message.content || message.content.trim() === '') && 
+                                                 (!message.attachment.match(/\.(pdf|doc|docx|xls|xlsx|zip|txt)$/i) && (message.attachment.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || message.attachment.includes('/image/upload/')));
                                             return (
                                                 <div
                                                     key={message.id}
@@ -273,18 +343,76 @@ function ChatPageInner() {
                                                         </Avatar>
                                                     )}
                                                     <div
-                                                        className={`max-w-[85%] md:max-w-md rounded-2xl px-4 py-3 shadow-sm ${isOwn
-                                                            ? 'bg-[#005a41] text-white rounded-tr-none'
-                                                            : 'bg-muted/50 text-foreground rounded-tl-none border border-border/30'
-                                                            }`}
+                                                        className={isImageOnly ? "max-w-[85%] md:max-w-md" : `max-w-[85%] md:max-w-md rounded-2xl px-4 py-3 shadow-sm ${isOwn
+															? 'bg-[#005a41]' + ' text-white rounded-tr-none'
+															: 'bg-muted/50 text-foreground rounded-tl-none border border-border/30'
+															}`}
                                                     >
-                                                        <p className="text-sm md:text-base leading-relaxed">{message.content}</p>
-                                                        <p className={`text-[10px] mt-1 font-bold ${isOwn ? 'text-white/60' : 'text-muted-foreground/60'}`}>
+                                                        {isImageOnly ? (
+																<div 
+																	className="relative group cursor-pointer hover:opacity-95 transition-opacity"
+																	onClick={() => {
+																		const filename = message.attachment.split('/').pop() || 'photo.jpg';
+																		const displayName = filename.replace(/_\d+(?=\.[^.]+$)/, '');
+																		setLightboxImage({ url: message.attachment, name: displayName });
+																	}}
+																>
+																	<img src={message.attachment} alt="attachment" className="max-w-full rounded-2xl object-cover max-h-64 border border-black/10 shadow-md animate-in fade-in" />
+																	<p className="text-[10px] mt-1.5 font-semibold text-muted-foreground/75">
+																		{new Date(message.createdAt).toLocaleTimeString('en-US', {
+																			hour: 'numeric',
+																			minute: '2-digit',
+																		})}
+																	</p>
+																</div>
+															) : (
+																<p className="text-sm md:text-base leading-relaxed">{message.content}</p>
+															)}
+                                                        {!isImageOnly && message.attachment &&
+                                                            <div className="mt-2">
+                                                                {!message.attachment.match(/\.(pdf|doc|docx|xls|xlsx|zip|txt)$/i) && (message.attachment.match(/\.(jpeg|jpg|gif|png|webp|avif)$/i) || message.attachment.includes('/image/upload/')) ? (
+                                                                    <img 
+                                                                        src={message.attachment} 
+                                                                        alt="attachment" 
+                                                                        className="max-w-full rounded-md object-cover max-h-64 border border-black/10 cursor-pointer hover:opacity-90 transition-opacity" 
+                                                                        onClick={() => {
+                                                                            const filename = message.attachment.split('/').pop() || 'photo.jpg';
+                                                                            const displayName = filename.replace(/_\d+(?=\.[^.]+$)/, '');
+                                                                            setLightboxImage({ url: message.attachment, name: displayName });
+                                                                        }}
+                                                                    />
+                                                                ) : (() => {
+                                                                    const filename = message.attachment.split('/').pop() || 'document.pdf';
+                                                                    const displayName = filename.replace(/_\d+(?=\.[^.]+$)/, '');
+                                                                    const downloadUrl = message.attachment.includes('/upload/') 
+                                                                        ? message.attachment.replace('/upload/', '/upload/fl_attachment/') 
+                                                                        : message.attachment;
+                                                                    return (
+                                                                        <button 
+                                                                            onClick={() => triggerDownload(downloadUrl, displayName)}
+                                                                            className={cn(
+                                                                                "flex items-center justify-between p-3 rounded-xl border text-xs font-semibold shadow-sm transition-all hover:scale-[1.01] w-full max-w-[240px] text-left",
+                                                                                isOwn 
+                                                                                    ? "bg-white/10 border-white/20 text-white hover:bg-white/20" 
+                                                                                    : "bg-muted border-border text-foreground hover:bg-muted/80"
+                                                                            )}
+                                                                        >
+                                                                            <div className="flex items-center space-x-2 truncate mr-2">
+                                                                                <FileText className="h-5 w-5 shrink-0 text-primary" />
+                                                                                <span className="truncate">{displayName}</span>
+                                                                            </div>
+                                                                            <Download className="h-4 w-4 shrink-0 opacity-70 hover:opacity-100" />
+                                                                        </button>
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                        }
+                                                        {!isImageOnly && <p className={`text-[10px] mt-1 font-bold ${isOwn ? 'text-white/60' : 'text-muted-foreground/60'}`}>
                                                             {new Date(message.createdAt).toLocaleTimeString('en-US', {
                                                                 hour: 'numeric',
                                                                 minute: '2-digit',
                                                             })}
-                                                        </p>
+                                                        </p>}
                                                     </div>
                                                 </div>
                                             );
@@ -294,8 +422,41 @@ function ChatPageInner() {
                                 </div>
 
                                 {/* Message Input */}
-                                <div className="p-4 border-t border-border bg-card relative z-10 shadow-sm">
+                                <div className="p-4 border-t border-border bg-card relative z-10 shadow-sm flex flex-col">
+                                    {attachmentPreview && (
+                                        <div className="mb-3 relative inline-block self-start">
+                                            {attachment?.type.startsWith('image/') ? (
+                                                <img src={attachmentPreview} alt="Preview" className="h-20 w-auto rounded-md object-cover border border-border shadow-sm" />
+                                            ) : (
+                                                <div className="h-20 w-20 flex flex-col items-center justify-center bg-muted rounded-md border border-border shadow-sm p-2 text-center">
+                                                    <FileText className="h-8 w-8 text-primary mb-1" />
+                                                    <span className="text-[10px] text-muted-foreground truncate w-full font-bold">{attachment?.name}</span>
+                                                </div>
+                                            )}
+                                            <button 
+                                                onClick={() => { setAttachment(null); setAttachmentPreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                                                className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-md transition-colors"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    )}
                                     <div className="flex items-center space-x-2">
+                                        <input 
+                                            type="file" 
+                                            ref={fileInputRef} 
+                                            className="hidden" 
+                                            accept="image/*,.pdf,.doc,.docx"
+                                            onChange={handleFileSelect}
+                                        />
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            className="text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
+                                        >
+                                            <Paperclip className="h-5 w-5" />
+                                        </Button>
                                         <Input
                                             placeholder={t('chat.typeMessage')}
                                             value={messageText}
@@ -310,10 +471,10 @@ function ChatPageInner() {
                                         />
                                         <Button
                                             onClick={handleSend}
-                                            disabled={!messageText.trim()}
-                                            className="bg-primary hover:bg-primary/90 text-white shadow-sm"
+                                            disabled={(!messageText.trim() && !attachment) || isUploading}
+                                            className="bg-primary hover:bg-primary/90 text-white shadow-sm shrink-0"
                                         >
-                                            <Send className="h-5 w-5" />
+                                            {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                                         </Button>
                                     </div>
                                 </div>
@@ -330,6 +491,46 @@ function ChatPageInner() {
                     </div>
                 </div>
             </div>
+            
+            {lightboxImage && (
+                <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col justify-between p-4 animate-in fade-in duration-200">
+                    {/* Top Bar */}
+                    <div className="flex items-center justify-between w-full text-white z-10 max-w-7xl mx-auto p-2">
+                        <span className="text-sm font-semibold truncate mr-4">{lightboxImage.name}</span>
+                        <div className="flex items-center space-x-3">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => triggerDownload(lightboxImage.url, lightboxImage.name)}
+                                className="text-white/80 hover:text-white hover:bg-white/10 rounded-full h-10 w-10 shrink-0"
+                            >
+                                <Download className="h-6 w-6" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setLightboxImage(null)}
+                                className="text-white/80 hover:text-white hover:bg-white/10 rounded-full h-10 w-10 shrink-0"
+                            >
+                                <X className="h-6 w-6" />
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Image Area */}
+                    <div 
+                        className="flex-1 flex items-center justify-center p-4 cursor-zoom-out"
+                        onClick={() => setLightboxImage(null)}
+                    >
+                        <img
+                            src={lightboxImage.url}
+                            alt={lightboxImage.name}
+                            className="max-w-[90vw] max-h-[80vh] object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-200"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

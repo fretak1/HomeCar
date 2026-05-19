@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, Mail, Save, Loader2, Lock, ShieldCheck, MapPin } from 'lucide-react';
+import { User, Save, Loader2, Lock, ShieldCheck, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import {
     Select,
@@ -209,22 +209,6 @@ export default function ProfilePage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.email')}</Label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/60" />
-                                    <Input
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        className="pl-10 h-11 rounded-xl border-border bg-muted/20"
-                                        placeholder="john@example.com"
-                                        required
-                                    />
-                                </div>
-                            </div>
 
                             <div className="space-y-2">
                                 <Label htmlFor="aboutMe" className="text-xs font-bold uppercase tracking-wider text-primary">{t('profile.aboutMe')}</Label>
@@ -262,8 +246,8 @@ export default function ProfilePage() {
                                             <SelectValue placeholder={t('profile.gender')} />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Male">{t('auth.signup.male' as any) || 'Male'}</SelectItem>
-                                            <SelectItem value="Female">{t('auth.signup.female' as any) || 'Female'}</SelectItem>
+                                            <SelectItem value="Male">{(t('auth.signup.male' as any) || '').includes('.') ? 'Male' : t('auth.signup.male' as any)}</SelectItem>
+                                            <SelectItem value="Female">{(t('auth.signup.female' as any) || '').includes('.') ? 'Female' : t('auth.signup.female' as any)}</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

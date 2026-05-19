@@ -116,17 +116,18 @@ export const getMessages = async (req: Request, res: Response) => {
 export const sendMessage = async (req: Request, res: Response) => {
     try {
         const senderId = (req as any).user.id;
-        const { receiverId, content } = req.body;
+        const { receiverId, content, attachment } = req.body;
 
-        if (!receiverId || !content?.trim()) {
-            return res.status(400).json({ error: 'receiverId and content are required' });
+        if (!receiverId || (!content?.trim() && !attachment)) {
+            return res.status(400).json({ error: 'receiverId and either content or attachment are required' });
         }
 
         const message = await prisma.chat.create({
             data: {
                 senderId,
                 receiverId,
-                content: content.trim(),
+                content: content?.trim() || '',
+                attachment: attachment || null,
             },
             include: {
                 sender: { select: { id: true, name: true, profileImage: true } }
