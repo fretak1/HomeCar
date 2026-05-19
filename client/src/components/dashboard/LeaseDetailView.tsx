@@ -9,7 +9,6 @@ import {
     FileText,
     ShieldCheck,
     MessageSquare,
-    User,
     Users,
     Clock,
     Home,
