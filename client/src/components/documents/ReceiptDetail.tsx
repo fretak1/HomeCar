@@ -85,7 +85,7 @@ export default function ReceiptDetail({ id, role }: ReceiptDetailProps) {
                     logging: false,
                     allowTaint: true,
                     foreignObjectRendering: true,
-                    onclone: async (clonedDoc: Document, clonedEl: HTMLElement) => {
+                    onclone: async (_clonedDoc: Document, clonedEl: HTMLElement) => {
                         await prepareDocumentForPDF(clonedEl);
                         if (clonedEl) {
                             clonedEl.style.margin = '0';
