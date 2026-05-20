@@ -71,7 +71,7 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     // auth state — prevents the flash of home content before restricted roles redirect.
     // Management paths (/profile, /dashboard etc.) render immediately without spinner.
     const isConsumerPage = !isManagementPath(pathname) && !isAuthPage && !isAppWorkspacePage;
-    if (isLoading && isConsumerPage) {
+    if (isLoading && isConsumerPage && isRestrictedRoleCookie) {
         return (
             <LanguageProvider>
                 <div className="min-h-screen bg-background flex items-center justify-center">
