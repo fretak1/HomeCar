@@ -11,6 +11,7 @@ import { Footer } from "@/components/Footer";
 import { getCookie } from "@/lib/utils";
 import { AskAIAssistant } from "@/components/ai/AskAIAssistant";
 import { Toaster } from "sonner";
+import RootLoading from "@/app/loading";
 
 const RESTRICTED_ROLES = ['ADMIN', 'OWNER', 'AGENT'];
 
@@ -67,19 +68,19 @@ export function ClientLayout({ children }: { children: React.ReactNode }) {
     const shouldHideFooter = isRestrictedRole || isAuthPage || isAppWorkspacePage;
     const shouldHideAskAI = isRestrictedRole || isAuthPage || isAppWorkspacePage;
 
-    // Show full-screen spinner only on consumer pages (home, listings) while determining
-    // auth state — prevents the flash of home content before restricted roles redirect.
+    // Show high-fidelity homepage skeleton only on consumer pages (home, listings) while determining
+    // auth state — avoids a harsh empty screen spinner and provides a premium perceived performance.
     // Management paths (/profile, /dashboard etc.) render immediately without spinner.
     const isConsumerPage = !isManagementPath(pathname) && !isAuthPage && !isAppWorkspacePage;
-    if (isLoading && isConsumerPage && isRestrictedRoleCookie) {
+    if (isLoading && isConsumerPage) {
         return (
             <LanguageProvider>
-                <div className="min-h-screen bg-background flex items-center justify-center">
-                    <div className="flex flex-col items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center animate-pulse">
-                            <div className="w-6 h-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-                        </div>
-                    </div>
+                <div className="min-h-screen bg-background flex flex-col">
+                    {!isAuthPage && <div className="print:hidden"><Navbar /></div>}
+                    <main className="flex-1">
+                        <RootLoading />
+                    </main>
+                    {!shouldHideFooter && <div className="print:hidden"><Footer /></div>}
                 </div>
             </LanguageProvider>
         );
