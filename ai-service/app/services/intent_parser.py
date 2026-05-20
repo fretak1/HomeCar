@@ -6,8 +6,18 @@ from groq import Groq
 
 class IntentParser:
     def __init__(self):
-        self.client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        self._client = None
         self.model = "llama-3.1-8b-instant"
+        
+    @property
+    def client(self):
+        if self._client is None:
+            api_key = os.getenv("GROQ_API_KEY")
+            if not api_key:
+                print("[AI] Warning: GROQ_API_KEY is not set. Using fallback key.")
+                api_key = "dummy_groq_key"
+            self._client = Groq(api_key=api_key)
+        return self._client
         
         self.SYSTEM_PROMPT = """
         You are a Search Intent Extractor for 'HomeCar', an Ethiopian marketplace for cars and homes.

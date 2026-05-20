@@ -211,10 +211,28 @@ Context: You are 'HomeCar AI', the expert virtual assistant for the HomeCar plat
 """
 
 
-client = OpenAI(
-    api_key=os.getenv("OPENROUTER_API_KEY"),
-    base_url="https://openrouter.ai/api/v1",
-)
+class LazyOpenAI:
+    def __init__(self):
+        self._client = None
+
+    @property
+    def client(self):
+        if self._client is None:
+            api_key = os.getenv("OPENROUTER_API_KEY")
+            if not api_key:
+                print("[AI] Warning: OPENROUTER_API_KEY is not set. Using fallback key.")
+                api_key = "dummy_openrouter_key"
+            self._client = OpenAI(
+                api_key=api_key,
+                base_url="https://openrouter.ai/api/v1",
+            )
+        return self._client
+
+    @property
+    def chat(self):
+        return self.client.chat
+
+client = LazyOpenAI()
 
 
 class DynamicLookup:
