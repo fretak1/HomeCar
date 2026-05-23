@@ -120,34 +120,30 @@ export default function HomeScreen() {
     useNotificationStore.getState().fetchNotifications();
   }, [user?.role]);
 
-  const tenDaysAgo = useMemo(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 10);
-    return date;
-  }, []);
-
   const featuredHomes = useMemo(
     () =>
       listings
-        .filter(
-          (listing) =>
-            listing.assetType === 'HOME' &&
-            (!listing.createdAt || new Date(listing.createdAt) >= tenDaysAgo),
-        )
-        .slice(0, 9),
-    [listings, tenDaysAgo],
+        .filter((listing) => listing.assetType === 'HOME')
+        .sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        })
+        .slice(0, 10),
+    [listings],
   );
 
   const featuredCars = useMemo(
     () =>
       listings
-        .filter(
-          (listing) =>
-            listing.assetType === 'CAR' &&
-            (!listing.createdAt || new Date(listing.createdAt) >= tenDaysAgo),
-        )
-        .slice(0, 9),
-    [listings, tenDaysAgo],
+        .filter((listing) => listing.assetType === 'CAR')
+        .sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        })
+        .slice(0, 10),
+    [listings],
   );
 
   const currentPriceOptions =

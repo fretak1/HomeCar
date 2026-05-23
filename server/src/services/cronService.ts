@@ -49,7 +49,7 @@ export const checkUpcomingPayments = async () => {
                     const subject = `Reminder: Upcoming Payment for ${lease.property.title}`;
                     const html = `
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                            <h2 style="color: #4f46e5;">Payment Reminder</h2>
+                            <h2 style="color: #065f46;">Payment Reminder</h2>
                             <p>Hello ${lease.customer.name},</p>
                             <p>This is a friendly reminder that your monthly rent payment of <strong>${lease.recurringAmount || lease.totalPrice} ETB</strong> for <strong>${lease.property.title}</strong> is due in 2 days on <strong>${reminderDate.toLocaleDateString()}</strong>.</p>
                             <p>Please ensure your payment is made on time to avoid any late fees or service interruptions.</p>

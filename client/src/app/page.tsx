@@ -86,19 +86,16 @@ export default function Home() {
         return () => clearInterval(interval);
     }, [carsApi]);
 
-    // Filtering logic for "Featured" sections (Properties created in the last 10 days)
-    const tenDaysAgo = new Date();
-    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    // Filtering logic for "Featured" sections (Recent 10 properties)
+    const featuredHomes = properties
+        .filter(p => p.assetType === 'HOME')
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 10);
 
-    const featuredHomes = properties.filter(p =>
-        p.assetType === 'HOME' &&
-        new Date(p.createdAt) >= tenDaysAgo
-    ).slice(0, 9); // Limit to 9 for slider
-
-    const featuredCars = properties.filter(p =>
-        p.assetType === 'CAR' &&
-        new Date(p.createdAt) >= tenDaysAgo
-    ).slice(0, 9); // Limit to 9 for slider
+    const featuredCars = properties
+        .filter(p => p.assetType === 'CAR')
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 10);
 
     return (
         <div className="min-h-screen bg-[#F8FAFC]">

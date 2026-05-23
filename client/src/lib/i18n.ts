@@ -133,6 +133,14 @@ export const translations: Record<Language, TranslationTree> = {
       company: "Company",
       aboutUs: "About Us",
       copyright: "All rights reserved.",
+      quickLinks: "Quick Links",
+      feedbackTitle: "Send Us Feedback",
+      feedbackEmailPlaceholder: "Your email address",
+      feedbackMessagePlaceholder: "Write your feedback here...",
+      feedbackSubmit: "Submit Feedback",
+      feedbackSuccess: "Thank you! Your feedback has been sent.",
+      feedbackError: "Failed to send feedback. Please try again.",
+      feedbackSubmitting: "Submitting...",
     },
     auth: {
       social: {
@@ -1154,6 +1162,14 @@ export const translations: Record<Language, TranslationTree> = {
       company: "ኩባንያ",
       aboutUs: "ስለ እኛ",
       copyright: "መብቱ ሁሉ የተጠበቀ ነው።",
+      quickLinks: "ፈጣን አገናኞች",
+      feedbackTitle: "አስተያየት ይላኩልን",
+      feedbackEmailPlaceholder: "የኢሜይል አድራሻዎ",
+      feedbackMessagePlaceholder: "አስተያየትዎን እዚህ ይጻፉ...",
+      feedbackSubmit: "አስተያየት ይላኩ",
+      feedbackSuccess: "እናመሰግናለን! አስተያየትዎ ተልኳል።",
+      feedbackError: "አስተያየት መላክ አልተቻለም። እባክዎ እንደገና ይሞክሩ።",
+      feedbackSubmitting: "በመላክ ላይ...",
     },
     auth: {
       social: {
