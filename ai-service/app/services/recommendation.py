@@ -706,44 +706,4 @@ class RecommendationService:
         results['propertyId'] = results['id']
         return self._format_results(results.to_dict('records'))
 
-    def explain_recommendations(self, user_id):
-        """
-        Deep dive into WHY these items were recommended.
-        Now includes granular breakdowns for every result.
-        """
-        history = get_user_history(user_id)
-        profile = get_user_profile(user_id)
-        
-        explanation = {
-            "meta": {
-                "user_id": user_id,
-                "traced_at": pd.Timestamp.now(tz='UTC').strftime('%Y-%m-%dT%H:%M:%SZ'),
-                "version": "1.1-hybrid-ready",
-                "engine_mode": self.engine_mode
-            },
-            "interaction_signals": {
-                "transactions": len(history[history['interaction_type'] == 'TRANSACTION']) if not history.empty else 0,
-                "applications": len(history[history['interaction_type'] == 'APPLICATION']) if not history.empty else 0,
-                "favorites": len(history[history['interaction_type'] == 'FAVORITE']) if not history.empty else 0,
-                "views": len(history[history['interaction_type'] == 'VIEW']) if not history.empty else 0,
-                "total_timeline_events": len(history)
-            },
-            "ml_status": self.ml_service.get_status(),
-            "base_weights": {
-                "TRANSACTION": 6.0,
-                "APPLICATION": 3.0,
-                "FAVORITE": 1.0,
-                "VIEW": 0.2
-            },
-            "demographic_profile": profile.to_dict('records')[0] if not profile.empty else "Standard",
-            "logic_components": [
-                {"name": "Temporal Decay", "impact": "High", "desc": "Diminishes old actions over a 14-day half-life"},
-                {"name": "Geographic Affinity", "impact": "Extreme", "desc": "Boosts items within 5km of map exploration"},
-                {"name": "Implicit Filter Tracking", "impact": "Medium", "desc": "Captures car brands and home amenities"},
-                {"name": "Demographic Sensitivity", "impact": "High", "desc": "Married users/parents get larger home priority"}
-            ],
-            "results": self.get_recommendations_for_user(user_id, 15)
-        }
-        return explanation
-
 recommendation_service = RecommendationService()

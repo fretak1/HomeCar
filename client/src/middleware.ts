@@ -27,7 +27,6 @@ export function middleware(request: NextRequest) {
     const isTryingAgent = pathname.startsWith('/dashboard/agent');
     const isTryingCustomer = pathname.startsWith('/dashboard/customer');
     const isTryingAddProperty = pathname.startsWith('/dashboard/add-property');
-    const isTryingAiInsights = pathname.startsWith('/dashboard/ai-insights');
 
     if (isTryingAdmin && normalizedRole !== 'ADMIN') {
       return NextResponse.redirect(new URL('/dashboard', request.url));
@@ -42,9 +41,6 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
     if (isTryingAddProperty && !['OWNER', 'AGENT'].includes(normalizedRole)) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-    if (isTryingAiInsights && !['ADMIN', 'CUSTOMER', 'OWNER', 'AGENT'].includes(normalizedRole)) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }

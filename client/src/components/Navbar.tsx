@@ -15,7 +15,6 @@ import {
   FileText,
   Wrench,
   CheckCircle2,
-  Brain,
   Menu
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -259,13 +258,6 @@ export function Navbar() {
                       <span className="text-sm font-semibold">{t('nav.myProfile')}</span>
                     </DropdownMenuItem>
 
-                    <DropdownMenuItem
-                      className="cursor-pointer py-2.5 px-3 rounded-lg focus:bg-primary focus:text-white group flex items-center gap-3 transition-all duration-200"
-                      onClick={() => router.push('/dashboard/ai-insights')}
-                    >
-                      <Brain className="h-4 w-4 text-muted-foreground group-focus:text-white transition-colors" />
-                      <span className="text-sm font-semibold">{t('nav.aiInsights')}</span>
-                    </DropdownMenuItem>
 
 
 
@@ -357,14 +349,6 @@ export function Navbar() {
                             >
                               <User className="h-5 w-5" />
                               {t('nav.myProfile')}
-                            </Link>
-                            <Link 
-                              href="/dashboard/ai-insights" 
-                              onClick={() => setIsOpen(false)}
-                              className="flex items-center gap-3 py-2 text-lg font-bold text-foreground/70 hover:text-primary transition-colors"
-                            >
-                              <Brain className="h-5 w-5" />
-                              {t('nav.aiInsights')}
                             </Link>
                             <Button 
                               variant="ghost" 

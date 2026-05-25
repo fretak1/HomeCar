@@ -30,7 +30,6 @@ interface AIState {
     isPredicting: boolean;
     isRecommendationLoading: boolean;
     recommendations: any[];
-    explanationData: any;
     predictCarPrice: (data: {
         brand: string,
         model: string,
@@ -56,7 +55,6 @@ interface AIState {
         bathrooms?: number
     }) => Promise<PredictionResponse | { error: string } | null>;
     fetchRecommendations: (userId: string) => Promise<void>;
-    fetchAIExplanation: (userId: string) => Promise<void>;
     chatHistory: { role: 'user' | 'model', parts: string }[];
     isChatLoading: boolean;
     sendMessageToAI: (message: string) => Promise<string | null>;
@@ -66,7 +64,6 @@ export const useAIStore = create<AIState>((set, get) => ({
     isPredicting: false,
     isRecommendationLoading: false,
     recommendations: [],
-    explanationData: null,
     chatHistory: [],
     isChatLoading: false,
 
@@ -114,19 +111,6 @@ export const useAIStore = create<AIState>((set, get) => ({
         } catch (error) {
             console.error('AI recommendations fetch error:', error);
             set({ recommendations: [] });
-        } finally {
-            set({ isRecommendationLoading: false });
-        }
-    },
-
-    fetchAIExplanation: async (userId) => {
-        set({ isRecommendationLoading: true });
-        try {
-            const response = await axios.post(`${AI_SERVICE_URL}/recommendations/explain`, { userId });
-            set({ explanationData: response.data.explanation });
-        } catch (error) {
-            console.error('AI explanation fetch error:', error);
-            set({ explanationData: null });
         } finally {
             set({ isRecommendationLoading: false });
         }

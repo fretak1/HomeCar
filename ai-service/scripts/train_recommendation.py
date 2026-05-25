@@ -132,7 +132,7 @@ def train_model():
     with META_PATH.open("w", encoding="utf-8") as meta_file:
         json.dump(metadata, meta_file, indent=2)
 
-    print(f"Recommendation ranker trained successfully on {len(training_df)} rows.")
+    print(f"Recommendation  trained successfully on {len(training_df)} rows.")
     print(f"Model saved to {MODEL_PATH}")
     print(f"Metadata saved to {META_PATH}")
 

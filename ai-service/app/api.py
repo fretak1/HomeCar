@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 import asyncio
 import train_model
-from app.schemas.prediction import (
+from app.schemas.datastructure import (
     PredictionRequest, PredictionResponse,
     HousePredictionRequest, HousePredictionResponse,
     RecommendationRequest, ChatRequest
@@ -60,16 +60,6 @@ async def get_recommendations(request: RecommendationRequest):
         recommendations = recommendation_service.get_recommendations_for_user(request.userId, limit=request.limit)
     return {"userId": request.userId, "recommendations": recommendations}
 
-
-@router.post("/recommendations/explain")
-async def explain_recommendations(request: RecommendationRequest):
-    try:
-        explanation = recommendation_service.explain_recommendations(request.userId)
-        return {"status": "success", "explanation": explanation}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-    
 
 @router.post("/chat")
 async def chat_with_assistant(request: ChatRequest):
