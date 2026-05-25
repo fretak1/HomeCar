@@ -103,6 +103,43 @@ export default function OwnerDashboardPage() {
 
     const isLoading = isPropLoading || isAppLoading || isLeaseLoading || isMaintenanceLoading || isTransactionLoading;
 
+    // Calculate profile completeness score
+    const getProfileCompleteness = () => {
+        if (!currentUser) return { score: 0, missingFields: [] };
+        
+        let score = 0;
+        const missingFields = [];
+        
+        // 1. Name & Email are mandatory and filled during registration (+20% each)
+        score += 20; // Name
+        score += 20; // Email
+        
+        // 2. Profile Picture (+20%)
+        if (currentUser.profileImage) {
+            score += 20;
+        } else {
+            missingFields.push('Profile Picture');
+        }
+        
+        // 3. Phone (+20%)
+        if (currentUser.phoneNumber) {
+            score += 20;
+        } else {
+            missingFields.push('Phone Number');
+        }
+        
+        // 4. Bio (+20%)
+        if (currentUser.aboutMe) {
+            score += 20;
+        } else {
+            missingFields.push('About Me (Bio)');
+        }
+        
+        return { score, missingFields };
+    };
+
+    const { score: completenessScore, missingFields } = getProfileCompleteness();
+
     useEffect(() => {
         if (currentUser?.id) {
             setHasStartedInitialLoad(true);
@@ -172,6 +209,27 @@ export default function OwnerDashboardPage() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Profile Completeness Banner */}
+                {!isLoading && currentUser && completenessScore < 100 && (
+                    <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/20 rounded-2xl p-5 mb-8 backdrop-blur-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-in fade-in duration-500">
+                        <div className="space-y-1.5 flex-1">
+                            <h3 className="font-extrabold text-amber-800 text-lg flex items-center gap-2">
+                                <span>{t('customerDashboard.profileCompleteness' as any) || "Complete Your Profile!"} ({completenessScore}%)</span>
+                            </h3>
+                            <p className="text-amber-700/80 text-sm font-medium">
+                                {t('customerDashboard.profileCompletenessDescOwner' as any) || "Stand out in the HomeCar marketplace by completing your profile. Missing: "}
+                                <span className="font-black text-amber-800">{missingFields.join(', ')}</span>
+                            </p>
+                        </div>
+                        <Button 
+                            className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-md shadow-amber-600/10 hover:shadow-lg hover:shadow-amber-600/20 active:scale-95 transition-all shrink-0 uppercase tracking-wider text-xs"
+                            onClick={() => router.push('/profile')}
+                        >
+                            {t('customerDashboard.completeProfileNow' as any) || "Complete Profile"}
+                        </Button>
+                    </div>
+                )}
+
                 {/* Property Verification Banners */}
                 {properties.some(p => !p.isVerified) && (
                     <div className="space-y-4 mb-8">

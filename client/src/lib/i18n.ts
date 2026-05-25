@@ -428,9 +428,11 @@ export const translations: Record<Language, TranslationTree> = {
         officialDocuments: "Official Documents",
         viewAgreement: "View Agreement"
       },
-
-
-
+      profileCompleteness: "Complete Your Profile!",
+      profileCompletenessDescCustomer: "Stand out to owners by completing your profile. Missing: ",
+      profileCompletenessDescOwner: "Stand out in the HomeCar marketplace by completing your profile. Missing: ",
+      profileCompletenessDescAgent: "Stand out in the HomeCar marketplace by completing your profile. Missing: ",
+      completeProfileNow: "Complete Profile Now",
       maxPhotosError: "Maximum 2 images allowed.",
       fillAllFields: "Please fill in all required fields.",
       maintenanceSuccess: "Maintenance request submitted successfully!",
@@ -1358,6 +1360,11 @@ export const translations: Record<Language, TranslationTree> = {
       paymentSetupIncomplete: "ለዚህ ባለቤት የክፍያ ዝግጅት አልተጠናቀቀም።",
       failedToGeneratePaymentLink: "የክፍያ አገናኝ መፍጠር አልተሳካም።",
       paymentInitializationFailed: "ክፍያ መጀመር አልተሳካም።",
+      profileCompleteness: "መገለጫዎን ያጠናቅቁ!",
+      profileCompletenessDescCustomer: "መገለጫዎን በማጠናቀቅ ለባለቤቶች ጎልተው ይታዩ። የጎደሉ፡ ",
+      profileCompletenessDescOwner: "መገለጫዎን በማጠናቀቅ በHomeCar የገበያ ቦታ ላይ ጎልተው ይታዩ። የጎደሉ፡ ",
+      profileCompletenessDescAgent: "መገለጫዎን በማጠናቀቅ በHomeCar የገበያ ቦታ ላይ ጎልተው ይታዩ። የጎደሉ፡ ",
+      completeProfileNow: "መገለጫውን አሁን ያጠናቅቁ",
       maxPhotosError: "ቢበዛ 2 ምስሎች ይፈቀዳሉ።",
       fillAllFields: "እባክዎን ሁሉንም አስፈላጊ ቦታዎች ይሙሉ",
       maintenanceSuccess: "የጥገና ጥያቄ በተሳካ ሁኔታ ቀርቧል!",

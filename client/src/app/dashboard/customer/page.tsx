@@ -122,6 +122,43 @@ export default function CustomerDashboardPage() {
 
     const [expandedSchedules, setExpandedSchedules] = useState<string[]>([]);
 
+    // Calculate profile completeness score
+    const getProfileCompleteness = () => {
+        if (!currentCustomer) return { score: 0, missingFields: [] };
+        
+        let score = 0;
+        const missingFields = [];
+        
+        // 1. Name & Email are mandatory and filled during registration (+20% each)
+        score += 20; // Name
+        score += 20; // Email
+        
+        // 2. Profile Picture (+20%)
+        if (currentCustomer.profileImage) {
+            score += 20;
+        } else {
+            missingFields.push('Profile Picture');
+        }
+        
+        // 3. Phone (+20%)
+        if (currentCustomer.phoneNumber) {
+            score += 20;
+        } else {
+            missingFields.push('Phone Number');
+        }
+        
+        // 4. Bio (+20%)
+        if (currentCustomer.aboutMe) {
+            score += 20;
+        } else {
+            missingFields.push('About Me (Bio)');
+        }
+        
+        return { score, missingFields };
+    };
+
+    const { score: completenessScore, missingFields } = getProfileCompleteness();
+
     useEffect(() => {
         if (currentCustomer?.id) {
             setHasStartedInitialLoad(true);
@@ -341,6 +378,27 @@ export default function CustomerDashboardPage() {
                 </div>
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    {/* Profile Completeness Banner */}
+                    {!isLoading && currentCustomer && completenessScore < 100 && (
+                        <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/20 rounded-2xl p-5 mb-8 backdrop-blur-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-in fade-in duration-500">
+                            <div className="space-y-1.5 flex-1">
+                                <h3 className="font-extrabold text-amber-800 text-lg flex items-center gap-2">
+                                    <span>{t('customerDashboard.profileCompleteness' as any) || "Complete Your Profile!"} ({completenessScore}%)</span>
+                                </h3>
+                                <p className="text-amber-700/80 text-sm font-medium">
+                                    {t('customerDashboard.profileCompletenessDescCustomer' as any) || "Stand out to owners by completing your profile. Missing: "}
+                                    <span className="font-black text-amber-800">{missingFields.join(', ')}</span>
+                                </p>
+                            </div>
+                            <Button 
+                                className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-6 py-2.5 rounded-xl shadow-md shadow-amber-600/10 hover:shadow-lg hover:shadow-amber-600/20 active:scale-95 transition-all shrink-0 uppercase tracking-wider text-xs"
+                                onClick={() => router.push('/profile')}
+                            >
+                                {t('customerDashboard.completeProfileNow' as any) || "Complete Profile"}
+                            </Button>
+                        </div>
+                    )}
+
                     {/* Stats Cards */}
                     {isLoading && !hasCompletedInitialLoad ? (
                         <StatCardsSkeleton count={5} />
@@ -706,11 +764,12 @@ export default function CustomerDashboardPage() {
                                                                                         const isMonthPast = isBefore(periodEnd, now);
                                                                                         const isCurrentMonth = isWithinInterval(now, { start: periodStart, end: periodEnd });
                                                                                         const monthLabel = format(periodStart, 'MMM-yyyy');
-                                                                                        const transaction = transactions.find(t =>
+                                                                                        const monthTransactions = transactions.filter(t =>
                                                                                             t.leaseId === lease.id &&
                                                                                             (t.status === 'COMPLETED' || t.status === 'PENDING') &&
                                                                                             (t.metadata as any)?.month === monthLabel
                                                                                         );
+                                                                                        const transaction = monthTransactions.find(t => t.status === 'COMPLETED') || monthTransactions.find(t => t.status === 'PENDING');
                                                                                         const isPaid = transaction?.status === 'COMPLETED';
                                                                                         const isPending = transaction?.status === 'PENDING';
 
@@ -771,9 +830,20 @@ export default function CustomerDashboardPage() {
                                                                                                                 Paid
                                                                                                             </div>
                                                                                                         ) : isPending ? (
-                                                                                                            <div className="flex items-center text-amber-600 font-bold text-xs bg-amber-50 py-2.5 rounded-xl border border-amber-100 w-full md:w-auto justify-center px-4">
-                                                                                                                <Clock className="h-4 w-4 mr-2" />
-                                                                                                                {t('customerDashboard.pending')}
+                                                                                                            <div className="flex flex-col gap-2 w-full md:w-auto">
+                                                                                                                <div className="flex items-center text-amber-600 font-bold text-xs bg-amber-50 py-2.5 rounded-xl border border-amber-100 justify-center px-4">
+                                                                                                                    <Clock className="h-4 w-4 mr-2 animate-pulse" />
+                                                                                                                    {t('customerDashboard.pending')}
+                                                                                                                </div>
+                                                                                                                {(isCurrentMonth || isMonthPast) && (lease.status === 'ACTIVE' || lease.status === 'Active') && (
+                                                                                                                    <Button
+                                                                                                                        size="sm"
+                                                                                                                        className="bg-amber-500 hover:bg-amber-600 text-white font-bold w-full rounded-xl shadow-sm transition-all"
+                                                                                                                        onClick={() => handleRentPayment(lease, periodStart)}
+                                                                                                                    >
+                                                                                                                        Retry Payment
+                                                                                                                    </Button>
+                                                                                                                )}
                                                                                                             </div>
                                                                                                         ) : (isCurrentMonth || isMonthPast) && (lease.status === 'ACTIVE' || lease.status === 'Active') ? (
                                                                                                             <div className="flex flex-col gap-2 w-full md:w-auto">

@@ -405,11 +405,12 @@ export default function LeaseDetailView({ id, role }: LeaseDetailViewProps) {
                                                         const isMonthPast = isBefore(periodEnd, now);
                                                         const isCurrentMonth = isWithinInterval(now, { start: periodStart, end: periodEnd });
                                                         const monthLabel = format(periodStart, 'MMM-yyyy');
-                                                        const transaction = (transactions as any[]).find(t =>
+                                                        const monthTransactions = (transactions as any[]).filter(t =>
                                                             t.leaseId === lease.id &&
                                                             (t.status === 'COMPLETED' || t.status === 'PENDING') &&
                                                             (t.metadata as any)?.month === monthLabel
                                                         );
+                                                        const transaction = monthTransactions.find(t => t.status === 'COMPLETED') || monthTransactions.find(t => t.status === 'PENDING');
                                                         const isPaid = transaction?.status === 'COMPLETED';
                                                         const isPending = transaction?.status === 'PENDING';
 
@@ -431,7 +432,7 @@ export default function LeaseDetailView({ id, role }: LeaseDetailViewProps) {
                                                                             {isAgent ? 'COLLECTED' : t('common.collected').toUpperCase()}
                                                                         </Badge>
                                                                     ) : isPending ? (
-                                                                        <Badge className="bg-amber-50 text-amber-700 border-amber-100 px-2 py-0.5 text-[8px] font-bold">
+                                                                        <Badge className="bg-amber-50 text-amber-700 border-amber-100 px-2 py-0.5 text-[8px] font-bold animate-pulse">
                                                                             {isAgent ? 'PENDING' : t('common.pending').toUpperCase()}
                                                                         </Badge>
                                                                     ) : isCurrentMonth ? (
@@ -454,14 +455,17 @@ export default function LeaseDetailView({ id, role }: LeaseDetailViewProps) {
                                                                             <Link href={`/dashboard/${isCustomer ? 'customer' : isOwner ? 'owner' : 'admin'}/documents/receipt/${transaction.id}`}>
                                                                                 <Button variant="outline" size="sm" className="h-7 text-[10px] font-bold text-primary border-primary hover:bg-primary hover:text-white transition-colors duration-200 uppercase">{t('customerDashboard.leaseDetails.view')}</Button>
                                                                             </Link>
-                                                                        ) : isCustomer && (isCurrentMonth || isMonthPast) && !isPending && lease.status === 'ACTIVE' ? (
+                                                                        ) : isCustomer && (isCurrentMonth || isMonthPast) && lease.status === 'ACTIVE' ? (
                                                                             <Button 
                                                                                 size="sm" 
-                                                                                className="h-7 text-[10px] font-bold bg-primary hover:bg-primary/90 text-white uppercase shadow-sm active:scale-95 transition-all"
+                                                                                className={cn(
+                                                                                    "h-7 text-[10px] font-bold uppercase shadow-sm active:scale-95 transition-all",
+                                                                                    isPending ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-primary hover:bg-primary/90 text-white"
+                                                                                )}
                                                                                 onClick={() => handleRentPayment(lease, periodStart)}
                                                                                 disabled={isPaymentLoading}
                                                                             >
-                                                                                {isPaymentLoading ? <Loader2 className="h-3 w-3 animate-spin"/> : t('customerDashboard.leaseDetails.payNow')}
+                                                                                {isPaymentLoading ? <Loader2 className="h-3 w-3 animate-spin"/> : (isPending ? "Retry Payment" : t('customerDashboard.leaseDetails.payNow'))}
                                                                             </Button>
                                                                         ) : (
                                                                             <span className="text-[10px] text-muted-foreground font-bold">—</span>
@@ -490,11 +494,12 @@ export default function LeaseDetailView({ id, role }: LeaseDetailViewProps) {
                                                 const isMonthPast = isBefore(periodEnd, now);
                                                 const isCurrentMonth = isWithinInterval(now, { start: periodStart, end: periodEnd });
                                                 const monthLabel = format(periodStart, 'MMM-yyyy');
-                                                const transaction = (transactions as any[]).find(t =>
+                                                const monthTransactions = (transactions as any[]).filter(t =>
                                                     t.leaseId === lease.id &&
                                                     (t.status === 'COMPLETED' || t.status === 'PENDING') &&
                                                     (t.metadata as any)?.month === monthLabel
                                                 );
+                                                const transaction = monthTransactions.find(t => t.status === 'COMPLETED') || monthTransactions.find(t => t.status === 'PENDING');
                                                 const isPaid = transaction?.status === 'COMPLETED';
                                                 const isPending = transaction?.status === 'PENDING';
 
@@ -528,14 +533,17 @@ export default function LeaseDetailView({ id, role }: LeaseDetailViewProps) {
                                                                     <Link href={`/dashboard/${isCustomer ? 'customer' : isOwner ? 'owner' : 'admin'}/documents/receipt/${transaction.id}`}>
                                                                         <Button variant="outline" size="sm" className="h-9 px-4 rounded-xl text-[10px] font-black border-primary/20 text-primary uppercase">{t('customerDashboard.leaseDetails.viewReceipt')}</Button>
                                                                     </Link>
-                                                                ) : isCustomer && (isCurrentMonth || isMonthPast) && !isPending && lease.status === 'ACTIVE' ? (
+                                                                ) : isCustomer && (isCurrentMonth || isMonthPast) && lease.status === 'ACTIVE' ? (
                                                                     <Button 
                                                                         size="sm" 
-                                                                        className="h-9 px-6 rounded-xl text-[10px] font-black bg-primary hover:bg-primary/90 text-white uppercase shadow-lg shadow-primary/20 active:scale-95 transition-all"
+                                                                        className={cn(
+                                                                            "h-9 px-6 rounded-xl text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all",
+                                                                            isPending ? "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20" : "bg-primary hover:bg-primary/90 text-white shadow-primary/20"
+                                                                        )}
                                                                         onClick={() => handleRentPayment(lease, periodStart)}
                                                                         disabled={isPaymentLoading}
                                                                     >
-                                                                        {isPaymentLoading ? <Loader2 className="h-3 w-3 animate-spin"/> : t('customerDashboard.leaseDetails.payNow')}
+                                                                        {isPaymentLoading ? <Loader2 className="h-3 w-3 animate-spin"/> : (isPending ? "Retry Payment" : t('customerDashboard.leaseDetails.payNow'))}
                                                                     </Button>
                                                                 ) : (
                                                                     <p className="text-[10px] font-black text-muted-foreground/30 uppercase italic">{t('common.upcoming')}</p>
@@ -651,22 +659,24 @@ export default function LeaseDetailView({ id, role }: LeaseDetailViewProps) {
                         </Card>
 
                         {/* Official Documents Card */}
-                        <Card className="border-border shadow-md overflow-hidden ring-1 ring-primary/5">
-                            <CardHeader className="bg-muted/30 border-b border-border/50 p-6">
-                                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-foreground/70">
-                                    <FileText className="h-4 w-4" />
-                                    {t('customerDashboard.leaseDetails.officialDocuments')}
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-6 space-y-3">
-                                <Link href={`/dashboard/documents/agreement/${lease.id}`} className="w-full block">
-                                    <Button className="w-full bg-[#005a41] hover:bg-[#004a35] text-white font-bold h-12 rounded-xl shadow-lg active:scale-95 transition-all gap-3">
-                                        <FileText className="h-5 w-5" />
-                                        {t('customerDashboard.leaseDetails.viewAgreement')}
-                                    </Button>
-                                </Link>
-                            </CardContent>
-                        </Card>
+                        {lease.status?.toUpperCase() !== 'PENDING' && (
+                            <Card className="border-border shadow-md overflow-hidden ring-1 ring-primary/5">
+                                <CardHeader className="bg-muted/30 border-b border-border/50 p-6">
+                                    <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-foreground/70">
+                                        <FileText className="h-4 w-4" />
+                                        {t('customerDashboard.leaseDetails.officialDocuments')}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-6 space-y-3">
+                                    <Link href={`/dashboard/documents/agreement/${lease.id}`} className="w-full block">
+                                        <Button className="w-full bg-[#005a41] hover:bg-[#004a35] text-white font-bold h-12 rounded-xl shadow-lg active:scale-95 transition-all gap-3">
+                                            <FileText className="h-5 w-5" />
+                                            {t('customerDashboard.leaseDetails.viewAgreement')}
+                                        </Button>
+                                    </Link>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
                 </div>
             </div>

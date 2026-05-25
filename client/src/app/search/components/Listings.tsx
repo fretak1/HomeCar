@@ -2,26 +2,13 @@
 
 import { usePropertyStore } from "@/store/usePropertyStore";
 import { useGlobalStore } from "@/store/useGlobalStore";
-import { useFavoriteStore } from "@/store/useFavoriteStore";
-import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "@/contexts/LanguageContext";
-import Card from "./Card";
+import { PropertyCard } from "@/components/PropertyCard";
 
 const Listings = () => {
-    const { user } = useAuth();
     const { t } = useTranslation();
-    const { isFavorite, addFavorite, removeFavorite } = useFavoriteStore();
-    const {  filters, searchType, isFiltersFullOpen } = useGlobalStore();
+    const { filters, searchType, isFiltersFullOpen } = useGlobalStore();
     const { properties, isLoading, error, page, totalPages, fetchProperties } = usePropertyStore();
-
-    const handleFavoriteToggle = async (id: string) => {
-        if (!user) return;
-        if (isFavorite(id)) {
-            await removeFavorite(id);
-        } else {
-            await addFavorite(id);
-        }
-    };
 
     const handlePageChange = (newPage: number) => {
         fetchProperties({ ...filters, page: newPage, assetType: searchType === 'property' ? 'HOME' : 'CAR' });
@@ -80,14 +67,9 @@ const Listings = () => {
                             `grid gap-6 ${isFiltersFullOpen ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-2'}` 
                         }>
                             {items.map((item: any) => (
-                                <Card
+                                <PropertyCard
                                     key={item.id}
-                                    item={item}
-                                    type={searchType === 'property' ? 'property' : 'vehicle'}
-                                    isFavorite={isFavorite(item.id)}
-                                    onFavoriteToggle={() => handleFavoriteToggle(item.id)}
-                                    showFavoriteButton={!!user}
-                                    itemLink={`/${searchType === 'property' ? 'property' : 'vehicle'}/${item.id}`}
+                                    property={item}
                                 />
                             ))}
                         </div>
